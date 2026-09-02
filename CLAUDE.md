@@ -5,10 +5,18 @@
 
 ## 0. Début de session — OBLIGATOIRE
 
-1. Lire **`POURQUOI.md`** — d'où vient ce projet et les règles qui en découlent. Non négociable : c'est ce qui empêche de refaire la même dérive.
-2. Lire **`RECOLTE.md`** — **l'étape en cours**, la récolte de deux mois d'apprentissage. Une question y est en attente de décision, à trancher avant de commencer.
-3. Lire **`DEPART.md`** — l'étape suivante : le travail concret, avec les fichiers sources exacts.
-4. Ne rien lire d'autre par défaut.
+1. Lire **`project/NOTES.md`** — tableau de bord de reprise : prochaine action, état courant, blocages.
+2. Lire **`POURQUOI.md`** — d'où vient ce projet et les règles qui en découlent. Non négociable : c'est ce qui empêche de refaire la même dérive.
+3. **Si le scope de session n'est pas déclaré dans le premier message : le demander avant toute action.**
+4. Consulter **`project/RULES.md`** pour le domaine touché.
+5. Lire l'étape en cours : **`RECOLTE.md`**, puis **`DEPART.md`** quand elle sera close.
+6. **Ne pas lire un fichier** si l'information est déjà dans `NOTES.md`, `RULES.md` ou le contexte courant.
+
+**En fin de session — OBLIGATOIRE :**
+
+- `project/NOTES.md` — préparer la reprise immédiate. **Pas d'historique, pas de récit, pas de liste de travaux terminés.**
+- `project/RULES.md` — ajouter les règles nouvelles, sans doublon.
+- `project/session_log.md` — résumé, commits, décisions.
 
 ## 1. Ce qu'est IAbinome
 
@@ -64,3 +72,4 @@ Avertissement de portage : sur les modèles récents, des consignes **trop presc
 ## 7. Commits
 
 `docs:` · `feat:` · `fix:` · `test:` · `chore:` — sans accents dans le message, comme le prédécesseur.
+**Identité git : déjà en config globale — ne jamais la surcharger avec `-c`.** Détail et motif dans `project/RULES.md`.
