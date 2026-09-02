@@ -3,7 +3,9 @@
 > Lire `POURQUOI.md` d'abord. Ce fichier-ci dit **quoi faire**, avec les chemins exacts.
 > Préparé le 2026-09-02. Rien n'a encore été écrit.
 
-## Étape en cours : **spécification**
+## Ce fichier est l'étape 1 — pas l'étape en cours
+
+**L'étape en cours est la récolte : `RECOLTE.md`.** Elle passe d'abord, et la spécification ci-dessous ne prend en entrée que la colonne **Code** de l'inventaire qu'elle produit.
 
 Rien à coder tant que la spécification n'est pas arbitrée.
 

@@ -6,8 +6,9 @@
 ## 0. Début de session — OBLIGATOIRE
 
 1. Lire **`POURQUOI.md`** — d'où vient ce projet et les règles qui en découlent. Non négociable : c'est ce qui empêche de refaire la même dérive.
-2. Lire **`DEPART.md`** — le travail concret à faire, avec les fichiers sources exacts.
-3. Ne rien lire d'autre par défaut.
+2. Lire **`RECOLTE.md`** — **l'étape en cours**, la récolte de deux mois d'apprentissage. Une question y est en attente de décision, à trancher avant de commencer.
+3. Lire **`DEPART.md`** — l'étape suivante : le travail concret, avec les fichiers sources exacts.
+4. Ne rien lire d'autre par défaut.
 
 ## 1. Ce qu'est IAbinome
 
@@ -18,7 +19,8 @@ Un outil d'environ **1 500 lignes** qui coordonne **deux agents IA en CLI** aux 
 demande.md → A produit → B critique → A révise → (N fois max) → A finalise → livrable
 ```
 
-**État : pas encore commencé.** L'étape en cours est la *spécification*, pas le code.
+**État : pas encore commencé.** L'étape en cours est la **récolte** (`RECOLTE.md`) — ni la spécification, ni le code.
+Enchaînement : **récolte → spécification → implémentation**, avec arbitrage humain entre chaque.
 
 ## 2. Périmètre — les cinq interdits
 
