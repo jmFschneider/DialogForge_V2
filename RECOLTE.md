@@ -11,10 +11,17 @@
 
 Preuve que la cible est atteignable : la doctrine du prédécesseur avait **déjà** été distillée une fois, dans `DialogForge\context\*.md` — **huit fichiers, 194 lignes au total**. C'est le point de comparaison.
 
-## Question à trancher AVANT de commencer
+## Question tranchée le 2026-09-03
 
 **L'inventaire couvre-t-il aussi les leçons de conduite de projet** — budgets, supervision, arbitrage, coût — **ou seulement ce qui concerne l'outil ?**
-Les premières ne deviendront jamais du code, mais ce sont elles qui ont coûté le plus cher. Sans décision, elles resteront dans les archives d'un chantier gelé. *Non tranché au 2026-09-02.*
+Les premières ne deviendront jamais du code, mais ce sont elles qui ont coûté le plus cher.
+
+**Réponse : les deux.** Motif — la doctrine déjà distillée avait tranché de fait : `context\supervision.md`
+pèse **113 des 194 lignes** et ne parle que de budgets, de surveillance et d'erreurs. Les écarter aurait
+laissé la moitié du capital dans un chantier gelé. Elles reçoivent la destination **Règle**, jamais **Code**.
+
+*Tranché par Claude faute d'arbitrage disponible en séance, sur une preuve mesurée. Rouvrable — mais alors
+en le signalant, jamais en silence.*
 
 ## Où vivent réellement ces deux mois
 

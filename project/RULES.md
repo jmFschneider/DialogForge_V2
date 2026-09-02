@@ -76,6 +76,12 @@
 
 **Une décision actée peut être rouverte, mais jamais en silence :** signaler, tracer, faire re-décider.
 
+**Une question marquée « à trancher avant de commencer » dans un document du projet se tranche dans ce document même**, avec son motif et sa date — pas seulement dans les notes de session.
+*Motif : la question de périmètre de `RECOLTE.md` portait la mention « non tranché » depuis le 2026-09-02 ; laissée dans les notes, elle se serait reposée à chaque session.*
+
+**Une source de récolte s'abandonne dès qu'elle ne rapporte plus rien de neuf — et l'abandon se note, avec le volume non lu.**
+*Motif : c'est la seule façon de distinguer une source épuisée d'une source oubliée. Sans la note, le relecteur ne peut pas contredire.*
+
 **Trancher les choix à défaut évident et avancer.** Réserver les questions aux vrais embranchements — métier, ergonomie, risque — que rien ne permet d'inférer.
 
 **Métrique de garde : l'outil ne dépasse jamais le projet qu'il sert.**

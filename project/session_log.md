@@ -41,3 +41,39 @@ Audit de conformité du Lot 0 de DialogForge par rapport à son plan de marche, 
 ### À retenir
 
 L'erreur d'identité git (adresse du compte Claude au lieu de `schneider.jm@free.fr`) a nécessité un `--amend --reset-author`. Règle consignée dans `RULES.md`.
+
+---
+
+## 2026-09-03 (Claude) — Étape 0 : la récolte
+
+Scope déclaré : poursuivre la récolte. Première session ouverte directement dans `C:\Projets\IAbinome`.
+
+### Ce qui a été fait
+
+Les **huit sources** de `RECOLTE.md` ont été dépouillées, dans l'ordre prescrit, et l'inventaire produit :
+`conception/INVENTAIRE.md` — **26 Code · 24 Prompt · 21 Règle · 15 Test · 20 Écarté**, sous la barre des ~200 lignes.
+
+**Mesures relevées pendant la récolte :**
+
+- `context\supervision.md` pèse **113 des 194 lignes** de la doctrine déjà distillée, et ne traite que de conduite de projet.
+- **14 des 69 fichiers de tests** de DialogForge nomment la boucle A/B ; **55 nomment l'appareil écarté.**
+- Sur les 42 `fix:`, **9 sont retenus** ; sur les 85 `[DIFFÉRÉ]`, **7**.
+- La boucle A/B entière tient dans ~80 lignes de prompts (`orchestrator.py:681-760`), le cadrage dans ~80 autres.
+- Cinq faits mesurés repris de `preuves\README.md` : formule de reconstruction des tokens, 229 288 tokens de cadrage non comptés, réservation qui gouverne l'admission et non la consommation, laboratoire en avance de 6 commits sur sa référence, lecture d'archive SQLite qui casse ses propres empreintes.
+
+**Sources arrêtées et notées :** `history.md` (2 533 l.) et `README.md` (1 046 l.) n'ont pas été ouverts, les huit sources répétant déjà leurs constats. La conception MariaDB (1 243 l.) n'a rendu que 2 lignes sur 1 243 — source épuisée avant sa fin.
+
+### Décisions
+
+1. **Périmètre de la récolte tranché : les deux.** L'inventaire couvre aussi la conduite de projet, en destination **Règle**, jamais **Code**. Motif mesuré — `supervision.md` avait déjà tranché de fait. Tranché par Claude faute d'arbitrage en séance, tracé dans `RECOLTE.md`, **rouvrable**.
+2. Deux règles de méthode ajoutées à `RULES.md` : trancher une question ouverte dans le document qui la porte ; noter l'abandon d'une source de récolte avec son volume non lu.
+3. La contrainte « **Code** est la colonne la plus courte » n'est **pas tenue** (26 contre 24). Constat porté en tête de la relecture plutôt que corrigé en douce.
+
+### Commits
+
+`docs: recolter deux mois d apprentissage dans un inventaire` — inventaire, arbitrage du périmètre, règles de méthode.
+*(Le commit ne cite pas son propre hash : l'`--amend` le déplace.)*
+
+### À retenir
+
+L'inventaire n'est **pas relu**. Le protocole veut une passe Codex à consigne unique — « qu'est-ce qui a été écarté en silence ? » — avant tout arbitrage humain. Trois zones lui sont désignées comme suspectes : l'arrêt anticipé sur deux sources, les trois agrégats qui écartent 166 éléments d'un coup, et la colonne Code hors contrainte.
