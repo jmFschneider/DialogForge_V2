@@ -291,3 +291,47 @@ La porte `IABINOME:QUESTION` (elle **retire** plus qu'elle n'ajoute : elle rempl
 Quatre tours conservés séparément, **aucun écrasé** : Codex A → Claude B → Claude A' → Codex B' → synthèse. Le protocole a tourné quatre fois avant qu'une ligne de code existe.
 
 **La limite qui domine tout : aucune CLI n'a jamais été lancée.** Cinq points à mesurer (§12.2), dont le point 2 — la réalité du mode sans outils — qui décide B-2.
+
+---
+
+## 2026-09-03 (Codex B, Claude A) — Dernière revue technique, et préparation du code
+
+Cinquième tour du protocole. Codex relit `CONCEPTION_FINALE.md` et rend **huit remarques techniques**.
+
+### Ce qui a été fait
+
+Les huit sont disposées dans `conception/DISPOSITION_TECHNIQUE_CODEX.md` et **toutes retenues** — première revue du cycle où c'est le cas. Ça se comprend : elle ne porte plus sur des choix, mais sur des **défauts vérifiables**. Quatre sont des défauts que j'avais laissés dans le document, quatre sont des trous.
+
+Spécification corrigée sur les huit points.
+
+### Le défaut le plus grave
+
+**`resultat.json` était écrit avant que `RESPONSE_STORED` soit publié**, et tout crash restant en `CALLING` était traité comme incertain. Un crash dans cette fenêtre produisait donc : une réponse complète sur le disque, un état qui la déclare incertaine, et une relance humaine qui **repaie un appel dont on a déjà la réponse**. C'est exactement ce que tout le protocole durable existe pour empêcher.
+
+Le correctif ne coûte rien : `resultat.json` n'étant écrit qu'à la sortie propre, **sa présence est la preuve de complétude**. La reprise inspecte le dossier d'appel au lieu de se fier au seul statut. Effet secondaire : cela justifie rétrospectivement le retrait du renommage `.part`/`.bin` (`A4` de l'audit d'accrétion), puisque le marqueur devient porteur.
+
+### Les trois autres défauts qui étaient miens
+
+- **« Ne propose ni n'exécute de modification »** dans le prompt de A interdisait littéralement **le livrable lui-même**. Formule héritée de la V2 et reproduite sans la lire. Corrigé en séparant *proposer* de *appliquer*.
+- **« Fermer le terminal » n'était jamais spécifié** — alors que j'avais moi-même désigné `O4` comme l'objectif le plus fragile, celui qu'aucune revue ne défend spontanément. Ctrl-C, fermeture de console et orphelins sont maintenant spécifiés, **y compris ce qui n'est pas promis** : la correction ne dépend jamais d'un nettoyage à la fermeture.
+- **Le discriminateur ne s'appliquait pas à la finalisation.** Résolu vers l'uniformité : un analyseur, aucun cas particulier.
+
+### Une résolution de Codex meilleure que la mienne
+
+Mes deux règles de B se contredisaient : « la décision n'est jamais déduite des sévérités » et « `ACCEPTER` + `BLOCKING` est refusé ». Sa version les réconcilie — **conserver la décision de B telle quelle**, signaler l'incohérence, `WAITING_HUMAN`. Le mal mesuré (`H-01`) était que le programme *transformait* la décision ; le remède n'est pas qu'il la *rejette*, c'est qu'il n'y touche pas. Et la rejeter perdrait des constats qui peuvent être bons.
+
+### Décisions
+
+1. **Adaptateurs obligatoires, modèle par défaut résolu par l'adaptateur.** Le PO choisit selon ses crédits : une valeur qui change à chaque lancement ne doit pas avoir de défaut. Mais « Opus 5 pour A » n'a aucun sens si A est Codex — le défaut devient une propriété de l'adaptateur pour un rôle, ce qui garde les noms de fournisseurs dans `adapters/` (`C15b`) et corrige `CLAUDE.md` §6.
+2. **Corpus non vide obligatoire en recherche** — sans accès externe, une recherche sans corpus n'a rien à chercher. Et **`--answer` ne change jamais le corpus** : s'il faut d'autres sources, on crée une collaboration.
+3. **Paramètres fixés** : UTF-8 sans BOM et `\n` · 8 MiB par flux, constante sans option · **Windows supporté et testé, POSIX écrit mais non testé en V0.1** — honnête plutôt que rassurant (`R15`).
+
+### Commits
+
+`docs: disposer les huit remarques techniques et preparer le code`
+
+### À retenir
+
+**L'étape 2 s'ouvre sur le palier 1 : cinq modules purs, ~600 lignes** — `models`, `storage`, `lock`, `contracts`, `corpus`. Ils ne dépendent d'aucune caractérisation de CLI, c'est ce qui les rend premiers. Porte à chaque commit : `ruff check .` et `mypy`, aucun appel fournisseur dans la suite.
+
+**En parallèle, et avant le palier 3 : relever les cinq points de §12.2.** Aucune CLI n'a jamais été lancée, et le point 2 — la réalité du mode sans outils — décide B-2 à lui seul.

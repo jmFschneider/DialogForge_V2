@@ -9,6 +9,10 @@
 >
 > **fait** = vérifié dans une source citée · **inférence** = conséquence non prouvée ·
 > **recommandation** = choix proposé · **incertitude** = exige une mesure ou une décision.
+>
+> **Révisé le 2026-09-03** après une dernière revue technique de Codex : huit remarques, **toutes
+> retenues**, disposées dans `DISPOSITION_TECHNIQUE_CODEX.md`. La plus grave — une réponse déjà payée
+> perdue à la reprise — est corrigée en §5.
 
 ---
 
@@ -36,6 +40,14 @@ nommé hors de son adaptateur. Le cycle ne dépend que des capacités **présent
 ce qui est propre à l'un est un bonus, jamais un prérequis.
 
 Python 3.12, **bibliothèque standard seule**, zéro dépendance de production. **~1 430 lignes.**
+
+### 0.1 Paramètres fixés
+
+| | Valeur | Motif |
+|---|---|---|
+| **Encodage** | Tout est écrit en **UTF-8 sans BOM, fins de ligne `\n`**, y compris sous Windows. À la lecture, un BOM UTF-8 est toléré, retiré, et **consigné comme transformation** dans la normalisation. | Un dossier de collaboration doit se déplacer entre machines. Le BOM toléré-mais-tracé reprend le comportement du normaliseur de DialogForge. |
+| **Plafond de sortie** | **8 MiB par flux**, constante nommée, **sans option de configuration**. Dépassement → terminaison de l'arbre, incident `OUTPUT_LIMIT`, flux conservés comme partiels. | Le plus gros livrable observé pèse 3 850 lignes ≈ 250 Kio. 8 MiB attrape une boucle folle sans jamais gêner un document. Une option serait un réglage de plus à justifier. |
+| **Systèmes** | **Windows : supporté et testé.** POSIX : les branches existent et sont écrites, **non testées en V0.1**. | Honnête plutôt que rassurant. Le poste de développement est Windows 11, et le prédécesseur était orienté Windows. Promettre une matrice qu'on ne peut pas exécuter serait une intention documentaire, pas une preuve — `R15`. |
 
 ## 1. Périmètre
 
@@ -178,6 +190,10 @@ chaque fichier son chemin logique, sa taille et son SHA-256. **Aucun chemin abso
 
 **Le corpus est figé.** Il n'existe pas de `refresh` : le changer en cours de cycle détruirait la
 référence commune de A et B. Pour une référence plus récente, on crée une collaboration.
+
+**Conséquence sur `--answer` : il remplace la demande, jamais le corpus.** Si la réponse humaine à une
+`QUESTION` exige d'autres sources, la collaboration est devenue le mauvais contenant — on en crée une
+neuve, la demande peut être reprise telle quelle.
 `status` affiche son âge ; les prompts disent sa date. *Motif : `P13` — une affirmation peut avoir
 vieilli. Un corpus figé le garantit, donc il faut le dire.*
 
@@ -242,9 +258,35 @@ une collaboration existante.
    `current_call = null`.
 9. Libération du verrou.
 
-**Crash en `CALLING`** = « appel possiblement parti, possiblement payé » → `INTERRUPTED`, **jamais de
-rejeu automatique**. **Crash en `RESPONSE_STORED`** → seules la normalisation et la transition sont
-reprises, sans appel.
+### Reprise après crash — le dossier d'appel fait foi, pas le seul statut
+
+> **La reprise inspecte le dossier d'appel avant de conclure.** `resultat.json` n'est écrit qu'à la
+> sortie propre : **sa présence est la preuve que les flux sont complets.**
+
+| État trouvé | Sur le disque | Conclusion |
+|---|---|---|
+| `RESPONSE_STORED` | — | Normalisation et transition reprises **localement, sans appel**. |
+| `CALLING` | `resultat.json` **valide** | Traité comme `RESPONSE_STORED` : **retraitement local, sans appel**. |
+| `CALLING` | pas de `resultat.json` | « Appel possiblement parti, possiblement payé » → `INTERRUPTED`. **Jamais de rejeu automatique.** |
+
+*Motif : sans cette lecture, un crash dans la fenêtre entre l'écriture de `resultat.json` et la
+publication de `RESPONSE_STORED` déclarerait incertaine une réponse complète, et forcerait une relance
+humaine qui **repaie un appel dont on a déjà la réponse**. C'est exactement le défaut que tout ce
+protocole existe pour empêcher.*
+
+### Interruption — ce qui est promis, et ce qui ne l'est pas
+
+`O4` dit « interruption = fermer le terminal ». Concrètement :
+
+- **Ctrl-C** — l'arbre de processus est terminé, l'incident `INTERRUPTED_BY_USER` est écrit, les flux
+  partiels sont conservés, l'état reste `CALLING`, sortie en code non nul. La reprise applique la
+  table ci-dessus.
+- **Fermeture de la console** — au mieux le même traitement ; sous Windows, le délai accordé par
+  l'OS peut ne pas suffire. **On ne le promet donc pas.** L'état sur disque dit déjà `CALLING`, ce que
+  la reprise sait traiter : **la correction ne dépend jamais d'un nettoyage à la fermeture.**
+- **Processus fournisseur orphelin** — possible dans ce dernier cas. Le PID de l'enfant est écrit dans
+  `pid.txt` du dossier d'appel dès le retour de `Popen`, **pour qu'un humain puisse le retrouver**.
+  IAbinome ne le pourchasse pas au démarrage suivant : ce serait une surveillance, donc un worker.
 
 *Deux statuts suffisent : `PREPARED`, `LAUNCHING` et `STARTED` avaient la même conséquence après
 crash, et `APPLIED` dupliquait la phase déjà persistée.*
@@ -276,6 +318,12 @@ substantiellement le périmètre, la méthode ou la conclusion**. Le programme s
 **Une balise absente ou inconnue est une erreur de contrat** : réponse brute préservée, état `ERROR`,
 main rendue. *Jamais de défaut permissif — `C2b`.*
 
+**Le discriminateur s'applique aux quatre appels de A**, finalisation comprise. *Un seul analyseur,
+aucun cas particulier — l'exception coûterait un second chemin et ses tests, l'uniformité ne coûte
+rien. Et un `QUESTION` en finalisation reste légitime : mieux vaut s'arrêter que livrer un document
+dont A sait qu'il manque l'essentiel. Aucune boucle possible — chaque `QUESTION` exige une action
+humaine.*
+
 *Cette porte remplace un cadrage automatique entier (`framing.py` et un appel de plus). Elle répare
 l'échec le mieux documenté du corpus : `DJBIBLIO-20260810-001`, une question de calibrage restée sans
 réponse avant validation, 2 espèces livrées sur 20 à 30 attendues. **Elle retire plus qu'elle
@@ -304,7 +352,11 @@ n'ajoute.***
   sont refusés.
 - **La décision globale n'est jamais calculée à partir des sévérités.** Une combinaison surprenante
   reste visible pour l'humain ; le programme ne la réécrit pas en consensus apparent.
-- `ACCEPTER` avec un constat ouvert `BLOCKING` est refusé comme **incohérent**, jamais transformé.
+- `ACCEPTER` avec un constat ouvert `BLOCKING` : **la décision de B est conservée telle quelle**, la
+  revue est persistée, l'incohérence est inscrite dans `last_incident`, et l'état passe en
+  `WAITING_HUMAN`. *Le programme ne juge pas sur les sévérités — pas même pour refuser. Et rejeter la
+  revue comme erreur de contrat perdrait des constats qui peuvent être bons. `R29` : ambiguïté, main
+  à l'humain.*
 - `BLOQUE` = information humaine indispensable manquante. Un défaut analysable appelle `REVISER`.
 
 ## 7. Surface CLI
@@ -314,9 +366,9 @@ python -m iabinome new COLLAB
     --demande FICHIER
     --kind {conception,recherche}
     --reviewer-access {context-only,consult}          # OBLIGATOIRE, sans défaut
+    --agent-a ADAPTER --agent-b ADAPTER               # OBLIGATOIRES, sans défaut
     [--source-root DOSSIER --source-list MANIFESTE] [--source-label TEXTE]
-    [--agent-a ADAPTER] [--model-a MODELE]
-    [--agent-b ADAPTER] [--model-b MODELE]
+    [--model-a MODELE] [--model-b MODELE]
     [--max-revisions N]
 
 python -m iabinome run    COLLAB [--timeout SECONDES]
@@ -327,9 +379,19 @@ python -m iabinome status COLLAB [--json]
 
 Défauts : `max-revisions=2`, `timeout=1800`.
 
-**`--reviewer-access` n'a délibérément aucune valeur par défaut**, tant que B-2 n'est pas arbitré :
-un défaut le trancherait par accident, et le choix change le niveau de preuve du livrable.
-*Meilleure idée du tour précédent, elle est de Codex.*
+**Trois options sans valeur par défaut : `--reviewer-access`, `--agent-a`, `--agent-b`.**
+Pour la première, un défaut trancherait B-2 par accident et le choix change le niveau de preuve du
+livrable. Pour les deux autres : **le PO choisit selon ses crédits, la valeur change à chaque
+lancement — une valeur qui change à chaque fois ne doit pas avoir de défaut.** Cela retire aussi une
+décision du code.
+
+**Le modèle, lui, garde un défaut — résolu par l'adaptateur pour le rôle.** « Opus 5 pour A » n'a
+aucun sens si A est Codex : le défaut est une propriété de l'adaptateur, jamais une constante du
+noyau. Il est résolu au `new` puis persisté. *Cela garde les noms de fournisseurs dans `adapters/` —
+`C15b` — et corrige `CLAUDE.md` §6, qui les énonçait comme des défauts globaux.*
+
+**En recherche, `--source-root` et `--source-list` sont obligatoires et le corpus doit être non vide.**
+*V0.1 n'a aucun accès externe : sans corpus, une mission de recherche n'a rien à chercher.*
 
 `new` fait tous ses prévols dans un répertoire temporaire frère, y copie demande et corpus, puis
 publie par renommage. Il refuse une destination existante.
@@ -393,7 +455,10 @@ Sinon commence par IABINOME:DOCUMENT et produis un document Markdown autonome.
 
 Distingue faits, inférences, recommandations et incertitudes. Nomme tes limites de
 preuve. Chaque recommandation dit jusqu'à quand elle est réversible et quel acte
-la referme. Ne propose ni n'exécute de modification.
+la referme.
+
+Tu ne modifies aucun fichier et n'exécutes rien. Proposer des modifications DANS le
+document est au contraire ce qu'on attend de toi.
 
 Le corpus local est un instantané du <date>, sous corpus/fichiers/.
 
@@ -442,9 +507,10 @@ du livrable.
 ```
 
 ```text
-Tu es A. Produis le document final autonome à partir de la version courante. Intègre
-les apports utiles sans raconter le dialogue. Garde visibles les incertitudes, les
-non-décisions et les constats encore ouverts. Retourne seulement le Markdown.
+Tu es A. Rends QUESTION s'il manque encore une information humaine indispensable.
+Sinon rends DOCUMENT, puis le document final autonome à partir de la version
+courante. Intègre les apports utiles sans raconter le dialogue. Garde visibles les
+incertitudes, les non-décisions et les constats encore ouverts.
 ```
 
 ## 10. Tests
@@ -460,7 +526,10 @@ non-décisions et les constats encore ouverts. Retourne seulement le Markdown.
 | Stockage | Temporaires uniques · publication atomique · échec simulé avant et après `os.replace` · **aucun chemin absolu persisté** · **déplacement complet puis reprise** |
 | Verrou | PID/date/commande · détenteur vivant refusé · verrou mort récupéré · **jamais la suppression du verrou d'un autre** |
 | Corpus | Hors racine, `..`, lien sortant, non régulier, empreinte changeante → refus **avant publication** · date et libellé · âge affiché · **aucune actualisation silencieuse** |
-| Appel durable | Crash en `CALLING` → `INTERRUPTED` **sans appel** · crash en `RESPONSE_STORED` → retraitement local · artefact avant transition · UUID sans nom de fournisseur |
+| Appel durable | Crash en `CALLING` **sans** `resultat.json` → `INTERRUPTED` sans appel · **crash en `CALLING` AVEC `resultat.json` valide → retraité localement, sans appel** · crash en `RESPONSE_STORED` → retraitement local · artefact avant transition · UUID sans nom de fournisseur |
+| Interruption | Ctrl-C → arbre terminé, incident écrit, flux partiels conservés, état `CALLING` · `pid.txt` présent dès le lancement |
+| CLI | `--agent-a`/`--agent-b`/`--reviewer-access` manquants → refus · recherche sans corpus ou corpus vide → refus · `--answer` ne touche pas au corpus |
+| Encodage | Écriture UTF-8 sans BOM, `\n` · lecture d'un BOM tolérée, retirée et **consignée comme transformation** |
 | Reprise | Relance sans motif refusée · motif copié · nouvel UUID lié · nouvelle demande complète remplace l'autorité · ancienne archivée · options incompatibles refusées |
 | Transport | Deux flux concurrents · sortie vide · code non nul · délai · arbre terminé · plafond dur · **partiel jamais présenté comme complet** |
 | Accès | Profil non supporté refusé **avant mutation** · `cwd` transmis = collaboration, **sans prétendre tester une isolation OS** |
