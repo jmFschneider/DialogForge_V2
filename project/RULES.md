@@ -100,6 +100,12 @@
 **Un test qui vérifie une absence doit d'abord être prouvé capable de voir la présence.**
 *Motif : le test de terminaison d'arbre affirme qu'un petit-fils ne dépose jamais sa marque. Sans avoir vérifié — hors suite — que cette marque apparaît quand on ne tue personne, le test passerait tout aussi bien parce que le petit-fils n'a jamais existé.*
 
+**Une décision différée porte sa condition de déclenchement, sinon elle est oubliée.**
+*Motif : le palier 1 a écarté la normalisation CRLF→LF en écrivant « à statuer si un besoin réel apparaît ». Le besoin est apparu au palier 3 — une CLI Windows écrit en mode texte, et la balise de première ligne n'était jamais reconnue. La condition écrite est ce qui a fait rouvrir la question au lieu de la redécouvrir comme un bug.*
+
+**Les tests d'un palier font remonter les défauts des paliers précédents — c'est une raison de les écrire contre du réel.**
+*Motif : deux défauts du palier 1 (bloc JSON clôturé refusé, CRLF non normalisé) n'ont été vus qu'en faisant tourner le moteur du palier 3 contre de vrais sous-processus. Aucune relecture du code seul ne les avait montrés.*
+
 **Un test de comportement de l'OS se fait contre un vrai sous-processus, pas contre un objet simulé.** L'objet simulé ne prouve que ce qu'on y a mis.
 *Motif : `transport.py` existe pour tenir deux tubes concurrents, un délai dur et la terminaison d'un arbre. Un `FakeProcess` — que la spécification nommait — n'en démontrerait aucun. Un vrai sous-processus Python scripté n'est ni un appel fournisseur, ni du réseau : la règle est tenue, c'est le moyen qui change.*
 

@@ -448,3 +448,76 @@ que ça suffit.
 
 **Prochaine action inchangée : la caractérisation des deux CLI (§12.2).** Elle ne dépend d'aucune de
 ces deux décisions.
+
+---
+
+## 2026-09-03 (Claude) — Étape 2, palier 3 : le moteur
+
+### Ce qui a été fait
+
+`workflow.py` (397 lignes), `prompts.py` (125), `adapters/base.py` (57), `tests/test_workflow.py`
+(271), `tests/test_recovery.py` (199), et `FakeAdapter` + échafaudage de collaboration dans
+`tests/fakes.py`. **159 tests verts** (41 nouveaux), `ruff` et `mypy --strict` verts.
+
+Le palier a débordé son périmètre nominal, et il le devait : `workflow.py` ne peut ni s'écrire ni se
+tester sans les gabarits de prompts ni sans le protocole d'adaptateur. Aucun des deux ne dépend de la
+caractérisation §12.2 — vérification faite, la décision du PO d'enchaîner sur le palier 3 était juste.
+
+### Deux défauts du palier 1, trouvés par les tests du palier 3
+
+Aucune relecture du code seul ne les avait montrés. Les deux ne sont apparus qu'en faisant tourner le
+moteur contre de vrais sous-processus.
+
+1. **`parse_review` n'acceptait que du JSON nu.** §6 et §10 acceptent aussi « un bloc JSON clôturé
+   couvrant toute la réponse » — et une CLI d'agent encadre très souvent son JSON. Corrigé dans un
+   `fix:` séparé.
+2. **CRLF.** Un sous-processus Windows écrit en mode texte : la première ligne arrivait avec un
+   retour chariot, la balise `IABINOME:DOCUMENT` n'était **jamais** reconnue, et tout le cycle
+   finissait en `ERROR`. Le palier 1 avait écarté cette normalisation en écrivant « à statuer si un
+   besoin réel apparaît » — **c'est cette condition écrite qui a permis de rouvrir la question au
+   lieu de la redécouvrir comme un bug**. `normalize()` ramène désormais CRLF à LF et le consigne
+   comme transformation, exactement comme le BOM : c'est la seconde moitié de la même phrase de §0.1.
+   Le brut, lui, reste intact sur le disque — c'est la copie normalisée qui est transformée, jamais
+   la preuve.
+
+### Décisions
+
+1. **`_Engine` porte le contexte du cycle** — dossier, configuration, adaptateurs, versions sondées,
+   délai — au lieu de le retraverser par douze signatures. Rupture de style assumée : c'est le seul
+   module du programme à porter autant de contexte, et cela retire ~45 lignes de plomberie.
+2. **`adapters/base.py` est publié.** §13 rendait le protocole d'adaptateur réversible « jusqu'à sa
+   publication » ; ce point est franchi. `claude.py` et `codex.py` attendent §12.2.
+3. **Les trois issues non-`COMPLETED` du transport mènent toutes à `INTERRUPTED`**, jamais à un
+   rejeu ; `ERROR` reste réservé à l'échec de contrat. C'est ce que la table de reprise §5 sait
+   traiter, et c'est ce qui garantit qu'aucun appel n'est repayé sans décision humaine.
+4. **Aucun compteur de garde sur la boucle du moteur** : `max_revisions` la borne, `FINAL_A` est
+   terminal. Un compteur serait un quota interne.
+
+### Le budget, à re-arbitrer
+
+| | brut | code effectif |
+|---|---:|---:|
+| Production écrite, 9 modules sur 12 | **1 605** | **1 150** |
+| Bande §11 | 1 350 – 1 550 | 1 350 – 1 550 |
+| Projection au même rythme | **~2 100** | **~1 520** |
+
+**La bande est franchie en brut, pas en code effectif** — l'écart est entièrement de la documentation
+de motif et du formatage. Aucune fonctionnalité hors spécification, aucun contrôle ajouté.
+
+**Et les quatre coupes de §11 ne peuvent pas fermer cet écart** : `status --json`, les abstractions à
+un seul appelant, la détection lexicale et les métadonnées d'origine facultatives pèsent ensemble une
+quarantaine de lignes, pas cinq cents. Le seul levier réel serait de retirer les docstrings de motif,
+c'est-à-dire la méthode du projet. C'est le point 5 de la règle de coupe : arbitrage.
+
+Repère de fond, lui non franchi : `POURQUOI` règle 1 — ~2 100 lignes contre les 58 894 de FloraPi.
+
+### Commits
+
+`fix: accepter le bloc JSON cloture dans la revue de B`
+`feat: implementer le palier 3 - moteur, prompts et protocole d adaptateur`
+`docs: tracer le palier 3 et poser la question du budget`
+
+### À retenir
+
+**Prochaine action : la caractérisation des deux CLI (§12.2).** Elle bloque maintenant réellement le
+palier 4 — `adapters/claude.py` et `adapters/codex.py` sont exactement ce qu'elle mesure.
