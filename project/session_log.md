@@ -154,3 +154,56 @@ Asymétries mesurées consignées en `R33`, pour ne pas les reperdre : session p
 **L'étape 0 est close.** L'étape 1 s'ouvre sur les **43 lignes de la colonne Code**.
 
 Deux reports assumés et tracés : B-2 au troisième tour, la longueur de la colonne Code après la phase 2. Aucun des deux n'est refermé en silence.
+
+---
+
+## 2026-09-03 (Codex A, Claude B) — Étape 1 : deux structures sur la table
+
+Premier tour du protocole d'IAbinome avec **les rôles inversés** : Codex produit, Claude critique.
+
+### Ce qui a été fait
+
+Codex a lu les 4 931 lignes que la récolte n'avait jamais ouvertes, audité les 43 lignes de la colonne Code une par une, et proposé une structure complète : `conception/STRUCTURE_PROPOSEE_CODEX.md`.
+
+Claude a critiqué dans **le contrat de revue que Codex propose lui-même** — l'appliquer à son auteur est le meilleur essai qu'on puisse en faire sans code. Décision `REVISER`, 11 constats. Puis une révision complète, à côté : `conception/STRUCTURE_PROPOSEE_CLAUDE.md`.
+
+### Ce que la vérification a corrigé dans l'inventaire
+
+**Cinq erreurs, toutes du même genre : une décision ou un correctif écrit comme une observation.**
+
+| | J'affirmais | Le code dit |
+|---|---|---|
+| `C1` | révisions bornées, défaut 2 | le code fait **3** ; le 2 vient de `DEPART.md` |
+| `C3` | écriture atomique | vrai, mais **atomicité ≠ durabilité** : aucun `fsync` |
+| `C24` | segmenté, jamais tronqué | DialogForge **accumule sans plafond** — je décrivais un correctif comme un acquis |
+| `C19` | formule de reconstruction des tokens | exacte, mais inutile sans budgets |
+| `C37` | chemins logiques relatifs | `configuration.json` persiste un chemin **absolu** |
+
+C'est exactement ce que la vérification devait produire. Elle valide le fait de l'avoir demandée.
+
+### Charpente retenue par les deux propositions
+
+**Noyau neuf, pas élagage de DialogForge** — cohérent avec `POURQUOI` règle 5. 14 modules, 4 commandes CLI (`new`/`run`/`resume`/`status`), dossier de collaboration autonome et déplaçable, séquence durable d'appel en 5 statuts avec `LAUNCHING` publié **avant** `Popen`, contrat de revue enrichi de `findings` adressables.
+
+**Meilleure idée du tour, et elle est de Codex :** `--reviewer-access {none,read-only}` **obligatoire, sans défaut**. B-2 reste ouvert sans qu'une valeur par défaut le tranche par accident, et le choix devient visible dans `etat.json` puis dans le livrable.
+
+### Les neuf corrections de la révision B
+
+Invariant de racine lisible (= le dossier de collaboration, jamais le projet) · corpus déclaré **instantané daté** · `--retry-call` exige un motif écrit (`R4`) · **budget de tests chiffré** et coupes pré-décidées · le prompt de A ouvre par les questions que la demande laisse ouvertes (récupère `P18`, perdue avec le cadrage) · le brut est retenu pour reconstruire le coût hors ligne · le prompt de B formule sa politique en information et non en interdiction (`R13`) · `livrable.md` s'ouvre sur « non approuvé » (`R5`) · le manifeste sans glob devient le premier point d'usage à mesurer.
+
+**Sept des neuf coûtent zéro ligne de code** — ce sont des phrases, pas des mécanismes.
+
+### Décisions
+
+1. **Le chiffre « ~1 500 lignes » de `CLAUDE.md` est trompeur** : il ne compte que la production. Tests estimés à 2 300–3 000, total réel 3 800–4 500. Un chiffre qui ne dit pas ce qu'il compte est ce qui a laissé DialogForge grossir sans alarme. La garde reste `POURQUOI` règle 1.
+2. **Question bloquante nouvelle — `B-1bis`.** Codex a restreint « recherche » à « recherche dans un corpus fourni », alors que B-1 avait été arbitré sur des missions bibliographiques **à sources externes**. Recommandation : corpus-only pour V0.1, mais l'écrire — les deux échecs mesurés venaient du **mandat**, pas de l'accès.
+
+### Commits
+
+`docs: critiquer et reviser la structure proposee par Codex`
+
+### À retenir
+
+**L'inversion des rôles a bien fonctionné.** Codex-en-A a produit un document meilleur que ce que j'aurais écrit seul sur au moins un point (`--reviewer-access`), et a trouvé cinq erreurs factuelles dans mon propre travail. C'est le premier signal réel, avant toute ligne de code, que la permutation `C15a` n'est pas qu'une contrainte technique.
+
+**Ce qui reste non caractérisé : aucune CLI n'a jamais été lancée.** `--tools ""`, les sandbox Codex et les identifiants exacts des modèles sont déduits du code. Premier prévol réel à faire.
