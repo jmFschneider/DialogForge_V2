@@ -55,14 +55,17 @@ Puis **arbitrage humain**. Ensuite seulement, l'implémentation.
 
 ## Décisions déjà prises
 
-- Boucle A/B seule, conception seule ; le livrable est un document.
+- Boucle A/B seule ; le livrable est un document de **conception ou de recherche** *(recherche actée le 2026-09-03)*.
+- **A et B sont chacun Claude ou Codex**, choisis au lancement. Quatre permutations, toutes testées. *(PO, 2026-09-03 — à prévoir dès la conception : son absence a handicapé DialogForge, où quotas et récupérations sont restés liés à un fournisseur.)*
+- Le cycle ne dépend que des capacités **communes aux deux outils** ; ce qui est propre à l'un est un bonus, jamais un prérequis.
 - Fichiers sur disque, aucune base.
 - Révisions bornées, défaut 2, arbitrage humain en fin de boucle.
 - Zéro dépendance de production ; agent `fake` obligatoire dans les tests.
-- Opus 5 pour A, Fable 5 pour B.
+- Modèles **par défaut**, surchargeables : Opus 5 pour A, Fable 5 pour B.
 
 ## Décisions à prendre à l'étape 1
 
+- **Le contrat de B** — « aucun outil » ou « aucun effet » ? La permutation rend le premier intenable : `--tools ""` est vérifiable chez Claude, le shell de Codex ne l'est pas. Reporté au troisième tour ; termes posés en fin d'`conception/INVENTAIRE.md`.
 - **Garder ou non le cadrage automatique** (`framing.py`) : utile, mais c'est un appel fournisseur de plus avant même que la boucle démarre. Trancher explicitement.
 - Jusqu'où dégraisser `contracts.py` : la validation des réponses est ce qui évite de traiter de la prose comme une décision. Trouver le minimum qui tient.
 - Format exact d'`etat.json` : il doit rester lisible sans outil.

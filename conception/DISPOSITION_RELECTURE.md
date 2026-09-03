@@ -141,9 +141,29 @@ Je n'ai pas tranché. Le dépassement est signalé dans `INVENTAIRE.md`, pas maq
 
 ---
 
-## Ce qui reste à faire
+---
 
-1. Trancher **B-1**, **B-2**, **B-3** — ce sont les seules décisions humaines.
-2. `INVENTAIRE.md` v2 est produit **en supposant B-1 = oui** et **B-2 = non** (recommandation ci-dessus).
-   Les lignes concernées portent la mention `[B-1]` pour être retirées d'un seul geste si la réponse change.
-3. Ensuite seulement : étape 1, la spécification de `DEPART.md`, qui ne prend en entrée que la colonne **Code**.
+## Arbitrage du PO — 2026-09-03, même jour
+
+Les chiffres ci-dessus (248 lignes, 146 leçons) décrivent l'inventaire **v2**, celui qui a été soumis.
+Ils ne sont pas corrigés : c'est l'état sur lequel l'arbitrage a porté. L'inventaire est depuis en **v3**.
+
+| | Décision | Effet |
+|---|---|---|
+| **B-1** | **Oui** — la recherche est au périmètre. | `CLAUDE.md` §1 et `DEPART.md` amendés. Les mentions `[B-1]` sont retirées : les 10 lignes sont fermes. |
+| **B-2** | **Reporté au troisième tour.** | Motif du PO : un B aveugle ferait perdre des orientations intéressantes. Et la contrainte ci-dessous change les termes. |
+| **B-3** | **Plafond levé.** | Chiffre arbitraire, faux depuis que le périmètre a grandi. Tracé dans `RECOLTE.md`. La garde restante est `POURQUOI` règle 1. |
+
+### Contrainte structurante ajoutée par le PO
+
+**A et B sont chacun Claude ou Codex, choisis au lancement**, à prévoir **dès la conception** — son
+absence a handicapé DialogForge.
+
+**Elle invalide ma recommandation sur B-2.** Je m'appuyais sur `--tools ""`, vérifiable chez Claude ;
+le shell de Codex n'est pas retirable. « B sans outil » devient une propriété qui dépend de *quel outil
+occupe le rôle*, ce que `C15c` interdit. La question se reformule : **« aucun outil » ou « aucun effet » ?**
+Termes posés en fin d'`INVENTAIRE.md`.
+
+Portée dans l'inventaire : `C15a`–`C15e`, `T21`–`T23`, `R32`–`R33`.
+
+**Étape 0 close.** L'étape 1 s'ouvre sur les 43 lignes de la colonne **Code**.

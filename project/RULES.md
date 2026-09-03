@@ -44,7 +44,13 @@
 **Chaque observation du contradicteur reçoit exactement une disposition écrite :** acceptée et intégrée · rejetée avec justification · différée avec condition · bloquante.
 *Motif : repris de la préanalyse DialogForge, 31 observations, aucune sans disposition. C'est ce qui empêche de refermer une revue en laissant tomber ce qui dérange.*
 
-**Modèles par rôle : Opus 5 pour A (produit), Fable 5 pour B (critique).**
+**Le rôle et l'outil sont deux axes indépendants : A et B sont chacun Claude ou Codex, choisis au lancement.** Aucun fournisseur n'est nommé hors de son adaptateur.
+*Motif : ajoutée en rattrapage à DialogForge, la permutation n'a jamais été complète — quotas et récupération de revue sont restés liés à un fournisseur (`recover_failed_review` ne cherchait que `*claude.txt`).*
+
+**Le cycle ne dépend que des capacités présentes chez les deux outils ; ce qui est propre à l'un est un bonus, jamais un prérequis.**
+*Motif : DialogForge a bâti sa reprise après quota sur l'erreur typée de Claude ; Codex ne la produit pas, et la reprise n'a jamais marché de ce côté.*
+
+**Modèles par défaut, surchargeables : Opus 5 pour A (produit), Fable 5 pour B (critique).**
 *Motif : la critique est l'endroit où la capacité paie. Sur le Lot 0, quatre revues de plan pour une seule exploitable ont coûté 41 % du budget mesuré.*
 
 **Alléger les prompts, ne pas les durcir.**

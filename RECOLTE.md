@@ -56,8 +56,11 @@ Tout est sous `C:\Projets\DialogForge` sauf mention contraire. **Lecture seule.*
 
 Deux contraintes de forme, qui sont aussi des filtres :
 
-- **Une leçon qui ne tient pas en une ligne n'est pas encore comprise.**
-- **Si l'inventaire dépasse ~200 lignes, on a rechuté.** Comparer aux 194 lignes de `context\`.
+- **Une leçon qui ne tient pas en une ligne n'est pas encore comprise.** — Tenue.
+- ~~**Si l'inventaire dépasse ~200 lignes, on a rechuté.**~~ **Levé le 2026-09-03 par le PO.**
+  Le chiffre était arbitraire et le périmètre a grandi entre-temps (la recherche y est entrée).
+  La garde qui subsiste est celle de `POURQUOI.md` règle 1 — l'outil ne dépasse jamais le projet
+  qu'il sert. C'est une mesure, pas un plafond décrété.
 
 ## Méthode — c'est elle qui garantit que rien n'est perdu
 

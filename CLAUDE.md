@@ -22,6 +22,10 @@
 
 Un outil d'environ **1 500 lignes** qui coordonne **deux agents IA en CLI** aux rôles distincts :
 **A produit, B critique, l'humain arbitre.** Tout en fichiers sur disque.
+Le livrable est un document de **conception ou de recherche** — les deux, décidé le 2026-09-03.
+
+**Le rôle et l'outil sont deux axes indépendants.** A et B sont chacun Claude *ou* Codex, choisis au
+lancement. Les quatre permutations sont supportées et testées. Rien dans le code ne suppose lequel est où.
 
 ```
 demande.md → A produit → B critique → A révise → (N fois max) → A finalise → livrable
@@ -64,10 +68,15 @@ Ne jamais écrire dans ces dossiers ; on y copie, on ne s'y branche pas.
 
 Python 3.12 · **stdlib uniquement, zéro dépendance de production** · `ruff check .` + `mypy` avant tout commit · agent `fake` obligatoire pour les tests : **aucun appel fournisseur dans la suite de tests**.
 
-## 6. Modèles par rôle
+## 6. Outils et modèles — des paramètres, jamais un câblage
 
-**Opus 5** pour A (produit, gros volume de sortie). **Fable 5** pour B (critique — c'est là que la capacité paie).
-Avertissement de portage : sur les modèles récents, des consignes **trop prescriptives dégradent** la qualité. Les gabarits repris sont à alléger, pas à durcir.
+Ne jamais nommer un fournisseur hors de son adaptateur — ni dans une reprise, ni dans un nom d'archive.
+**Le cycle ne dépend que des capacités présentes chez les deux outils.** Session persistante, erreur de
+quota typée, schéma natif : un bonus chez l'un, **jamais un prérequis**.
+*Motif : la reprise après quota de DialogForge était bâtie sur l'erreur typée de Claude ; côté Codex, elle n'a jamais marché.*
+
+Modèles par défaut, surchargeables : **Opus 5** pour A (gros volume), **Fable 5** pour B (la critique paie).
+Sur les modèles récents, des consignes **trop prescriptives dégradent** la qualité : alléger les gabarits repris, pas les durcir.
 
 ## 7. Commits
 

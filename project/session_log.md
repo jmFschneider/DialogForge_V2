@@ -117,3 +117,40 @@ Les 42 observations ont reçu **chacune exactement une disposition** (`conceptio
 **Trois questions bloquantes attendent l'humain** : B-1 la recherche entre-t-elle au périmètre (`CLAUDE.md` ne parle que de conception) · B-2 B garde-t-il ses outils à zéro (recommandation : oui) · B-3 le plafond de lignes tient-il. Rien ne peut avancer avant.
 
 La seconde passe a plus apporté que la première. **Une consigne d'omission sans contrainte de périmètre produit un contradicteur qui rechute** — c'est le résultat le plus solide de la journée, et il vaut pour la conception d'IAbinome lui-même.
+
+---
+
+## 2026-09-03 (PO) — Arbitrage, et une contrainte structurante
+
+### Ce qui a été tranché
+
+| | Question | Décision |
+|---|---|---|
+| **B-1** | La recherche est-elle au périmètre ? | **Oui.** `CLAUDE.md` §1 et `DEPART.md` amendés ; les 10 lignes conditionnelles deviennent fermes. |
+| **B-2** | B garde-t-il ses outils à zéro ? | **Reporté au troisième tour.** Un B aveugle ferait perdre des orientations intéressantes, et la permutation ci-dessous change les termes. |
+| **B-3** | Le plafond de ~200 lignes tient-il ? | **Levé.** Chiffre arbitraire, faux depuis que le périmètre a grandi. |
+| — | La colonne Code plus longue que Prompt | **Reporté après la phase 2.** |
+
+### La contrainte neuve, et c'est la plus lourde
+
+**A et B sont chacun Claude ou Codex, choisis au lancement — selon les crédits disponibles et l'humeur.** Le PO l'impose **dès la conception** : ne pas l'avoir prévu a été un gros handicap sur DialogForge.
+
+La récolte le confirmait sans que je l'aie relevé comme invariant. La permutation rôle/outil a été **ajoutée en rattrapage** à DialogForge (`696cc27`, `d3724a3`) et n'a jamais été complète : le constat **H-03** de la revue du 2026-07-24 montre que `CodexAgent` ne transforme pas ses erreurs de quota en `AgentQuotaError`, et que `recover_failed_review` ne cherche que `*claude.txt`. La reprise automatique après quota n'a donc jamais fonctionné côté Codex.
+
+Portée dans l'inventaire : `C15a`–`C15e`, `T21`–`T23`, `R32`–`R33`. Et surtout une règle courte qui généralise : **le cycle ne dépend que des capacités présentes chez les deux outils ; ce qui est propre à l'un est un bonus, jamais un prérequis.**
+
+### Ce que la permutation casse
+
+**Elle invalide ma recommandation sur B-2.** Je conseillais de laisser B sans outil, en m'appuyant sur `--tools ""` de Claude, qui est vérifiable. Mais le shell de Codex n'est pas retirable : « B sans outil » devient une propriété qui dépend de *quel outil occupe le rôle* — exactement ce que `C15c` interdit. La question se reformule en « aucun outil » contre « aucun **effet** ». Termes posés en fin d'`INVENTAIRE.md`.
+
+Asymétries mesurées consignées en `R33`, pour ne pas les reperdre : session persistante (Codex oui, Claude non) · erreur de quota typée (Claude oui, Codex non) · schéma de sortie natif (Codex oui, Claude désactivé) · outils du relecteur.
+
+### Commits
+
+`docs: acter les arbitrages et prevoir la permutation role/outil`
+
+### À retenir
+
+**L'étape 0 est close.** L'étape 1 s'ouvre sur les **43 lignes de la colonne Code**.
+
+Deux reports assumés et tracés : B-2 au troisième tour, la longueur de la colonne Code après la phase 2. Aucun des deux n'est refermé en silence.

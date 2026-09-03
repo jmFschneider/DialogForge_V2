@@ -1,11 +1,13 @@
 # INVENTAIRE — récolte de deux mois d'apprentissage
 
-> **Version 2 — 2026-09-03, après relecture contradictoire.** Produit selon `RECOLTE.md`.
+> **Version 3 — 2026-09-03, après relecture contradictoire et arbitrage.** Produit selon `RECOLTE.md`.
 > **Une ligne par leçon, une destination par ligne.**
 > Relu par Codex (`RELECTURE_CODEX_PASSE1.md` + `V1.1`), disposé dans `DISPOSITION_RELECTURE.md` :
-> 42 observations, 28 acceptées, 6 rejetées, 5 différées, **3 bloquantes**.
-> Les lignes marquées **`[B-1]`** ne tiennent que si la recherche entre officiellement au périmètre.
-> **En attente d'arbitrage humain sur B-1, B-2 et B-3.**
+> 42 observations, 28 acceptées, 6 rejetées, 5 différées, 3 bloquantes.
+>
+> **Arbitré le 2026-09-03 :** B-1 **oui**, la recherche est au périmètre · B-3 **le plafond de ~200 lignes
+> est levé** · B-2 **reporté** au troisième tour · plus une contrainte neuve du PO : **A et B sont chacun
+> Claude ou Codex**, à prévoir dès la conception.
 
 ## Question préalable — tranchée
 
@@ -53,6 +55,11 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | C13 | Canonicalisation déterministe avant validation, plutôt que tolérance au décodage. | 3 |
 | C14 | Le protocole JSON des revues est versionné, avec des champs stables. | 3 |
 | C15 | Un adaptateur par CLI (`claude`, `codex`, `fake`) derrière un contrat d'agent unique. | 6 |
+| C15a | **Le rôle (A/B) et l'outil (claude/codex) sont deux axes indépendants**, décidés au lancement. Quatre permutations, aucune privilégiée. | 6, PO |
+| C15b | **Aucun fournisseur n'est nommé hors de son adaptateur** — ni dans une reprise, ni dans un nom d'archive, ni dans un message. | 6 |
+| C15c | **Le cycle ne dépend que des capacités présentes chez les deux outils.** Une capacité propre à un seul est un bonus, jamais un prérequis. | 6 |
+| C15d | Chaque adaptateur **déclare ses capacités réelles** ; le programme ne suppose jamais qu'elles sont symétriques. | 6 |
+| C15e | Le modèle est un paramètre du rôle, pas une constante du code : Opus 5 / Fable 5 sont des défauts surchargeables. | PO |
 | C16 | L'agent `fake` est scripté et il est le seul agent utilisé par les tests. | 1 |
 | C17 | Le contrat d'erreur de quota est commun aux fournisseurs, jamais propre à l'un d'eux. | 6 |
 | C18 | Une archive se retrouve par rôle et identifiant d'appel, jamais par une chaîne de fournisseur (`*claude.txt`). | 6 |
@@ -105,15 +112,15 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | P23 | Ne jamais faire prescrire une commande qui n'a pas été lancée. | 1 |
 | P24 | Alléger : douze critères d'acceptation imbriqués **dégradent** la sortie des modèles récents. | 5 |
 | P25 | Une métrique indirecte reste nommée comme **indice**, jamais présentée comme preuve causale. | R24 |
-| P26 | `[B-1]` Un résultat négatif documenté **est** un résultat ; chaque cible du mandat reçoit une disposition. | R29 |
-| P27 | `[B-1]` Deux reprises d'une même origine ne font pas deux preuves : l'indépendance des sources s'évalue par l'origine, pas par le nombre de liens. | R30 |
+| P26 | Un résultat négatif documenté **est** un résultat ; chaque cible du mandat reçoit une disposition. | R29 |
+| P27 | Deux reprises d'une même origine ne font pas deux preuves : l'indépendance des sources s'évalue par l'origine, pas par le nombre de liens. | R30 |
 | P28 | Absent, nul, négatif, inconnu, non vérifié et non prouvé restent **distinguables** ; un prédicat conservateur faux dit « non prouvé », pas « faux ». | R31 |
 | P29 | La portée d'une conclusion ne dépasse jamais celle de sa preuve : une liste nommée ne devient pas une catégorie. | R32 |
-| P30 | `[B-1]` Contre-preuves, biais d'échantillon, contextes non couverts et restrictions de transfert sont cherchés et **conservés**. | R33 |
+| P30 | Contre-preuves, biais d'échantillon, contextes non couverts et restrictions de transfert sont cherchés et **conservés**. | R33 |
 | P31 | Inventorier tout le périmètre demandé **avant** de classer ou prioriser : classer d'abord fabrique une mesure fictive. | R34 |
 | P32 | Le livrable conserve les **non-décisions**, leurs conditions de réouverture et les désaccords non résolus. | R36 |
-| P33 | `[B-1]` Le critère de fin d'une recherche est défini **avant** de chercher : couverture, budget d'examen ou saturation. | 8, R29 |
-| P34 | `[B-1]` La source primaire est préférée ; résumé, extrait de moteur et reprise secondaire sont qualifiés comme tels, avec le niveau d'accès réellement vérifié. | R30 |
+| P33 | Le critère de fin d'une recherche est défini **avant** de chercher : couverture, budget d'examen ou saturation. | 8, R29 |
+| P34 | La source primaire est préférée ; résumé, extrait de moteur et reprise secondaire sont qualifiés comme tels, avec le niveau d'accès réellement vérifié. | R30 |
 
 ## Règle — va dans `CLAUDE.md` ou `POURQUOI.md`, jamais dans le code
 
@@ -152,6 +159,8 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | R29 | Une ambiguïté fonctionnelle, un élargissement de périmètre ou un contrat contradictoire rend la main à l'humain — **même si B n'a pas dit `BLOQUE`**. | 1, R39 |
 | R30 | Avant toute récupération, copier le dossier de collaboration : il est la seule autorité, donc la copie suffit. | R40 |
 | R31 | **Le contradicteur, seul, tire vers l'ajout de contrôles.** Il faut lui opposer le périmètre — mesuré ici : la passe 1 de Codex reconstruisait la forteresse qu'il devait aider à éviter. | — |
+| R32 | **La permutation rôle/outil se prévoit dès la conception, jamais en rattrapage.** Ajoutée après coup à DialogForge, elle n'a jamais été complète : quotas et récupérations sont restés liés à un fournisseur. | 6, PO |
+| R33 | Asymétries mesurées à ne pas reperdre : session persistante (Codex oui, Claude non) · erreur de quota typée (Claude oui, Codex non) · schéma de sortie natif (Codex oui, Claude désactivé) · outils du relecteur (`--tools ""` vérifiable chez Claude, shell non retirable chez Codex). | 6 |
 
 ## Test — devient un test de régression avec l'agent `fake`
 
@@ -177,6 +186,9 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | T18 | Prévol refusé : aucun dossier de collaboration créé, aucun appel émis. | R7 |
 | T19 | Interruption entre l'écriture de l'intention d'appel et la réponse : la reprise exige une décision, elle ne rejoue pas. | R15 |
 | T20 | Sortie dépassant le plafond dur : refus explicite, réponse brute préservée. | R19 |
+| T21 | **Les quatre permutations rôle × outil** sont exercées de bout en bout avec `fake`. | PO |
+| T22 | Aucun chemin de reprise ni de recherche d'archive ne contient une chaîne de fournisseur. | 6 |
+| T23 | Un outil dépourvu d'une capacité que l'autre possède (session, quota typé, schéma natif) mène quand même le cycle au bout. | 6 |
 
 ## Écarté — avec le motif, en une ligne
 
@@ -210,13 +222,28 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 
 ## Ce que l'inventaire ne tranche pas
 
-**Trois questions bloquantes**, pour l'humain, développées dans `DISPOSITION_RELECTURE.md` :
+### Reporté au troisième tour — B-2, les outils de B
 
-- **B-1** — « recherche » entre-t-il officiellement au périmètre ? Dix lignes `[B-1]` en dépendent, et `CLAUDE.md` comme `DEPART.md` ne parlent que de conception.
-- **B-2** — B garde-t-il ses outils à zéro ? *Recommandation : oui, on les laisse à zéro.* Motifs dans la disposition.
-- **B-3** — le plafond de ~200 lignes tient-il encore, le périmètre ayant grandi ?
+**La permutation rôle/outil a invalidé ma recommandation.** Je conseillais de laisser B sans outil, en
+m'appuyant sur le fait que Claude accepte `--tools ""` de façon vérifiable. Mais **si B peut être Codex,
+cette garantie n'existe plus** : son shell n'est pas retirable. « B sans outil » devient une propriété qui
+dépend de quel outil occupe le rôle — c'est-à-dire exactement ce que `C15c` interdit.
 
-**Trois décisions de l'étape 1**, pas des leçons :
+Objection du PO, retenue : un B strictement aveugle **fait perdre des orientations intéressantes**.
+
+Les trois termes à trancher :
+
+1. Le contrat de B est-il « aucun **outil** » — intenable symétriquement — ou « aucun **effet** » : pas d'écriture, pas de commande issue d'une réponse, lecture éventuellement permise ?
+2. Si B lit, qui borne ce qu'il lit, et cette borne devient-elle un budget déguisé (interdit n°4) ?
+3. La voie moyenne — A cite en joignant l'extrait, B critique l'extrait — suffit-elle à la recherche ?
+
+### Reporté après la phase 2
+
+La prémisse de `RECOLTE.md` « **Code** est la colonne la plus courte par construction » est
+vraisemblablement fausse, et l'écart se creuse à chaque tour : une leçon de périmètre *est* une ligne de
+code. À rediscuter avec du code réel sous les yeux.
+
+### Trois décisions de l'étape 1, pas des leçons
 
 1. Garder ou non le cadrage automatique (`framing.py`) — P14 à P20 n'ont de valeur que si on le garde.
 2. Jusqu'où dégraisser `contracts.py` — C6 à C14 en fixent le plancher fonctionnel.
@@ -224,15 +251,15 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 
 ## Contrôle de forme
 
-146 leçons : **38 Code · 34 Prompt · 31 Règle · 20 Test · 23 Écarté.**
+156 leçons : **43 Code · 34 Prompt · 33 Règle · 23 Test · 23 Écarté.**
 
 | Contrainte de `RECOLTE.md` | État |
 |---|---|
 | Une ligne par leçon | Respecté. |
 | Une destination par ligne | Respecté ; aucune ligne n'en porte deux. |
 | Colonne **Écarté** renseignée avec motif | 23 entrées, toutes motivées. |
-| ≤ ~200 lignes | **Dépassé — 248 lignes**, dont 146 de leçons et 102 d'appareil (en-têtes, rendement, contrôle). Le dépassement vient du bloc recherche et de la frontière d'effets rendue par la relecture. Voir **B-3** : soit le périmètre a grandi et la référence avec lui, soit il faut couper. **Pas de glissement silencieux.** |
-| **Code** est la colonne la plus courte | **Non tenu, et l'écart s'est creusé** — 38 contre 34. La relecture a ajouté onze lignes de frontière d'effets, toutes réellement du code. La prémisse de `RECOLTE.md` était peut-être fausse : une leçon de périmètre *est* une ligne de code, pas une phrase de prompt. |
+| ~~≤ ~200 lignes~~ | **Levé le 2026-09-03 (B-3).** Plafond posé arbitrairement, devenu faux quand le périmètre a grandi. 275 lignes, 156 leçons. **La garde reste `POURQUOI` règle 1** — l'outil ne dépasse jamais le projet qu'il sert : c'est une mesure, pas un chiffre décrété. |
+| **Code** est la colonne la plus courte | **Non tenu, écart croissant** — 43 contre 34. Reporté après la phase 2 ; la prémisse est probablement fausse. |
 
 ## Relecture contradictoire — faite
 
