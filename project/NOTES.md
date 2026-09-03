@@ -8,18 +8,14 @@
 
 ## Prochaine action — une seule
 
-**Faire relire `conception/INVENTAIRE.md` par Codex, avec une seule consigne :**
+**Envoyer à Codex la passe 1 de `conception/RELECTURE_CODEX.md`** — prompt prêt, à copier tel quel.
 
-> « Qu'est-ce qui a été écarté en silence ? »
+Consigne unique : « qu'est-ce qui a été écarté en silence ? ». **La passe 2 n'est envoyée qu'après sa
+réponse** : elle lui donne les trois zones que l'auteur suspecte, et la donner d'emblée l'orienterait
+vers ce qu'on sait déjà au lieu de ce qu'on ignore.
 
-Ne rien ajouter à cette consigne. Trois endroits à lui signaler comme suspects, et rien d'autre :
-
-1. l'arrêt anticipé sur `history.md` (2 533 l.) et `README.md` (1 046 l.), jamais ouverts ;
-2. les agrégats X16 à X18, qui écartent 166 éléments en trois lignes ;
-3. la colonne **Code** (26 lignes) plus longue que **Prompt** (24), alors qu'elle devait être la plus courte.
-
-Ensuite : arbitrage humain sur l'inventaire, puis étape 1 — la spécification de `DEPART.md`,
-qui ne prend en entrée que la colonne **Code**.
+Ensuite : arbitrage humain sur l'inventaire **augmenté** des omissions retenues, puis étape 1 — la
+spécification de `DEPART.md`, qui ne prend en entrée que la colonne **Code**.
 
 ---
 
