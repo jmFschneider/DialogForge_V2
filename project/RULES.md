@@ -10,6 +10,7 @@
 - [Travail avec les agents](#travail-avec-les-agents)
 - [Git](#git)
 - [Outils et commandes](#outils-et-commandes)
+- [Tests](#tests)
 - [Conduite de projet](#conduite-de-projet)
 
 ---
@@ -84,6 +85,22 @@
 *Motif : le PowerShell ad-hoc rate l'allowlist et déclenche une confirmation superflue.*
 
 **Ne pas préfixer les commandes avec `cd` vers la racine du projet** — le répertoire courant y est déjà.
+
+**Écrire un fichier de code par l'outil Write, jamais par un `heredoc` shell.** Un document long à guillemets multiples est mutilé au passage.
+*Motif mesuré le 2026-09-03 : `cat > transport.py <<'EOF'` a rendu `unexpected EOF while looking for matching quote` sur 240 lignes valides.*
+
+**Une branche écrite pour un OS non testé ne doit jamais casser l'outillage de l'OS testé.** Ne pas nommer un symbole absent de la plateforme de développement — `signal.SIGKILL`, `os.killpg`, `os.getpgid` — même dans du code qui n'y tournera pas.
+*Motif : `typeshed` les déclare absents sous `win32`, donc `mypy --strict` échoue sur le poste. Contournement retenu dans `transport.py` : `os.kill(-pid, 9)`, où le PID négatif désigne le groupe.*
+
+---
+
+## Tests
+
+**Un test qui vérifie une absence doit d'abord être prouvé capable de voir la présence.**
+*Motif : le test de terminaison d'arbre affirme qu'un petit-fils ne dépose jamais sa marque. Sans avoir vérifié — hors suite — que cette marque apparaît quand on ne tue personne, le test passerait tout aussi bien parce que le petit-fils n'a jamais existé.*
+
+**Un test de comportement de l'OS se fait contre un vrai sous-processus, pas contre un objet simulé.** L'objet simulé ne prouve que ce qu'on y a mis.
+*Motif : `transport.py` existe pour tenir deux tubes concurrents, un délai dur et la terminaison d'un arbre. Un `FakeProcess` — que la spécification nommait — n'en démontrerait aucun. Un vrai sous-processus Python scripté n'est ni un appel fournisseur, ni du réseau : la règle est tenue, c'est le moyen qui change.*
 
 ---
 

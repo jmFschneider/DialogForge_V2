@@ -8,82 +8,95 @@
 
 ## Prochaine action — une seule
 
-**Ouvrir le palier 2 : `fakes.py` + `transport.py`.**
+**Relever les cinq points de `CONCEPTION_FINALE.md` §12.2 — la caractérisation des deux CLI.**
 
-La spécification est `conception/CONCEPTION_FINALE.md`. **Le découpage en paliers est de `NOTES.md`,
-pas de la spécification elle-même** — `CONCEPTION_FINALE.md` liste les modules (§3, §11) sans les
-ordonner ; c'est ce fichier qui fixe l'ordre et le motif.
+**Aucune CLI n'a jamais été lancée.** C'est une manipulation humaine, hors suite de tests, un appel
+jetable par adaptateur. Le **point 2 — réalité du mode sans outils — décide B-2** à lui seul, donc la
+validation de `--reviewer-access` et la forme des adaptateurs. **Elle bloque le palier 3.**
 
-*C'est le module signalé comme le plus susceptible de déborder son budget : terminaison d'arbre de
-processus, deux flux concurrents bornés à 8 MiB, délai dur, branche POSIX non testable ici. Modèle
-recommandé pour ce palier et le palier 3 (`workflow.py`) : **Opus**, pas Sonnet — cf. session du
-2026-09-03, ce sont les deux endroits où la spécification s'arrête à la frontière de l'OS et où le
-test ne rattrape pas une erreur.*
+Le point 5 — délai et terminaison d'arbre sous Windows — est désormais **couvert par un test
+automatisé** (`test_transport.py`, `TestProcessTree`) : il reste à observer le comportement d'une vraie
+CLI d'agent, pas celui du mécanisme.
+
+### Alerte budget — à surveiller, pas encore bloquante
+
+| | Lignes |
+|---|---:|
+| Production écrite (6 modules sur 11) | **1 002** |
+| Budget §11 de ces 6 modules | 760 |
+| Écart | **+242 (+32 %)** |
+| Budget §11 du reste (`workflow` `cli` `prompts` `adapters` `__init__`+`__main__`) | 670 |
+| **Projection si le reste tient son budget** | **1 672** |
+| Bande acceptable §11 | 1 350 – 1 550 |
+
+**La bande n'est pas dépassée aujourd'hui — la projection, si.** La règle de coupe §11 ne s'ouvre qu'au
+dépassement réel ; d'ici là, les quatre modules restants se tiennent à leur budget ou l'écart se
+rediscute. **Premier point de mesure : la clôture du palier 3.** Si `workflow.py` dépasse 175 lignes,
+appliquer les coupes §11 dans l'ordre (1. sorties de confort dont `status --json` · 2. abstractions à
+un seul appelant · 3. détection lexicale · 4. métadonnées d'origine facultatives · 5. arbitrage).
 
 ### Palier 1 — les cinq modules purs — CLOS le 2026-09-03
 
-Codé, testé, sans arbitrage humain formel préalable sur `CONCEPTION_FINALE.md` — la session a
-enchaîné directement sur validation implicite du PO (`/loop` non utilisé, confirmation ligne par
-ligne). **94 tests, 0 échec** (1 ignoré : création de lien symbolique non privilégiée sur la machine
-de développement — attendu, pas un défaut). `ruff check .` et `mypy --strict` verts.
-
-| Module | Lignes visées | Lignes réelles | Tests |
-|---|---:|---:|---|
-| `models.py` | 130 | **301** | `test_state.py` — 25 |
-| `storage.py` | 140 | 76 | `test_storage.py` — 13 |
-| `lock.py` | 90 | 108 | `test_lock.py` — 9 |
-| `contracts.py` | 150 | 172 | `test_contracts.py` — 33 |
-| `corpus.py` | 90 | 107 | `test_corpus.py` — 14 |
-| **Sous-total** | **600** | **764** | **94** |
-
-**`models.py` dépasse largement (301 vs 130).** Motif tracé dans la session : il porte les neuf enums
-fermés de tout le système (dont `Decision`, dont `workflow.py` aura aussi besoin) plus la machinerie de
-validation stricte générique (`_decode`/`_encode`), déjà factorisée une fois pour éviter 314 lignes en
-répétition brute. `storage.py` sous son budget (76) compense en partie. **À surveiller** : reste
-~655 lignes visées pour `cli.py`, `prompts.py`, `transport.py`, `adapters/`, `__init__`+`__main__` —
-la bande totale (1350–1550) tient si ces modules restent proches de leur budget, mais l'écart ne se
-recreuse plus sans arbitrage — §11, règle de coupe.
+**94 tests, 0 échec** (1 ignoré : lien symbolique non privilégié sur la machine de développement —
+attendu). `models.py` 301 · `storage.py` 76 · `lock.py` 108 · `contracts.py` 172 · `corpus.py` 107.
 
 **Décisions de conception prises pendant l'implémentation, absentes du texte de la spécification :**
-- `last_incident` (`etat.json`) : chemin relatif explicite (comme `current_document`/`latest_review`),
-  pas un objet structuré — la spécification ne détaille pas sa forme.
-- `contracts.normalize()` n'implémente que le retrait de BOM + empreinte SHA-256 comme
-  « normalisation déterministe » — c'est la seule transformation nommée par `CONCEPTION_FINALE.md`
-  §0.1. Pas de normalisation CRLF→LF : non spécifiée, à statuer lors de la caractérisation CLI §12.2
-  si un besoin réel apparaît (branche déjà repérable, réversible).
-- `lock.py` sur Windows : **ne jamais utiliser `os.kill(pid, 0)`** — l'implémentation Windows de
-  `os.kill` appelle `TerminateProcess`, y compris pour le signal `0`. Vivacité testée via
-  `ctypes`/`OpenProcess`.
-- `Decision` reste dans `models.py` (pas `contracts.py`) : `workflow.py` en aura besoin aussi pour
-  piloter les transitions — `Severity`/`Disposition` restent, eux, dans `models.py` également par
-  cohérence (un seul fichier de vocabulaire fermé).
+- `last_incident` (`etat.json`) : chemin relatif explicite, pas un objet structuré.
+- `contracts.normalize()` n'implémente que le retrait de BOM + empreinte SHA-256 — seule
+  transformation nommée par §0.1. Pas de normalisation CRLF→LF : à statuer lors de la
+  caractérisation §12.2 si un besoin réel apparaît (branche repérable, réversible).
+- `lock.py` sur Windows : **ne jamais utiliser `os.kill(pid, 0)`** — l'implémentation Windows appelle
+  `TerminateProcess`, y compris pour le signal `0`. Vivacité testée via `ctypes`/`OpenProcess`.
+- `Decision` reste dans `models.py` : `workflow.py` en aura besoin aussi.
 
-Avant le premier commit de code : `pyproject.toml` **sans aucune dépendance d'exécution**, `src/iabinome/`, `tests/`. **Fait.**
+### Palier 2 — `fakes.py` + `transport.py` — CLOS le 2026-09-03
 
-**Porte à chaque commit — `CLAUDE.md` §5 :** `ruff check .` et `mypy` verts, **aucun appel fournisseur
-dans la suite**. **Vérifié à chaque module de ce palier.**
+**118 tests, 0 échec** (24 nouveaux, 7,7 s). `transport.py` **238 lignes** pour 160 visées ·
+`tests/fakes.py` 61 · `tests/test_transport.py` 261. `ruff` et `mypy --strict` verts.
 
-### En parallèle, et avant le palier 3 — la caractérisation des CLI
+**Décisions de conception prises pendant l'implémentation, absentes du texte de la spécification :**
 
-**Aucune CLI n'a jamais été lancée.** Les cinq points de `CONCEPTION_FINALE.md` §12.2 doivent être
-relevés à la main, hors suite de tests. **Le point 2 — réalité du mode sans outils — décide B-2**, donc
-la validation de `--reviewer-access` et la forme des adaptateurs.
+- **Le faux agent est un vrai sous-processus, pas un `FakeProcess`.** §10 nommait `FakeProcess` et
+  `FakeClock` ; ni l'un ni l'autre n'est écrit. Ce que `transport.py` doit tenir est **le comportement
+  de l'OS** — deux tubes concurrents, délai, terminaison d'arbre —, et un objet simulé ne le
+  prouverait pas. `tests/fakes.py` script donc un vrai `python -c`. **Aucun appel fournisseur, aucun
+  réseau** : la règle est tenue, c'est le moyen qui change.
+- **`FakeAdapter` n'arrive qu'au palier 4**, avec `adapters/base.py` : le protocole qu'il doit
+  implémenter n'existe pas encore.
+- **`Outcome` vit dans `transport.py`, pas dans `models.py`.** Ce n'est pas un des neuf enums fermés de
+  la spécification ; c'est le vocabulaire de l'incident (`OUTPUT_LIMIT`, `TIMEOUT`,
+  `INTERRUPTED_BY_USER`), et `models.py` dépasse déjà largement son budget.
+- **`read_result()` est dans `transport.py`** — ~35 des 238 lignes. La table de reprise §5 relève de
+  `workflow.py`, mais le lecteur et l'écrivain d'un format vont ensemble, et c'est ce qui rend la
+  règle « `resultat.json` valide = flux complets » testable seule. **Le budget de 160 lignes ne
+  comptait vraisemblablement pas ce lecteur : le dépassement propre au transport est d'environ 45
+  lignes, pas 78.**
+- **Terminaison d'arbre : `taskkill /F /T /PID` sous Windows, `os.kill(-pid, 9)` sous POSIX** (le PID
+  négatif désigne le groupe, qui vaut le PID de l'enfant grâce à `start_new_session`). `SIGKILL` n'est
+  **pas** nommé : `signal.SIGKILL` est absent de Windows et ferait échouer `mypy` sur le poste.
+- **Un descendant qui tient encore les tubes après la sortie de l'enfant déclenche une terminaison
+  d'arbre supplémentaire.** Sans elle, `resultat.json` affirmerait « flux complets » sur des fichiers
+  qui grossissent encore — exactement ce que §10 interdit. **Cette branche n'est couverte par aucun
+  test** : la déclencher demanderait de rendre le délai de grâce configurable, donc une option de
+  plus.
+- **La branche POSIX est écrite et non testée**, conformément à §0.1. Le poste est Windows.
 
 ### Paliers suivants
 
-**2.** `fakes.py` + `transport.py` — sous-processus, délai dur, terminaison d'arbre, flux bornés à
-8 MiB, `pid.txt`. *C'est le module le plus susceptible de déborder son budget.*
 **3.** `workflow.py` — protocole d'appel en 9 étapes, transitions, **table de reprise** (§5).
+*Modèle recommandé : **Opus**, pas Sonnet — c'est le second endroit où la spécification s'arrête à la
+frontière de l'OS et où le test ne rattrape pas une erreur.*
 **4.** `prompts.py` · `adapters/` (après caractérisation) · `cli.py`.
+
+**Codex n'a encore relu aucun palier.** `CLAUDE.md` §3 : « Claude produit, Codex relit palier par
+palier ». Les paliers 1 et 2 sont en attente de cette relecture.
 
 ---
 
 ## État courant
 
-- **Étapes 0 et 1 closes.** La spécification est `conception/CONCEPTION_FINALE.md` — **~1 430 lignes**
-  de production visées, bande 1 350–1 550 ; tests 1 100–1 800, non normatif.
-- **Étape 2 commencée : palier 1 clos** (voir ci-dessus). 764 lignes de production, 785 de tests, 94
-  tests verts. Reste les paliers 2 à 4.
+- **Étapes 0 et 1 closes.** La spécification est `conception/CONCEPTION_FINALE.md`.
+- **Étape 2 : paliers 1 et 2 clos.** 1 002 lignes de production, 1 107 de tests, **118 tests verts**.
 - Cinq tours conservés séparément, aucun écrasé : `STRUCTURE_PROPOSEE_CODEX.md` →
   `CRITIQUE_CLAUDE_STRUCTURE_CODEX.md` → `STRUCTURE_PROPOSEE_CLAUDE.md` →
   `STRUCTURE_PROPOSEE_CODEX_V2.md` → `CONCEPTION_FINALE.md` (+ `ANALYSE_VERS_CONCEPTION_FINALE.md`),
@@ -104,8 +117,8 @@ la validation de `--reviewer-access` et la forme des adaptateurs.
 ## Blocages
 
 - **B-2 non arbitré** : `CONSULT` recommandé ; `CONTEXT_ONLY` est incompatible avec Codex-en-B tant
-  qu'une invocation sans outils n'est pas démontrée. **Ne bloque pas le palier 1.**
-- **Aucune CLI lancée** — `CONCEPTION_FINALE.md` §12.2. **Ne bloque pas le palier 1**, bloque le palier 3.
+  qu'une invocation sans outils n'est pas démontrée. **Tranché par la caractérisation §12.2.**
+- **Aucune CLI lancée** — §12.2. **Bloque le palier 3.**
 
 ## Rappels actifs
 

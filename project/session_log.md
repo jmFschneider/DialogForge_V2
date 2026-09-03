@@ -335,3 +335,82 @@ Mes deux règles de B se contredisaient : « la décision n'est jamais déduite 
 **L'étape 2 s'ouvre sur le palier 1 : cinq modules purs, ~600 lignes** — `models`, `storage`, `lock`, `contracts`, `corpus`. Ils ne dépendent d'aucune caractérisation de CLI, c'est ce qui les rend premiers. Porte à chaque commit : `ruff check .` et `mypy`, aucun appel fournisseur dans la suite.
 
 **En parallèle, et avant le palier 3 : relever les cinq points de §12.2.** Aucune CLI n'a jamais été lancée, et le point 2 — la réalité du mode sans outils — décide B-2 à lui seul.
+
+---
+
+## 2026-09-03 (Claude) — Étape 2, palier 2 : `fakes.py` et `transport.py`
+
+*Le palier 1 n'a pas d'entrée dans ce journal : la session precedente a mis a jour `NOTES.md` sans
+ecrire ici. Ses faits y sont donc, pas ici.*
+
+### Ce qui a été fait
+
+`src/iabinome/transport.py` (238 lignes) et `tests/fakes.py` (61) + `tests/test_transport.py` (261).
+**118 tests verts** (24 nouveaux), `ruff check .` et `mypy --strict` verts, 7,7 s de suite.
+
+Couvert : deux flux concurrents de 1 MiB entrelacés, sortie vide, code de retour non nul, délai dur,
+plafond de flux, terminaison d'arbre, `pid.txt` écrit dès le retour de `Popen`, Ctrl-C, et la
+relecture stricte de `resultat.json`.
+
+### L'écart avec la spécification qui mérite d'être discuté
+
+**§10 nommait `FakeProcess` et `FakeClock` ; ni l'un ni l'autre n'est écrit.** `transport.py` existe
+pour tenir ce que fait l'OS : deux tubes concurrents, un délai dur, la terminaison d'un arbre de
+processus. Un objet processus simulé ne démontre aucun des trois — il ne rendrait que ce qu'on y a
+mis, et le test passerait en décrivant la spécification plutôt qu'en la vérifiant. Un `FakeClock`
+ferait pire : il retirerait du test le seul mécanisme mesuré, l'échéance réelle.
+
+`tests/fakes.py` script donc un **vrai** sous-processus `python -c`. La règle « aucun appel
+fournisseur, aucun réseau dans la suite » est tenue entièrement ; c'est le moyen qui change, pas la
+règle. `FakeAdapter`, lui, n'arrive qu'avec `adapters/base.py` au palier 4 — le protocole qu'il doit
+implémenter n'existe pas encore.
+
+### Un trou trouvé en écrivant, absent de la spécification
+
+Un **descendant** qui tient encore les tubes après la sortie de l'enfant garde les fils de copie
+vivants. `resultat.json` aurait alors été écrit — donc « flux complets » affirmé — sur des fichiers
+qui grossissaient encore. C'est précisément le « partiel présenté comme complet » que §10 interdit.
+Corrigé par une terminaison d'arbre supplémentaire lorsqu'un fil survit à sa jointure. **Cette
+branche n'est couverte par aucun test** : la déclencher demanderait de rendre le délai de grâce
+configurable, donc une option de plus pour une seule ligne de preuve.
+
+### Décisions
+
+1. **`Outcome` vit dans `transport.py`, pas dans `models.py`.** Ce n'est pas un des neuf enums fermés
+   de la spécification, c'est le vocabulaire de l'incident — et `models.py` dépasse déjà son budget.
+2. **`read_result()` est dans `transport.py`**, bien que la table de reprise §5 relève de
+   `workflow.py` : le lecteur et l'écrivain d'un format vont ensemble, et c'est ce qui rend la règle
+   « `resultat.json` valide = flux complets » testable seule, sans moteur.
+3. **`SIGKILL` n'est pas nommé.** `signal.SIGKILL`, `os.killpg` et `os.getpgid` sont déclarés absents
+   sous Windows par `typeshed` : les nommer ferait échouer `mypy --strict` sur le poste de travail
+   pour une branche qui n'y tournera jamais. Retenu : `os.kill(-pid, 9)`, le PID négatif désignant le
+   groupe, qui vaut le PID de l'enfant grâce à `start_new_session`.
+
+### L'alerte budget
+
+| | Lignes |
+|---|---:|
+| Production écrite, 6 modules sur 11 | **1 002** |
+| Budget §11 de ces 6 modules | 760 |
+| Écart | **+242 (+32 %)** |
+| Projection si les 5 modules restants tiennent leur budget | **1 672** |
+| Bande acceptable §11 | 1 350 – 1 550 |
+
+La bande n'est **pas** dépassée aujourd'hui ; la projection, si. La règle de coupe §11 ne s'ouvre
+qu'au dépassement réel. Point de mesure retenu : la clôture du palier 3.
+
+Sur les 78 lignes d'écart de `transport.py`, ~35 sont `read_result()`, que la ligne de budget plaçait
+vraisemblablement dans `workflow.py`. Le dépassement propre au transport est donc d'environ 45 lignes
+— celui du module que `NOTES.md` désignait, avant de l'écrire, comme le plus susceptible de déborder.
+
+### Commits
+
+`feat: implementer le palier 2 - transport et faux agent`
+`docs: tracer le palier 2 et l alerte de budget`
+
+### À retenir
+
+**La prochaine action n'est pas le palier 3 : c'est la caractérisation des deux CLI (§12.2).** Aucune
+CLI n'a jamais été lancée, c'est une manipulation humaine hors suite, et le point 2 décide B-2.
+
+**Codex n'a relu aucun palier.** `CLAUDE.md` §3 en fait le protocole ; les paliers 1 et 2 attendent.
