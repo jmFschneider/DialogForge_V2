@@ -77,3 +77,43 @@ Les **huit sources** de `RECOLTE.md` ont été dépouillées, dans l'ordre presc
 ### À retenir
 
 L'inventaire n'est **pas relu**. Le protocole veut une passe Codex à consigne unique — « qu'est-ce qui a été écarté en silence ? » — avant tout arbitrage humain. Trois zones lui sont désignées comme suspectes : l'arrêt anticipé sur deux sources, les trois agrégats qui écartent 166 éléments d'un coup, et la colonne Code hors contrainte.
+
+---
+
+## 2026-09-03 (Claude + Codex) — Relecture contradictoire et inventaire v2
+
+Le protocole d'IAbinome a tourné sur IAbinome lui-même, avant d'exister : Claude récolte, Codex contredit, l'humain arbitre.
+
+### Ce qui a été fait
+
+Prompt de relecture préparé en **deux passes** (`conception/RELECTURE_CODEX.md`) : la consigne d'omission seule d'abord, les zones suspectes seulement après réponse — donner ces zones d'emblée aurait orienté le contradicteur vers ce que l'auteur savait déjà.
+
+Codex a répondu en deux temps, le PO ayant élargi le prompt entre-temps :
+
+- **Passe 1** — 42 omissions, filet large, sans tri.
+- **Version 1.1** — après précision du périmètre (*« conception et recherche, pas de codage »*), Codex reprend son propre jet et **se contredit sur six points**. Constat majeur : sa passe 1 réintroduisait la logique de forteresse de DialogForge qu'il devait aider à éviter.
+
+Les 42 observations ont reçu **chacune exactement une disposition** (`conception/DISPOSITION_RELECTURE.md`) : **28 acceptées, 6 rejetées avec motif, 5 différées sous condition, 3 bloquantes**. Inventaire porté en v2 : de 106 à **146 leçons**, 248 lignes.
+
+### Les trois trouvailles réelles
+
+1. **La robustesse intellectuelle manquait entièrement** — indépendance des sources, résultat négatif qui compte, portée bornée par la preuve, contre-preuves conservées, critère de fin défini avant de chercher. J'avais dépouillé FloraPi pour ce qu'il disait de l'outil et de la conduite, jamais pour ce qui fait un **bon livrable** — c'est-à-dire le produit même d'IAbinome. Omission la plus coûteuse.
+2. **`X7` écartait trop.** « Sans écriture agent, il n'y a rien à confiner » est faux : la frontière d'effets survit à l'appareil qui l'entourait. Onze lignes de Code ajoutées, aucun sous-système.
+3. **Trois agrégats masquaient des invariants transférables** — prévol avant tout effet, état fermé sur valeur inconnue, intention d'appel persistée avant l'appel. Plus le troisième défaut mesuré d'`ARRET_REFACTORING.md`, qui n'était **ni retenu ni écarté**.
+
+### Décisions
+
+1. **Cinq contrôles proposés par la relecture sont refusés** — consentements réseau, scanner de secrets, agent réparateur de JSON, nettoyage automatique, sonde de worker. Motif commun : aucun ne compense un défaut encore réel (`POURQUOI` règle 3). Tous tracés en `X23`, aucun écarté en silence.
+2. **Nouvelle règle `R31`** : le contradicteur, seul, tire vers l'ajout de contrôles ; il faut lui opposer le périmètre. Mesuré sur cette relecture même.
+3. **Le dépassement du plafond est déclaré, pas maquillé** — 248 lignes contre ~200. Devient la question B-3.
+4. La prémisse de `RECOLTE.md` « **Code** est la colonne la plus courte par construction » est probablement fausse : une leçon de périmètre *est* une ligne de code. 38 Code contre 34 Prompt.
+
+### Commits
+
+`docs: verser les deux passes de relecture de Codex` · `docs: disposer la relecture et porter l inventaire en v2`
+
+### À retenir
+
+**Trois questions bloquantes attendent l'humain** : B-1 la recherche entre-t-elle au périmètre (`CLAUDE.md` ne parle que de conception) · B-2 B garde-t-il ses outils à zéro (recommandation : oui) · B-3 le plafond de lignes tient-il. Rien ne peut avancer avant.
+
+La seconde passe a plus apporté que la première. **Une consigne d'omission sans contrainte de périmètre produit un contradicteur qui rechute** — c'est le résultat le plus solide de la journée, et il vaut pour la conception d'IAbinome lui-même.

@@ -35,6 +35,15 @@
 **Le contradicteur reçoit une consigne d'omission, pas une consigne de qualité :** « qu'est-ce qui a été écarté en silence ? »
 *Motif : c'est la seule vérification sérieuse qu'une récolte n'a rien perdu ; relire son propre travail ne la remplace pas.*
 
+**Mais la consigne d'omission doit être accompagnée du périmètre**, sinon le contradicteur remplit les manques en reconstruisant ce qu'on venait d'abandonner.
+*Motif mesuré le 2026-09-03 : la passe 1 de Codex sur l'inventaire réintroduisait l'appareil de confinement de DialogForge. Sa V1.1, après précision du périmètre, s'est contredite elle-même sur six points.*
+
+**Les indices que l'auteur a sur ses propres faiblesses ne sont donnés au contradicteur qu'après sa première réponse.**
+*Motif : les donner d'emblée l'oriente vers ce que l'auteur sait déjà avoir raté, et l'éloigne de ce qu'il ignore — soit l'inverse de ce que la consigne cherche.*
+
+**Chaque observation du contradicteur reçoit exactement une disposition écrite :** acceptée et intégrée · rejetée avec justification · différée avec condition · bloquante.
+*Motif : repris de la préanalyse DialogForge, 31 observations, aucune sans disposition. C'est ce qui empêche de refermer une revue en laissant tomber ce qui dérange.*
+
 **Modèles par rôle : Opus 5 pour A (produit), Fable 5 pour B (critique).**
 *Motif : la critique est l'endroit où la capacité paie. Sur le Lot 0, quatre revues de plan pour une seule exploitable ont coûté 41 % du budget mesuré.*
 

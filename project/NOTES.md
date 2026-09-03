@@ -8,21 +8,24 @@
 
 ## Prochaine action — une seule
 
-**Envoyer à Codex la passe 1 de `conception/RELECTURE_CODEX.md`** — prompt prêt, à copier tel quel.
+**Trancher les trois questions bloquantes de `conception/DISPOSITION_RELECTURE.md`.** Rien d'autre
+ne peut avancer avant.
 
-Consigne unique : « qu'est-ce qui a été écarté en silence ? ». **La passe 2 n'est envoyée qu'après sa
-réponse** : elle lui donne les trois zones que l'auteur suspecte, et la donner d'emblée l'orienterait
-vers ce qu'on sait déjà au lieu de ce qu'on ignore.
+| | Question | Recommandation |
+|---|---|---|
+| **B-1** | « Recherche » entre-t-il officiellement au périmètre ? `CLAUDE.md` et `DEPART.md` ne parlent que de conception ; 10 lignes de l'inventaire en dépendent. | Oui — l'usage réel le montre (4 missions `recherche` sur FloraPi). Alors amender `CLAUDE.md`. |
+| **B-2** | B garde-t-il ses outils à zéro, ou reçoit-il un accès aux sources en profil recherche ? | **Zéro.** Trois motifs mesurés dans la disposition. |
+| **B-3** | Le plafond de ~200 lignes tient-il ? L'inventaire est à **248**. | À trancher avec B-1 : soit on coupe, soit on déplace la référence en le disant. |
 
-Ensuite : arbitrage humain sur l'inventaire **augmenté** des omissions retenues, puis étape 1 — la
-spécification de `DEPART.md`, qui ne prend en entrée que la colonne **Code**.
+Ensuite seulement : étape 1 — la spécification de `DEPART.md`, qui ne prend en entrée que la colonne **Code**.
 
 ---
 
 ## État courant
 
-- **Récolte faite, non relue.** `conception/INVENTAIRE.md` : 26 Code · 24 Prompt · 21 Règle · 15 Test · 20 Écarté.
-- Les huit sources de `RECOLTE.md` sont dépouillées. `history.md` et `README.md` volontairement non ouverts.
+- **Récolte faite et relue.** `conception/INVENTAIRE.md` v2 : **146 leçons** — 38 Code · 34 Prompt · 31 Règle · 20 Test · 23 Écarté. **248 lignes, au-dessus du plafond** (voir B-3).
+- Relecture Codex en deux passes, 42 observations, **toutes disposées** : 28 acceptées, 6 rejetées, 5 différées, 3 bloquantes. Détail dans `conception/DISPOSITION_RELECTURE.md`.
+- Les huit sources de `RECOLTE.md` sont dépouillées. `history.md` et `README.md` volontairement non ouverts — **Codex ne l'a pas contesté.**
 - **Aucune ligne de code écrite.** Le dépôt ne contient que des documents de cadrage.
 - Enchaînement : récolte (**relecture en cours**) → spécification (`DEPART.md`) → implémentation, avec arbitrage humain entre chaque.
 - Le dépôt n'a **pas de remote** — décision reportée, à faire plus tard.
@@ -31,7 +34,7 @@ spécification de `DEPART.md`, qui ne prend en entrée que la colonne **Code**.
 ## Décisions à confirmer par l'humain
 
 - **Périmètre de la récolte** : tranché par Claude le 2026-09-03 — l'inventaire couvre *aussi* la conduite de projet. Motif et trace dans `RECOLTE.md`. Rouvrable.
-- Les trois décisions que l'inventaire ne tranche pas (fin de `INVENTAIRE.md`) : cadrage automatique, plancher de `contracts.py`, format d'`etat.json`. Elles appartiennent à l'étape 1.
+- Les trois décisions de l'étape 1 (fin de `INVENTAIRE.md`) : cadrage automatique, plancher de `contracts.py`, format d'`etat.json`.
 
 ## Rappels actifs
 

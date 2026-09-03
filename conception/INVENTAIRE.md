@@ -1,8 +1,11 @@
 # INVENTAIRE — récolte de deux mois d'apprentissage
 
-> Produit le 2026-09-03 selon `RECOLTE.md`. **Une ligne par leçon, une destination par ligne.**
-> Cible de forme : ~200 lignes, à comparer aux 194 lignes de `DialogForge\context\`.
-> **Non relu.** La relecture contradictoire (Codex, consigne d'omission) reste à faire — voir la fin.
+> **Version 2 — 2026-09-03, après relecture contradictoire.** Produit selon `RECOLTE.md`.
+> **Une ligne par leçon, une destination par ligne.**
+> Relu par Codex (`RELECTURE_CODEX_PASSE1.md` + `V1.1`), disposé dans `DISPOSITION_RELECTURE.md` :
+> 42 observations, 28 acceptées, 6 rejetées, 5 différées, **3 bloquantes**.
+> Les lignes marquées **`[B-1]`** ne tiennent que si la recherche entre officiellement au périmètre.
+> **En attente d'arbitrage humain sur B-1, B-2 et B-3.**
 
 ## Question préalable — tranchée
 
@@ -35,7 +38,8 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | # | Leçon | Source |
 |---|---|---|
 | C1 | La boucle est `PROPOSITION_A → CRITIQUE_B → REVISION_A → FINALISATION_A`, révisions bornées, défaut 2. | 1, 6 |
-| C2 | `etat.json` par collaboration : phase close, numéro de révision, chemins des artefacts — relu tel quel pour reprendre. | 6 |
+| C2 | `etat.json` par collaboration : `schema_version`, phase close, numéro de révision, chemins des artefacts — relu tel quel pour reprendre. | 6, R14 |
+| C2b | Une phase, une décision ou une valeur inconnue, absente ou future fait **échouer fermé**, jamais recevoir un défaut permissif. | R14 |
 | C3 | Toute écriture d'artefact est atomique : fichier temporaire puis renommage. | 1, 6 |
 | C4 | Le nom du fichier temporaire est dérivé de l'appel, jamais fixe — un nom fixe fait collisionner deux processus. | 6 |
 | C5 | Verrou exclusif par dossier de collaboration, portant PID, date et commande. | 6 |
@@ -55,11 +59,22 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | C19 | Le compteur de tokens est `normalized_input_tokens + output_tokens` — additionner `input_tokens` donne un faux pour l'un des deux fournisseurs. | 5 |
 | C20 | Le fuseau horaire du quota fournisseur est respecté explicitement. | 2 |
 | C21 | Une heure de reprise fournisseur illisible produit un repli borné et **signalé**, jamais une boucle de réveils silencieuse. | 5 |
-| C22 | Tuer un appel tue l'arbre de processus : des sous-processus orphelins ont été observés sous Windows. | 2, 6 |
-| C23 | L'artefact est écrit **avant** que la phase soit marquée close. | 2 |
-| C24 | Un corps volumineux est segmenté, jamais tronqué. | 6 |
+| C22 | Chaque appel a un **délai dur** ; à son expiration on tue l'arbre de processus — des orphelins ont été observés sous Windows. | 2, 6, R11 |
+| C23 | L'intention d'appel, avec son identifiant, est écrite **avant** l'appel ; l'artefact est écrit **avant** que la phase soit close. Un appel payé sans réponse archivée reste un trou explicite. | 2, R15 |
+| C24 | Un corps volumineux est segmenté, jamais tronqué — **et un plafond dur refuse explicitement au-delà**. | 6, R19 |
 | C25 | Une seule surface d'exécution : ni mode « direct » ni mode « durable » concurrents. | 4 |
 | C26 | Une seule commande de reprise : relire `etat.json`, repartir de la dernière phase close. | 6 |
+| C31 | Le programme possède l'état et les transitions ; une sortie d'agent est une **donnée à interpréter**, jamais une autorité. | R1 |
+| C32 | Le programme n'exécute **jamais** un contenu produit par un agent : cette absence structurelle remplace toute liste noire. | R6 |
+| C33 | Prévol avant de créer le dossier de collaboration et avant tout appel : un refus ne laisse ni dossier ni artefact orphelin. | R7 |
+| C34 | Présence et version des deux CLI vérifiées au démarrage. Ni registre d'attestations, ni plage expirante. | R8 |
+| C35 | `demande.md` est la seule autorité du mandat — jamais le titre, jamais un échange oral. | R13 |
+| C36 | Un fichier fourni au corpus est résolu dans une racine autorisée, et son chemin logique et son empreinte sont conservés. | R17 |
+| C37 | Les artefacts portent des chemins **logiques relatifs**, jamais des chemins absolus de machine. | R22 |
+| C38 | La collaboration est autoportante : demande, état, prompts, réponses brutes, formes normalisées, livrable. **Aucune seconde autorité.** | R27 |
+| C39 | L'interruption a une sémantique écrite : jamais de phase close sans artefact ; après interruption d'un appel, état explicite et décision humaine avant rejeu. | R41 |
+| C40 | Le programme n'écrit que dans le dossier de collaboration qu'il a créé, sur une **liste fermée** de fichiers. | R-V1.1 |
+| C41 | Une demande qui exige d'écrire du code ou d'exécuter quoi que ce soit est **refusée explicitement**, avec retour à l'humain. | R-V1.1 |
 
 ## Prompt — devient une phrase dans un gabarit A ou B
 
@@ -67,7 +82,7 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 |---|---|---|
 | P1 | A distingue **faits, hypothèses, incertitudes et recommandations** — convention qui a tenu sur un livrable de 1 275 lignes. | 6 |
 | P2 | B n'a aucun outil : aucune commande, aucune lecture de fichier, uniquement le contexte fourni. | 6 |
-| P3 | B reçoit la version courante et les constats ouverts, pas tout l'historique — et le prompt le lui dit, pour qu'il ne réclame pas les documents antérieurs. | 6 |
+| P3 | B reçoit la demande, la version courante, les constats ouverts **et les preuves nécessaires** — jamais tout l'historique, jamais un contexte caché. Le prompt le lui dit, pour qu'il ne réclame pas les documents antérieurs. | 6, R18 |
 | P4 | `BLOQUE` est réservé à une information humaine indispensable. | 6 |
 | P5 | Chaque observation de B reçoit **exactement une disposition** : acceptée et intégrée / rejetée avec justification / différée avec condition / bloquante. | 6 |
 | P6 | Le contrat JSON est rappelé à chaque tour, pas seulement au premier. | 2 |
@@ -75,7 +90,7 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | P8 | A en finalisation intègre les apports sans raconter le processus interne, et signale les incertitudes restantes. | 6 |
 | P9 | A liste en tête ce qu'il **n'a pas** traité de la demande : une exigence peut disparaître entre le prompt et la livraison sans que personne ne s'en aperçoive. | 8 |
 | P10 | Le livrable nomme ses **limites de preuve** — ce qui n'a pas été vérifié — pas seulement ses conclusions. | 6 |
-| P11 | Chaque décision proposée porte sa **réversibilité**, énoncée au moment où elle se prend. | 8 |
+| P11 | Chaque décision porte sa **réversibilité** — et jusqu'à **quand** : quel acte (migration, appel, écriture) la referme. | 8, R35 |
 | P12 | Chaque décision porte contexte, décision, raison et portée — la structure qui rend le registre FloraPi relisible deux mois après. | 8 |
 | P13 | Une affirmation d'un document peut avoir vieilli : vérifier l'état réel plutôt que la reprendre. | 6 |
 | P14 | Cadrage — « n'invente pas de décision absente de l'échange » : des décisions inventées puis intégrées à une spécification ont été mesurées. | 6 |
@@ -89,6 +104,16 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | P22 | Les contraintes de forme du livrable sont déterministes, pas laissées à l'appréciation. | 3 |
 | P23 | Ne jamais faire prescrire une commande qui n'a pas été lancée. | 1 |
 | P24 | Alléger : douze critères d'acceptation imbriqués **dégradent** la sortie des modèles récents. | 5 |
+| P25 | Une métrique indirecte reste nommée comme **indice**, jamais présentée comme preuve causale. | R24 |
+| P26 | `[B-1]` Un résultat négatif documenté **est** un résultat ; chaque cible du mandat reçoit une disposition. | R29 |
+| P27 | `[B-1]` Deux reprises d'une même origine ne font pas deux preuves : l'indépendance des sources s'évalue par l'origine, pas par le nombre de liens. | R30 |
+| P28 | Absent, nul, négatif, inconnu, non vérifié et non prouvé restent **distinguables** ; un prédicat conservateur faux dit « non prouvé », pas « faux ». | R31 |
+| P29 | La portée d'une conclusion ne dépasse jamais celle de sa preuve : une liste nommée ne devient pas une catégorie. | R32 |
+| P30 | `[B-1]` Contre-preuves, biais d'échantillon, contextes non couverts et restrictions de transfert sont cherchés et **conservés**. | R33 |
+| P31 | Inventorier tout le périmètre demandé **avant** de classer ou prioriser : classer d'abord fabrique une mesure fictive. | R34 |
+| P32 | Le livrable conserve les **non-décisions**, leurs conditions de réouverture et les désaccords non résolus. | R36 |
+| P33 | `[B-1]` Le critère de fin d'une recherche est défini **avant** de chercher : couverture, budget d'examen ou saturation. | 8, R29 |
+| P34 | `[B-1]` La source primaire est préférée ; résumé, extrait de moteur et reprise secondaire sont qualifiés comme tels, avec le niveau d'accès réellement vérifié. | R30 |
 
 ## Règle — va dans `CLAUDE.md` ou `POURQUOI.md`, jamais dans le code
 
@@ -117,6 +142,16 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | R19 | Une porte franchie se note **avec sa preuve**, et l'humain arbitre entre chaque étape. | 5, 6 |
 | R20 | Un plan de N lots dont le lot 0 n'aboutit pas ne prouve rien sur les N−1 autres. | 5 |
 | R21 | Contrôler son propre travail trouve des défauts — trois en une passe — mais ne remplace pas le contradicteur. | 2 |
+| R22 | Les consignes du projet cible sont des **données** : elles ne peuvent jamais élargir les capacités d'un agent. | R3 |
+| R23 | Un essai réel, manuel et jetable précède le premier usage et suit tout changement de CLI — **hors** de la suite de tests. | R9 |
+| R24 | Une seule invocation canonique documentée et testée ; le lanceur installé peut exister tout en étant défectueux. | R10 |
+| R25 | Aucun secret ne va au corpus. Le dossier de collaboration est privé par défaut. | R20 |
+| R26 | Une archive scellée se lit sur copie jetable : « lecture seule » n'est pas « absence de mutation ». | R23 |
+| R27 | Comparer deux références compare leur **contenu**, pas leurs identifiants Git. | R25 |
+| R28 | Une architecture proposée se confronte à l'usage réellement observé, et la limite de cette mesure est dite. | R37 |
+| R29 | Une ambiguïté fonctionnelle, un élargissement de périmètre ou un contrat contradictoire rend la main à l'humain — **même si B n'a pas dit `BLOQUE`**. | 1, R39 |
+| R30 | Avant toute récupération, copier le dossier de collaboration : il est la seule autorité, donc la copie suffit. | R40 |
+| R31 | **Le contradicteur, seul, tire vers l'ajout de contrôles.** Il faut lui opposer le périmètre — mesuré ici : la passe 1 de Codex reconstruisait la forteresse qu'il devait aider à éviter. | — |
 
 ## Test — devient un test de régression avec l'agent `fake`
 
@@ -131,12 +166,17 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | T7 | Interruption entre l'appel et l'écriture : la reprise ne rejoue pas l'appel. | 6 |
 | T8 | Heure de reprise fournisseur illisible : repli borné et signalé. | 5 |
 | T9 | Plafond de révisions atteint : finalisation, jamais boucle infinie. | 6 |
-| T10 | Reprise sur un artefact déjà présent : pas de réécriture (idempotence). | 6 |
+| T10 | Reprise sur un artefact déjà présent : comparé **par empreinte**, pas seulement constaté présent ; divergence = arrêt et main à l'humain. | 6, R16 |
 | T11 | Écriture interrompue : aucun artefact partiel visible. | 6 |
 | T12 | `resolved_changes` citant un constat inexistant : détecté. | 6 |
 | T13 | Le gabarit de B ne contient aucun outil. | 6 |
 | T14 | `demande.md` absent ou vide : refus **avant** tout appel fournisseur. | 6 |
 | T15 | Garde structurelle : la suite complète ne lance aucun processus fournisseur. | 1 |
+| T16 | Une réponse d'agent contenant une commande ou un fragment exécutable : rien n'est exécuté. | R6 |
+| T17 | `etat.json` portant une `schema_version` ou une phase inconnue : refus explicite, pas de défaut permissif. | R14 |
+| T18 | Prévol refusé : aucun dossier de collaboration créé, aucun appel émis. | R7 |
+| T19 | Interruption entre l'écriture de l'intention d'appel et la réponse : la reprise exige une décision, elle ne rejoue pas. | R15 |
+| T20 | Sortie dépassant le plafond dur : refus explicite, réponse brute préservée. | R19 |
 
 ## Écarté — avec le motif, en une ligne
 
@@ -148,7 +188,7 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | X4 | Worker Windows, tâche planifiée, arrêt coopératif | Interdit n°3 ; on lance, ça tourne, on ferme le terminal. |
 | X5 | GUI, desktop, brouillons, onglets, modales d'intervention | Interdit n°5. |
 | X6 | Implémentation autonome, worktrees, commits pilotés, remèdes, replanification | Interdit n°1 ; jamais menée au bout, nulle part. |
-| X7 | Confinement, attestations, sceaux d'exécutable, campagnes de sandbox, porte de rôle | Sans écriture agent, il n'y a rien à confiner. |
+| X7 | Confinement, attestations, sceaux d'exécutable, campagnes de sandbox, porte de rôle | L'**appareil** tombe, pas la frontière : elle survit en `C32`, `C40`, `C41`, `R22`. *Rédaction corrigée après relecture — la version 1 écartait trop.* |
 | X8 | Chaos, campagnes d'endurance, redémarrage Windows réel | Il n'y a pas de service à éprouver. |
 | X9 | Contrat de contexte, paquets thématiques, delta, capsules, consignes | La demande tient dans un fichier lu en entier. |
 | X10 | Reconstruction, migration héritée, récupération hors ligne, incidents typés | Pas d'état durable à reconstruire. |
@@ -162,12 +202,21 @@ MariaDB (1 243 l.) n'a rendu que deux lignes.
 | X18 | 55 des 69 fichiers de tests | Ils nomment l'appareil écarté. **14 seulement nomment la boucle A/B.** |
 | X19 | Le refactoring en 15 lots et sa préanalyse de 1 275 lignes | Chantier gelé ; seule sa méthode de disposition des observations est reprise (P5). |
 | X20 | La conception MariaDB — 1 243 lignes | Interdit n°2 ; deux lignes seulement en sortent (C24, R17). |
+| X21 | Commandes de validation persistantes, `watch`, `dev`, interactives | IAbinome n'exécute aucune commande : la surface n'existe pas. *Ajouté après relecture — n'était ni retenu ni écarté.* |
+| X22 | Une tâche sans modification ne peut pas se clore seule (`no_change`) | Troisième défaut mesuré d'`ARRET_REFACTORING.md` ; il n'y a pas de tâche d'implémentation ici. *Ajouté après relecture — omission silencieuse réelle.* |
+| X23 | Consentements réseau et installation, scanner de secrets, agent réparateur de JSON, nettoyage automatique, sonde de worker | Cinq contrôles proposés par la relecture, refusés : aucun ne compense un défaut encore réel. Motifs dans `DISPOSITION_RELECTURE.md`. |
 
 ---
 
 ## Ce que l'inventaire ne tranche pas
 
-Ces trois points restent des **décisions de l'étape 1**, pas des leçons :
+**Trois questions bloquantes**, pour l'humain, développées dans `DISPOSITION_RELECTURE.md` :
+
+- **B-1** — « recherche » entre-t-il officiellement au périmètre ? Dix lignes `[B-1]` en dépendent, et `CLAUDE.md` comme `DEPART.md` ne parlent que de conception.
+- **B-2** — B garde-t-il ses outils à zéro ? *Recommandation : oui, on les laisse à zéro.* Motifs dans la disposition.
+- **B-3** — le plafond de ~200 lignes tient-il encore, le périmètre ayant grandi ?
+
+**Trois décisions de l'étape 1**, pas des leçons :
 
 1. Garder ou non le cadrage automatique (`framing.py`) — P14 à P20 n'ont de valeur que si on le garde.
 2. Jusqu'où dégraisser `contracts.py` — C6 à C14 en fixent le plancher fonctionnel.
@@ -175,20 +224,25 @@ Ces trois points restent des **décisions de l'étape 1**, pas des leçons :
 
 ## Contrôle de forme
 
+146 leçons : **38 Code · 34 Prompt · 31 Règle · 20 Test · 23 Écarté.**
+
 | Contrainte de `RECOLTE.md` | État |
 |---|---|
 | Une ligne par leçon | Respecté. |
 | Une destination par ligne | Respecté ; aucune ligne n'en porte deux. |
-| Colonne **Écarté** renseignée avec motif | 20 entrées, toutes motivées. |
-| ≤ ~200 lignes | Respecté. |
-| **Code** est la colonne la plus courte | **Non tenu** — 26 lignes de Code contre 24 de Prompt. À examiner : plusieurs lignes Code sont des contraintes d'une ligne, pas des sous-systèmes. |
+| Colonne **Écarté** renseignée avec motif | 23 entrées, toutes motivées. |
+| ≤ ~200 lignes | **Dépassé — 248 lignes**, dont 146 de leçons et 102 d'appareil (en-têtes, rendement, contrôle). Le dépassement vient du bloc recherche et de la frontière d'effets rendue par la relecture. Voir **B-3** : soit le périmètre a grandi et la référence avec lui, soit il faut couper. **Pas de glissement silencieux.** |
+| **Code** est la colonne la plus courte | **Non tenu, et l'écart s'est creusé** — 38 contre 34. La relecture a ajouté onze lignes de frontière d'effets, toutes réellement du code. La prémisse de `RECOLTE.md` était peut-être fausse : une leçon de périmètre *est* une ligne de code, pas une phrase de prompt. |
 
-## Relecture contradictoire — à faire
+## Relecture contradictoire — faite
 
-Consigne unique à donner à Codex, sans autre cadrage :
+Consigne unique donnée à Codex : **« qu'est-ce qui a été écarté en silence ? »**
+Deux passes (`RELECTURE_CODEX_PASSE1.md`, puis `V1.1` après précision du périmètre par le PO).
+Disposition intégrale des 42 observations : `DISPOSITION_RELECTURE.md`.
 
-> **« Qu'est-ce qui a été écarté en silence ? »**
+Ce qu'elle a réellement trouvé : la **robustesse intellectuelle** absente (le produit même de l'outil) ;
+`X7` qui écartait la frontière d'effets avec l'appareil qui l'entourait ; et trois agrégats qui masquaient
+des invariants transférables.
 
-Trois endroits à lui signaler comme suspects : l'arrêt anticipé sur `history.md` et `README.md`
-(source 1-8 jugées suffisantes) ; les agrégats X16 à X18, qui écartent 166 éléments en trois lignes ;
-et la colonne Code plus longue que prévu.
+Ce qu'elle a manqué, et que sa propre V1.1 a corrigé : sa passe 1 reconstruisait la forteresse de
+DialogForge. **C'est la leçon `R31`** — et elle n'aurait pas été trouvée sans la seconde passe.
