@@ -584,3 +584,18 @@ refait correctement.
 
 **Le palier 4 n'est plus bloqué.** Les valeurs à porter dans `adapters/claude.py` et
 `adapters/codex.py` sont dans le relevé.
+
+### Clôture de session
+
+Session fermée sur décision du PO pour repartir sur un contexte neuf. **Les trois décisions rendues
+ci-dessus (B-2, code de retour, base `memories`) sont reportées à la session suivante**, et reprises
+en tête de `NOTES.md` sous les repères **D-1, D-2, D-3**, chacune avec assez de contexte pour être
+tranchée sans relire ce journal, et avec ma recommandation.
+
+`NOTES.md` a été ramené à un tableau de bord : les récits par palier ont été retirés — ils sont ici —
+et remplacés par une section **« Contraintes acquises — à ne pas redécouvrir »**, qui ne garde de
+chaque palier que ce qui contraint encore le code à écrire. `CLAUDE.md` le demandait dès le début ;
+le fichier avait dérivé en historique au fil des trois paliers.
+
+**État à la reprise :** 1 651 lignes de production, 1 797 de tests, **163 tests verts**, `ruff` et
+`mypy --strict` verts, arbre git propre. Palier 4 non commencé, non bloqué.
