@@ -8,28 +8,60 @@
 
 ## Prochaine action — une seule
 
-**Ouvrir l'étape 2 : écrire le premier palier de code.**
+**Ouvrir le palier 2 : `fakes.py` + `transport.py`.**
 
-La spécification est `conception/CONCEPTION_FINALE.md`. Elle est révisée, ses huit derniers défauts
-techniques sont corrigés. **Elle n'a pas encore reçu l'arbitrage humain formel** — si le PO la valide
-en ouvrant la session, le noter ici et démarrer.
+La spécification est `conception/CONCEPTION_FINALE.md`. **Le découpage en paliers est de `NOTES.md`,
+pas de la spécification elle-même** — `CONCEPTION_FINALE.md` liste les modules (§3, §11) sans les
+ordonner ; c'est ce fichier qui fixe l'ordre et le motif.
 
-### Palier 1 — les cinq modules purs, ~600 lignes
+*C'est le module signalé comme le plus susceptible de déborder son budget : terminaison d'arbre de
+processus, deux flux concurrents bornés à 8 MiB, délai dur, branche POSIX non testable ici. Modèle
+recommandé pour ce palier et le palier 3 (`workflow.py`) : **Opus**, pas Sonnet — cf. session du
+2026-09-03, ce sont les deux endroits où la spécification s'arrête à la frontière de l'OS et où le
+test ne rattrape pas une erreur.*
 
-Ils ne dépendent d'**aucune** caractérisation de CLI. C'est ce qui les rend premiers.
+### Palier 1 — les cinq modules purs — CLOS le 2026-09-03
 
-| Ordre | Module | Contenu | Tests |
-|---|---|---|---|
-| 1 | `models.py` | Enums fermés, configuration et état, **validation stricte de schéma** — version future, enum inconnu, clé absente ou surnuméraire → refus | `test_state.py` |
-| 2 | `storage.py` | Temporaire unique → `flush` → `fsync` → `os.replace` ; `fsync` de dossier POSIX ; nouvelle tentative Windows ; **UTF-8 sans BOM, `\n`** | `test_storage.py` |
-| 3 | `lock.py` | Verrou avec PID, date UTC, commande · détenteur vivant refusé · verrou mort récupéré · **jamais supprimer celui d'un autre** | `test_lock.py` |
-| 4 | `contracts.py` | Discriminateur `IABINOME:DOCUMENT` / `QUESTION` · schéma de revue v1 · bloc JSON unique clôturé · normalisation déterministe + empreintes | `test_contracts.py` |
-| 5 | `corpus.py` | Manifeste, copie, règles de chemin (absolu, `..`, lien sortant, non régulier, empreinte changeante → refus **avant publication**) | `test_corpus.py` |
+Codé, testé, sans arbitrage humain formel préalable sur `CONCEPTION_FINALE.md` — la session a
+enchaîné directement sur validation implicite du PO (`/loop` non utilisé, confirmation ligne par
+ligne). **94 tests, 0 échec** (1 ignoré : création de lien symbolique non privilégiée sur la machine
+de développement — attendu, pas un défaut). `ruff check .` et `mypy --strict` verts.
 
-Avant le premier commit de code : `pyproject.toml` **sans aucune dépendance d'exécution**, `src/iabinome/`, `tests/`.
+| Module | Lignes visées | Lignes réelles | Tests |
+|---|---:|---:|---|
+| `models.py` | 130 | **301** | `test_state.py` — 25 |
+| `storage.py` | 140 | 76 | `test_storage.py` — 13 |
+| `lock.py` | 90 | 108 | `test_lock.py` — 9 |
+| `contracts.py` | 150 | 172 | `test_contracts.py` — 33 |
+| `corpus.py` | 90 | 107 | `test_corpus.py` — 14 |
+| **Sous-total** | **600** | **764** | **94** |
+
+**`models.py` dépasse largement (301 vs 130).** Motif tracé dans la session : il porte les neuf enums
+fermés de tout le système (dont `Decision`, dont `workflow.py` aura aussi besoin) plus la machinerie de
+validation stricte générique (`_decode`/`_encode`), déjà factorisée une fois pour éviter 314 lignes en
+répétition brute. `storage.py` sous son budget (76) compense en partie. **À surveiller** : reste
+~655 lignes visées pour `cli.py`, `prompts.py`, `transport.py`, `adapters/`, `__init__`+`__main__` —
+la bande totale (1350–1550) tient si ces modules restent proches de leur budget, mais l'écart ne se
+recreuse plus sans arbitrage — §11, règle de coupe.
+
+**Décisions de conception prises pendant l'implémentation, absentes du texte de la spécification :**
+- `last_incident` (`etat.json`) : chemin relatif explicite (comme `current_document`/`latest_review`),
+  pas un objet structuré — la spécification ne détaille pas sa forme.
+- `contracts.normalize()` n'implémente que le retrait de BOM + empreinte SHA-256 comme
+  « normalisation déterministe » — c'est la seule transformation nommée par `CONCEPTION_FINALE.md`
+  §0.1. Pas de normalisation CRLF→LF : non spécifiée, à statuer lors de la caractérisation CLI §12.2
+  si un besoin réel apparaît (branche déjà repérable, réversible).
+- `lock.py` sur Windows : **ne jamais utiliser `os.kill(pid, 0)`** — l'implémentation Windows de
+  `os.kill` appelle `TerminateProcess`, y compris pour le signal `0`. Vivacité testée via
+  `ctypes`/`OpenProcess`.
+- `Decision` reste dans `models.py` (pas `contracts.py`) : `workflow.py` en aura besoin aussi pour
+  piloter les transitions — `Severity`/`Disposition` restent, eux, dans `models.py` également par
+  cohérence (un seul fichier de vocabulaire fermé).
+
+Avant le premier commit de code : `pyproject.toml` **sans aucune dépendance d'exécution**, `src/iabinome/`, `tests/`. **Fait.**
 
 **Porte à chaque commit — `CLAUDE.md` §5 :** `ruff check .` et `mypy` verts, **aucun appel fournisseur
-dans la suite**.
+dans la suite**. **Vérifié à chaque module de ce palier.**
 
 ### En parallèle, et avant le palier 3 — la caractérisation des CLI
 
@@ -50,7 +82,8 @@ la validation de `--reviewer-access` et la forme des adaptateurs.
 
 - **Étapes 0 et 1 closes.** La spécification est `conception/CONCEPTION_FINALE.md` — **~1 430 lignes**
   de production visées, bande 1 350–1 550 ; tests 1 100–1 800, non normatif.
-- **Aucune ligne de code écrite.** Le dépôt ne contient que des documents.
+- **Étape 2 commencée : palier 1 clos** (voir ci-dessus). 764 lignes de production, 785 de tests, 94
+  tests verts. Reste les paliers 2 à 4.
 - Cinq tours conservés séparément, aucun écrasé : `STRUCTURE_PROPOSEE_CODEX.md` →
   `CRITIQUE_CLAUDE_STRUCTURE_CODEX.md` → `STRUCTURE_PROPOSEE_CLAUDE.md` →
   `STRUCTURE_PROPOSEE_CODEX_V2.md` → `CONCEPTION_FINALE.md` (+ `ANALYSE_VERS_CONCEPTION_FINALE.md`),
