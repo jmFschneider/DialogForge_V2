@@ -38,7 +38,17 @@ contre-preuves et alternatives sérieuses."""
 _B_RULES = """\
 Retourne seulement le JSON de revue v1. BLOQUE est réservé à une information humaine
 indispensable. Reprends chaque constat antérieur exactement une fois et motive toute
-fermeture. Ne déduis pas la décision des sévérités."""
+fermeture. Ne déduis pas la décision des sévérités.
+
+Le JSON de revue v1 a exactement cette forme, sans clé en plus :
+
+{"schema_version": 1,
+ "decision": "ACCEPTER" | "REVISER" | "BLOQUE",
+ "analysis": "critique synthetique en Markdown",
+ "findings": [{"id": "B-sujet-001",
+               "severity": "BLOCKING" | "MAJOR" | "MINOR" | "NOTE",
+               "disposition": "OPEN" | "RESOLVED" | "WITHDRAWN",
+               "statement": "le constat, en une phrase"}]}"""
 
 _A_REVISION = """\
 Tu es A. Rends QUESTION si un constat révèle une information humaine indispensable.

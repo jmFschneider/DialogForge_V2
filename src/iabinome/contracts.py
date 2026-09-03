@@ -41,10 +41,14 @@ def normalize(raw: str) -> Normalized:
     texte normalisé.
 
     §0.1 : tout est écrit en UTF-8 sans BOM, fins de ligne `\\n`, y compris sous
-    Windows. Une CLI d'agent y écrit pourtant en mode texte, donc en `\\r\\n` —
-    mesuré le 2026-09-03 — et la balise `IABINOME:DOCUMENT` de la première ligne
-    ne serait alors jamais reconnue. Le brut, lui, reste intact sur le disque :
-    c'est cette copie-ci qui est normalisée, pas la preuve.
+    Windows. Un producteur qui écrit en mode texte rend pourtant `\\r\\n`, et la
+    balise `IABINOME:DOCUMENT` de la première ligne ne serait alors jamais
+    reconnue. C'est une **tolérance**, pas la correction d'un défaut observé :
+    la caractérisation du 2026-09-03 montre que les deux CLI rendent des `\\n`.
+    Elle vaut par symétrie avec le BOM, et pour un producteur futur.
+
+    Le brut, lui, reste intact sur le disque : c'est cette copie-ci qui est
+    normalisée, pas la preuve.
     """
     text = raw
     transformations: list[str] = []

@@ -8,33 +8,40 @@
 
 ## Prochaine action — une seule
 
-**Relever les cinq points de `CONCEPTION_FINALE.md` §12.2 — la caractérisation des deux CLI.**
+**Palier 4 : `adapters/claude.py`, `adapters/codex.py`, `cli.py`, `__main__.py`.**
 
-**Aucune CLI n'a jamais été lancée.** C'est une manipulation humaine, hors suite de tests, un appel
-jetable par adaptateur. Le **point 2 — réalité du mode sans outils — décide B-2**, donc la validation
-de `--reviewer-access`. **Elle bloque maintenant réellement le palier 4** : `adapters/claude.py` et
-`adapters/codex.py` sont exactement ce qu'elle mesure. Elle ne bloquait pas le palier 3, décision du
-PO le 2026-09-03 — vérifiée juste : `workflow.py` n'a eu besoin d'aucune des cinq mesures.
+**La caractérisation §12.2 est faite** — `conception/CARACTERISATION_CLI.md`, 2026-09-03, quatre
+appels réels. Elle ne bloque plus rien. Les valeurs à porter dans les adaptateurs y sont.
 
-### Budget — arbitré une fois le 2026-09-03, à re-arbitrer
+### Trois décisions à prendre avant ou pendant le palier 4
+
+1. **B-2, maintenant décidable.** La prémisse de §12.3 est **démentie par la mesure** : le shell de
+   l'outil 2 *est* retirable (`--disable shell_tool`, vérifié sans appel payant). `CONTEXT_ONLY` ne
+   contredit donc plus les quatre permutations. Réserve : un `CONTEXT_ONLY` complet demanderait de
+   retirer d'autres drapeaux (`browser_use`, `unified_exec`, `computer_use`…) — **non mesuré**.
+2. **Code de retour non nul.** Quota épuisé et modèle invalide rendent tous deux **code 1** chez les
+   deux outils — une capacité commune, donc utilisable par le noyau. Et chez l'outil 1 le message de
+   quota sort **sur `stdout`** : un `extract()` naïf le prend pour une réponse, et le cycle finit en
+   « erreur de contrat » alors que la cause est un quota. **Le moteur doit-il nommer l'incident sur
+   le code de retour, avant de tenter le contrat ?**
+3. **Base `memories` de l'outil 2.** L'appel est éphémère au sens de la session, pas des effets : un
+   état peut se transporter d'un appel au suivant, hors de la collaboration et hors de notre vue.
+   Rien de ce que §1 promet n'est cassé — mais la reproductibilité d'un cycle n'est pas garantie.
+
+### Budget — arbitré le 2026-09-03, à re-arbitrer au palier 4
 
 | | brut | code effectif |
 |---|---:|---:|
-| Production écrite (9 modules sur 12) | **1 605** | **1 150** |
+| Production écrite (9 modules sur 12) | **1 651** | **1 171** |
 | Bande §11 | 1 350 – 1 550 | 1 350 – 1 550 |
-| Projection au même rythme (reste : `cli.py`, `claude.py`, `codex.py`, `__main__`) | **~2 100** | **~1 520** |
+| Projection (reste : `claude.py`, `codex.py`, `cli.py`, `__main__`) | **~2 150** | **~1 540** |
 
 *« code effectif » = lignes non vides, hors commentaires et hors docstrings.*
 
-**La bande est franchie en brut, pas en code effectif.** Tout l'écart est de la documentation de motif
-et du formatage — aucune fonctionnalité hors spécification, aucun contrôle ajouté.
-
-**Constat qui compte : les quatre coupes de §11 ne peuvent pas fermer cet écart.** `status --json`,
-les abstractions à un seul appelant, la détection lexicale et les métadonnées d'origine facultatives
-pèsent ensemble une quarantaine de lignes, pas cinq cents. Le seul levier réel serait de retirer les
-docstrings de motif — c'est-à-dire la méthode du projet. **C'est le point 5 de la règle de coupe §11 : arbitrage.**
-
-Repère de fond, lui non franchi : `POURQUOI` règle 1 — 2 100 lignes contre les 58 894 de FloraPi.
+**Franchie en brut, pas en code effectif** — l'écart est de la documentation de motif, pas de la
+fonctionnalité. **Les quatre coupes de §11 ne peuvent pas le fermer** : elles pèsent une quarantaine
+de lignes, pas cinq cents. C'est le point 5 de la règle de coupe : arbitrage.
+Repère de fond non franchi : `POURQUOI` règle 1 — ~2 150 lignes contre les 58 894 de FloraPi.
 
 ### Palier 1 — les cinq modules purs — CLOS le 2026-09-03
 
@@ -96,13 +103,13 @@ de §12.2.
 - **`parse_review` n'acceptait que du JSON nu**, alors que §6 et §10 acceptent aussi « un bloc JSON
   clôturé couvrant toute la réponse ». Corrigé (`fix:` séparé). Préfixe, suffixe, étiquette de
   langage autre que `json` et second bloc restent refusés.
-- **CRLF — la question que le palier 1 avait explicitement différée est tranchée.** Un vrai
-  sous-processus Windows écrit en mode texte, donc en fins de ligne `CRLF`, et la balise
-  `IABINOME:DOCUMENT` de première ligne n'était **jamais** reconnue : tout le cycle finissait en
-  `ERROR`. `normalize()` ramène `CRLF` à `LF` et le consigne comme transformation, exactement comme
-  le BOM — c'est la seconde moitié de la même phrase de §0.1. **Le brut reste intact sur le
-  disque** : c'est la copie normalisée qui est transformée, jamais la preuve. Un retour chariot
-  isolé est laissé tel quel : il vient d'une sortie de progression, pas d'une fin de ligne.
+- **CRLF — la question que le palier 1 avait différée est tranchée, mais sur une preuve plus faible
+  que je ne l'ai d'abord écrit.** Le déclencheur était le **faux agent**, qui écrit en mode texte
+  Python et rend donc `CRLF` : la balise de première ligne n'était jamais reconnue et le cycle
+  finissait en `ERROR`. `normalize()` ramène `CRLF` à `LF` et le consigne, comme le BOM.
+  **La caractérisation du même jour montre que les deux vraies CLI rendent des `\\n`** : c'est donc
+  une **tolérance** par symétrie avec le BOM, pas la correction d'un défaut observé en production.
+  Le brut reste intact sur le disque. Un retour chariot isolé est laissé tel quel.
 
 **Décisions de conception prises pendant l'implémentation, absentes du texte de la spécification :**
 
@@ -123,6 +130,34 @@ de §12.2.
   `ERROR` est réservé à l'échec de contrat. C'est ce que la table de reprise §5 sait traiter.
 - **Aucun compteur de garde sur la boucle du moteur** : `max_revisions` la borne et `FINAL_A` est
   terminal. Un compteur serait un quota interne.
+
+### Caractérisation des CLI — FAITE le 2026-09-03
+
+`conception/CARACTERISATION_CLI.md`. Quatre appels réels, un par outil et par rôle. **Les quatre
+permutations sont viables : chaque outil tient A et B, contrat respecté du premier coup.**
+
+**Ce que la mesure a changé dans le code :**
+
+- **Le prompt passe par `stdin`, jamais par argv.** `argv` plafonne à 32 767 caractères sous Windows,
+  et une CLI qui voit `DEVNULL` sur son entrée la lit comme un flux canalisé vide : mesuré, la
+  réponse tombe de 673 octets conformes à 100 octets de préambule hors contrat. `transport.run()`
+  reçoit `stdin_text`, écrit dans un fil pour qu'un gros prompt ne bloque pas avant que `stdout` soit
+  drainé.
+- **L'exécutable doit être résolu par `shutil.which()`.** L'entrée du PATH de l'outil 2 est un script
+  sans extension ; `CreateProcess` rend `WinError 2`.
+- **Le prompt de B était inutilisable.** §9 disait « retourne le JSON de revue v1 » sans jamais
+  montrer le schéma. Ajouté à `prompts.py` avant les appels ; les deux revues sont conformes.
+- **Correction d'un motif faux que j'avais écrit :** aucune des deux CLI n'émet de CRLF. La
+  normalisation reste défendable comme **tolérance**, par symétrie avec le BOM, mais la preuve que je
+  lui prêtais venait de mon propre faux agent, qui écrit en mode texte Python. Docstring corrigée.
+- Même chose, plus légère, pour le bloc JSON clôturé : les deux rendent du **JSON nu**. Le correctif
+  reste une tolérance utile, il ne corrigeait pas la cause qu'on lui prêtait.
+- `extract()` doit lire **`stdout` seul** : l'outil 2 écrit 8 Ko de bannière sur `stderr` en sortant
+  proprement.
+
+**Vérifié contre une vraie CLI, pas seulement contre le faux agent :** délai dur tenu, aucun
+`resultat.json` sur `TIMEOUT`, `pid.txt` écrit, et l'arbre `cmd.exe` → `codex.exe` — observé
+**présent pendant** l'appel — entièrement terminé après.
 
 ### Paliers suivants
 
@@ -156,7 +191,7 @@ de §12.2.
 
 - **B-2 non arbitré** : `CONSULT` recommandé. Le prévol refuse déjà `CONTEXT_ONLY` si l'adaptateur
   de B ne le supporte pas — testé. **Tranché par la caractérisation §12.2.**
-- **Aucune CLI lancée** — §12.2. **Bloque le palier 4.**
+- *(levé le 2026-09-03 : les deux CLI ont été lancées et caractérisées.)*
 
 ## Rappels actifs
 

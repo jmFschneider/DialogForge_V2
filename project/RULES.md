@@ -100,6 +100,18 @@
 **Un test qui vérifie une absence doit d'abord être prouvé capable de voir la présence.**
 *Motif : le test de terminaison d'arbre affirme qu'un petit-fils ne dépose jamais sa marque. Sans avoir vérifié — hors suite — que cette marque apparaît quand on ne tue personne, le test passerait tout aussi bien parce que le petit-fils n'a jamais existé.*
 
+**Ne jamais donner à un correctif un motif qu'on n'a pas mesuré.** Écrire « mesuré le … » engage.
+*Motif : la normalisation CRLF a été justifiée par « une CLI d'agent écrit en mode texte, mesuré le 2026-09-03 ». La preuve venait en réalité du faux agent du projet. La caractérisation du même jour a montré que les deux vraies CLI rendent des `\n`. Le correctif reste bon comme tolérance ; c'est son motif qui était faux, et un motif faux se propage plus loin qu'un correctif inutile.*
+
+**Un prompt qui exige un format doit porter le format.**
+*Motif : §9 disait à B « retourne le JSON de revue v1 » sans jamais montrer le schéma — un nom interne au projet, indevinable. Chaque revue aurait échoué au contrat. Ajouter le schéma n'est pas durcir le prompt : on n'allège pas ce qui n'a jamais été dit.*
+
+**Le prompt d'un agent passe par `stdin`, jamais par la ligne de commande.**
+*Motif mesuré le 2026-09-03 : `CreateProcess` plafonne à 32 767 caractères sous Windows, qu'un corpus réel dépasse ; et une CLI qui voit `DEVNULL` sur son entrée la lit comme un flux canalisé vide — la réponse est tombée de 673 octets conformes à 100 octets hors contrat.*
+
+**Sous Windows, résoudre l'exécutable avec `shutil.which()` avant `Popen`.**
+*Motif : une entrée de PATH installée par npm est un script sans extension ; `CreateProcess` rend `WinError 2`. `shutil.which` rend le `.CMD` qui, lui, se lance.*
+
 **Une décision différée porte sa condition de déclenchement, sinon elle est oubliée.**
 *Motif : le palier 1 a écarté la normalisation CRLF→LF en écrivant « à statuer si un besoin réel apparaît ». Le besoin est apparu au palier 3 — une CLI Windows écrit en mode texte, et la balise de première ligne n'était jamais reconnue. La condition écrite est ce qui a fait rouvrir la question au lieu de la redécouvrir comme un bug.*
 

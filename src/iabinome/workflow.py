@@ -187,9 +187,14 @@ class _Engine:
             work_root=self.collab,
             reviewer_access=self.config.reviewer_access if role is Role.B else None,
         )
+        # Le prompt passe par stdin, jamais par la ligne de commande : mesuré le
+        # 2026-09-03, argv plafonne à 32 767 caractères sous Windows, et une CLI
+        # qui voit `DEVNULL` sur son entrée la lit comme un flux vide et dégrade
+        # sa réponse (`conception/CARACTERISATION_CLI.md`, point 1).
         result = transport.run(
             self.adapters[agent.adapter_id].command(spec), cwd=self.collab,
             call_dir=self.collab / rel_dir, timeout_seconds=self.timeout_seconds,
+            stdin_text=prompt,
         )
         if result.outcome is not Outcome.COMPLETED:
             return self.incident(state, rel_dir, result.outcome.value, Status.INTERRUPTED)

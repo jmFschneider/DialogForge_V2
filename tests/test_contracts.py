@@ -26,8 +26,9 @@ class TestNormalize(unittest.TestCase):
         self.assertEqual(result.transformations, ("bom_removed",))
 
     def test_crlf_normalized_and_recorded(self) -> None:
-        """Une CLI d'agent écrit en mode texte : sous Windows, elle rend `\\r\\n`,
-        et la balise de première ligne ne serait jamais reconnue."""
+        """Tolérance, pas correction d'un défaut observé : les deux CLI
+        caractérisées rendent des `\\n`. Un producteur en mode texte rendrait
+        `\\r\\n`, et la balise de première ligne ne serait pas reconnue."""
         result = normalize("IABINOME:DOCUMENT\r\ncorps\r\n")
         self.assertEqual(result.text, "IABINOME:DOCUMENT\ncorps\n")
         self.assertEqual(result.transformations, ("crlf_normalized",))

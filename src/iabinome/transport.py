@@ -81,22 +81,37 @@ def run(
     cwd: Path,
     call_dir: Path,
     timeout_seconds: float,
+    stdin_text: str | None = None,
     limit_bytes: int = OUTPUT_LIMIT_BYTES,
 ) -> CallResult:
     """Lance `command` dans `cwd`, écrit ses flux sous `call_dir`, et n'y écrit
-    `resultat.json` que si le processus est sorti de lui-même."""
+    `resultat.json` que si le processus est sorti de lui-même.
+
+    `stdin_text` est le chemin par lequel le prompt arrive. Mesuré le
+    2026-09-03 : un prompt en argument de ligne de commande buterait sur la
+    limite de 32 767 caractères de `CreateProcess` dès qu'un document réel y
+    passe, et une CLI voyant `DEVNULL` sur son entrée la lit comme un flux
+    canalisé vide, ce qui dégrade sa réponse.
+    """
     started = time.monotonic()
     try:
         proc = subprocess.Popen(
             list(command),
             cwd=cwd,
-            stdin=subprocess.DEVNULL,
+            stdin=subprocess.PIPE if stdin_text is not None else subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             start_new_session=(os.name != "nt"),
         )
     except OSError as exc:
         raise TransportError(f"lancement impossible : {exc}") from exc
+    if stdin_text is not None:
+        assert proc.stdin is not None
+        # Dans un fil : un prompt plus gros que le tube bloquerait ici, pendant
+        # que personne ne draine encore stdout.
+        threading.Thread(
+            target=_feed, args=(proc.stdin, stdin_text.encode("utf-8")), daemon=True
+        ).start()
     # Dès le retour de Popen, pour qu'un humain retrouve un orphelin (§5).
     storage.write_atomic_text(call_dir / "pid.txt", f"{proc.pid}\n")
     assert proc.stdout is not None and proc.stderr is not None
@@ -178,6 +193,18 @@ def _wait(
     except KeyboardInterrupt:
         _terminate_tree(proc)
         return Outcome.INTERRUPTED_BY_USER
+
+
+def _feed(pipe: IO[bytes], data: bytes) -> None:
+    """Écrit le prompt puis ferme : sans la fermeture, la CLI attend une fin de
+    flux qui ne vient jamais, et le délai dur devient la seule sortie."""
+    try:
+        pipe.write(data)
+        pipe.flush()
+    except OSError:
+        pass
+    finally:
+        pipe.close()
 
 
 def _terminate_tree(proc: subprocess.Popen[bytes]) -> None:

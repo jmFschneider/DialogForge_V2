@@ -109,6 +109,46 @@ class TestCleanExit(TransportCase):
         self.assertTrue((self.root / "temoin.txt").exists())
 
 
+class TestStdin(TransportCase):
+    """Le prompt arrive par stdin — forme canonique mesurée le 2026-09-03
+    (`conception/CARACTERISATION_CLI.md`, point 1)."""
+
+    ECHO = [sys.executable, "-c", "import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())"]
+
+    def echo(self, stdin_text: str | None) -> CallResult:
+        return transport.run(
+            self.ECHO, cwd=self.root, call_dir=self.call_dir,
+            timeout_seconds=30.0, stdin_text=stdin_text,
+        )
+
+    def test_prompt_reaches_the_child(self) -> None:
+        result = self.echo("IABINOME:DOCUMENT\ncorps")
+        self.assertIs(result.outcome, Outcome.COMPLETED)
+        self.assertEqual(self.read("stdout.txt"), b"IABINOME:DOCUMENT\ncorps")
+
+    def test_without_stdin_text_the_child_reads_nothing(self) -> None:
+        result = self.echo(None)
+        self.assertIs(result.outcome, Outcome.COMPLETED)
+        self.assertEqual(self.read("stdout.txt"), b"")
+
+    def test_a_prompt_larger_than_the_pipe_does_not_deadlock(self) -> None:
+        """Un vrai corpus dépasse le tampon du tube : sans le fil d'écriture,
+        on bloquerait avant que personne ne draine `stdout`."""
+        big = "x" * (1 << 20)
+        result = self.echo(big)
+        self.assertIs(result.outcome, Outcome.COMPLETED)
+        self.assertEqual(result.stdout_bytes, len(big))
+
+    def test_a_child_that_never_reads_stdin_still_completes(self) -> None:
+        """L'écrivain se casse le tube et se tait : ce n'est pas une panne."""
+        result = transport.run(
+            fakes.command(stdout="ignore l'entree"), cwd=self.root,
+            call_dir=self.call_dir, timeout_seconds=30.0, stdin_text="x" * (1 << 20),
+        )
+        self.assertIs(result.outcome, Outcome.COMPLETED)
+        self.assertEqual(self.read("stdout.txt"), b"ignore l'entree")
+
+
 class TestPidFile(TransportCase):
     def test_pid_written_even_when_the_call_never_completes(self) -> None:
         """`pid.txt` est écrit dès le retour de Popen, pas à la fin."""

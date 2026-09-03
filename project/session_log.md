@@ -521,3 +521,66 @@ Repère de fond, lui non franchi : `POURQUOI` règle 1 — ~2 100 lignes contre 
 
 **Prochaine action : la caractérisation des deux CLI (§12.2).** Elle bloque maintenant réellement le
 palier 4 — `adapters/claude.py` et `adapters/codex.py` sont exactement ce qu'elle mesure.
+
+---
+
+## 2026-09-03 (Claude, sur autorisation du PO) — Caractérisation des deux CLI
+
+Première fois qu'une CLI est lancée depuis le début du projet. Quatre appels payants, autorisés.
+Relevé complet : `conception/CARACTERISATION_CLI.md`.
+
+### Le résultat principal
+
+**Les quatre permutations sont viables.** Chaque outil tient le rôle A et le rôle B, et le contrat
+est respecté du premier coup des deux côtés — vérifié en passant les sorties aux vrais analyseurs
+`parse_agent_response` et `parse_review`, pas à mon jugement.
+
+### Ce que la mesure a corrigé dans le code
+
+1. **Le prompt passe par `stdin`, jamais par argv.** Deux motifs mesurés : `argv` plafonne à 32 767
+   caractères sous Windows, qu'un corpus réel dépasse ; et une CLI qui voit `DEVNULL` sur son entrée
+   la lit comme un flux canalisé vide — la réponse est tombée de 673 octets conformes à **100 octets
+   de préambule hors contrat**. `transport.run()` reçoit `stdin_text`, écrit dans un fil.
+2. **L'exécutable doit être résolu par `shutil.which()`** : l'entrée de PATH de l'outil 2 est un
+   script sans extension et `CreateProcess` rend `WinError 2`.
+3. **Le prompt de B était inutilisable et ne l'est plus.** §9 disait « retourne le JSON de revue v1 »
+   sans jamais montrer le schéma. Ajouté avant les appels — les deux revues sont conformes.
+
+### Une correction qui m'est due
+
+**J'avais donné à la normalisation CRLF un motif que je n'avais pas mesuré.** La docstring disait
+« une CLI d'agent écrit en mode texte, donc en CRLF — mesuré le 2026-09-03 ». La preuve venait en
+réalité de mon propre faux agent. **Les deux vraies CLI rendent des `\n`.** Le correctif reste bon
+comme *tolérance*, par symétrie avec le BOM ; c'est son motif qui était faux. Docstring, test et
+`NOTES.md` corrigés. Même nuance, plus légère, pour le bloc JSON clôturé : les deux rendent du JSON
+nu.
+
+### Trois décisions rendues au PO
+
+1. **B-2 : la prémisse de §12.3 est démentie.** « Le shell de Codex n'est pas retirable » est faux —
+   `--disable shell_tool` existe, vérifié sans appel payant via `codex features list`. `CONTEXT_ONLY`
+   ne contredit plus les quatre permutations. Réserve : un `CONTEXT_ONLY` complet demanderait de
+   retirer d'autres drapeaux, non mesuré.
+2. **Le code de retour non nul est une capacité commune aux deux outils** — quota épuisé comme modèle
+   invalide rendent `1`. Et chez l'outil 1, le message de quota sort **sur `stdout`** : un `extract()`
+   naïf le prend pour une réponse et le cycle finit en « erreur de contrat » alors que la cause est un
+   quota. Le moteur doit-il nommer l'incident sur le code de retour, avant de tenter le contrat ?
+3. **L'outil 2 tient une base `memories`.** L'appel est éphémère au sens de la session, pas des
+   effets. Rien de ce que §1 promet n'est cassé — §1 ne promet que le confinement de *nos* artefacts —
+   mais la reproductibilité d'un cycle n'est pas garantie par le noyau, et il faut le dire.
+
+### Ce qui était déjà juste
+
+`transport.py` tient contre une vraie CLI : délai dur respecté, aucun `resultat.json` sur `TIMEOUT`,
+`pid.txt` écrit, et l'arbre `cmd.exe` → `codex.exe` — **observé présent pendant l'appel** — entièrement
+terminé après. Le premier contrôle portait sur `node.exe`, absent avant comme après : un test vide,
+refait correctement.
+
+### Commits
+
+`feat: caracteriser les deux CLI et faire passer le prompt par stdin`
+
+### À retenir
+
+**Le palier 4 n'est plus bloqué.** Les valeurs à porter dans `adapters/claude.py` et
+`adapters/codex.py` sont dans le relevé.
