@@ -207,3 +207,87 @@ Invariant de racine lisible (= le dossier de collaboration, jamais le projet) ·
 **L'inversion des rôles a bien fonctionné.** Codex-en-A a produit un document meilleur que ce que j'aurais écrit seul sur au moins un point (`--reviewer-access`), et a trouvé cinq erreurs factuelles dans mon propre travail. C'est le premier signal réel, avant toute ligne de code, que la permutation `C15a` n'est pas qu'une contrainte technique.
 
 **Ce qui reste non caractérisé : aucune CLI n'a jamais été lancée.** `--tools ""`, les sandbox Codex et les identifiants exacts des modèles sont déduits du code. Premier prévol réel à faire.
+
+---
+
+## 2026-09-03 (Codex) — Synthèse critique de structure V2
+
+### Ce qui a été fait
+
+Relecture de la critique Claude (11 constats), de sa révision complète, de la structure Codex initiale
+et de `RELECTURE_CODEX_PASSE1_V1.1.md`, puis retour aux documents d'autorité et aux règles du projet.
+Production de `conception/STRUCTURE_PROPOSEE_CODEX_V2.md`, sans écraser les versions antérieures.
+
+La V2 dispose les 11 constats un par un. Elle accepte leur objectif mais corrige plusieurs remèdes :
+`cwd` n'est pas présenté comme un confinement de lecture ; un motif de reprise est une trace et non une
+preuve ; les ratios de tests DialogForge ne sont pas extrapolés comme une mesure du futur code.
+
+Elle simplifie la reprise de cinq états d'appel à deux (`CALLING`, `RESPONSE_STORED`) et remplace les
+segments par un fichier borné par flux. Elle ajoute une porte A `QUESTION` sans cadrage fournisseur
+séparé, un registre de constats à source unique et une vraie phase d'approbation humaine.
+
+### Décisions
+
+Aucune décision humaine actée pendant cette passe. La V2 recommande `CONSULT` pour B, mais laisse B-2
+ouvert. Elle propose deux accès de recherche (`CORPUS_ONLY`, `EXTERNAL_READ`) ; le second reste soumis à
+une caractérisation réelle et commune des deux CLI.
+
+### Commits
+
+Aucun. Le nouveau document et cette mise à jour attendent l'arbitrage humain.
+
+---
+
+## 2026-09-03 (Claude) — Conception finale : audit d'accrétion
+
+Le PO signale un risque précis : **Codex n'a pas participé à l'échange fondateur**, donc il peut glisser vers des ajouts justifiés isolément — le mécanisme exact qui a produit 87 382 lignes.
+
+### Ce qui a été fait
+
+Deux documents : `conception/ANALYSE_VERS_CONCEPTION_FINALE.md` (le raisonnement) et `conception/CONCEPTION_FINALE.md` (la spécification).
+
+La méthode : reconstituer les **neuf objectifs fondateurs** tels qu'ils ont été dits — ils n'étaient nulle part écrits pour Codex — puis opposer chaque élément de la V2 à ce total, selon `POURQUOI` règle 2.
+
+**`O4` est le plus fragile et personne ne le surveille** : « `etat.json` lisible à l'œil nu » et « fermer le terminal » sont des objectifs d'ergonomie, pas de correction. Aucune revue ne les défend spontanément — ils tombent en premier.
+
+### Ce que la V2 fait mieux que ma révision
+
+- **Elle m'a pris en flagrant délit.** Mon constat `B-002` demandait un « invariant testé » : la racine lisible = le dossier de collaboration. La V2 refuse — `cwd` n'est pas un bac à sable. **J'avais fait exactement ce que je lui reprochais en `B-008`** : présenter comme mécanique une frontière qui ne l'est pas. `R13` vaut pour `cwd` aussi.
+- **Cinq statuts d'appel → deux.** `PREPARED`/`LAUNCHING`/`STARTED` avaient la même conséquence après crash ; `APPLIED` dupliquait la phase.
+- **Segments → un fichier borné par flux.** Ma ligne `C24` prescrivait une segmentation que l'audit avait montrée inexistante.
+- **`resolved_changes` supprimé** au profit d'un registre unique — deux sources de vérité pour la fermeture d'un constat.
+- **Elle réfute mon extrapolation** du volume de tests par le rapport DialogForge : j'avais transporté une mesure hors de son domaine, ce que `P29` de mon propre inventaire interdit.
+
+### Sept accrétions retirées
+
+| | Retiré | Motif |
+|---|---|---|
+| A1 | Appareil d'approbation — 3 statuts, 1 phase, 1 fichier, 2 options CLI | `--approve` **écrit un fichier que rien ne consomme**. Six concepts pour zéro conséquence mécanique. Définition du contrôle qui a fait exploser le prédécesseur. |
+| A2 | Mode de recherche externe | Spécifier un mode **indisponible et non nécessaire** — contraire à `POURQUOI` règle 3. Les deux échecs mesurés venaient du mandat, pas de l'accès. |
+| A3 | Versionnement `demandes/` + compteur | Le compteur est dérivable des fichiers. `demande.md.001` suffit. |
+| A4 | Renommage `.part` → `.bin` | `resultat.json` est déjà le marqueur de complétude. Deux mécanismes pour un fait. |
+| A5 | Champ `rationale` | Rien de mécanique ne le consomme. `O8` — alléger. |
+| A6 | `origin_revision` | Métadonnée que la V2 place elle-même dans sa liste de coupe. |
+| A7 | Dossier `interventions/` | Deux natures dans un dossier ; chacune a une meilleure place. |
+
+**Compte : ~125 lignes et six concepts.** 8 statuts → 6 · 6 phases → 5 · 16 options CLI → 12 · 9 fichiers par appel → 6 · production 1 555 → **~1 430**, sous la promesse fondatrice.
+
+### Ce qui n'est pas coupé, et pourquoi
+
+La porte `IABINOME:QUESTION` (elle **retire** plus qu'elle n'ajoute : elle remplace `framing.py` entier et répare l'échec le mieux documenté du corpus) · la double lecture sous verrou (~5 lignes, la fenêtre est réelle) · **`fsync` et publication atomique** — la V2 a raison contre ma propre liste de coupes : je proposais de sacrifier `fsync` pour tenir un chiffre. **Une garantie de durabilité ne se troque pas contre des lignes.**
+
+### Décisions
+
+1. **Sources externes écartées de V0.1.** La recherche reste au périmètre — le type de mission existe et les règles de preuve mordent sur un corpus documentaire. Ce qui change, c'est **qui rassemble** : l'humain dépose, le binôme analyse. Condition de réouverture nommée.
+2. **Le cycle se termine en `AWAITING_APPROVAL`**, jamais en « succès ». L'arbitrage appartient à l'humain et à ses documents ; IAbinome ne l'enregistre pas.
+3. **`A1` et `A2` sont des jugements, pas des faits** — déclarés comme tels dans les limites de preuve, et réversibles sans migration.
+
+### Commits
+
+`docs: produire la conception finale par audit d accretion`
+
+### À retenir
+
+Quatre tours conservés séparément, **aucun écrasé** : Codex A → Claude B → Claude A' → Codex B' → synthèse. Le protocole a tourné quatre fois avant qu'une ligne de code existe.
+
+**La limite qui domine tout : aucune CLI n'a jamais été lancée.** Cinq points à mesurer (§12.2), dont le point 2 — la réalité du mode sans outils — qui décide B-2.

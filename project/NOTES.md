@@ -8,30 +8,37 @@
 
 ## Prochaine action — une seule
 
-**Arbitrer la question bloquante `B-1bis` : la recherche V0.1 est-elle corpus-only ?**
+**Arbitrer `conception/CONCEPTION_FINALE.md`, avant toute ligne de code.**
 
-Codex a restreint « recherche » à « recherche dans un corpus fourni ». Or B-1 a été arbitré « oui » sur
-la base des missions bibliographiques de FloraPi, qui interrogeaient des **sources externes**. La
-restriction rend `P26`, `P27`, `P30`, `P33`, `P34` largement inertes.
+C'est la synthèse de tout le cycle. Raisonnement dans `ANALYSE_VERS_CONCEPTION_FINALE.md`, qui audite
+la V2 de Codex contre les neuf objectifs fondateurs — Codex n'ayant pas participé à l'échange initial.
 
-*Recommandation : corpus-only pour V0.1, et l'écrire dans `CLAUDE.md`* — les deux échecs mesurés
-venaient du mandat, pas de l'accès aux sources. Le Web reste un contrat distinct.
+**Trois points à trancher, dans cet ordre :**
 
-Ensuite : arbitrage sur les deux propositions de structure, puis **l'implémentation**.
-Aucune ligne de code avant.
+| | Point | Position du document |
+|---|---|---|
+| 1 | **Sources externes en recherche** | **Écartées de V0.1.** Les deux échecs mesurés venaient du mandat, pas de l'accès ; et aucune capacité commune aux deux CLI n'est démontrée. Le corpus reste ce que l'humain y dépose. Condition de réouverture nommée. |
+| 2 | **B-2 — contrat de B** | `CONSULT` recommandé. `CONTEXT_ONLY` est incompatible avec Codex-en-B tant qu'une invocation sans outils n'est pas démontrée. `--reviewer-access` reste obligatoire et sans défaut. |
+| 3 | **Deux coupes qui sont des jugements** | L'appareil d'approbation (`APPROVED`/`REJECTED`/`decision_humaine.json`) et le mode de recherche externe ont été retirés. Les deux sont argumentés et réversibles sans migration. |
 
-Toujours reportés, tracés : **B-2** le contrat de B (troisième tour) · la colonne **Code** plus longue
-que **Prompt** (après la phase 2).
+Puis : **caractériser les deux CLI** (§12.2) — aucune n'a jamais été lancée. Puis l'implémentation.
+
+Toujours reporté, tracé : la colonne **Code** plus longue que **Prompt** (après la phase 2).
 
 ---
 
 ## État courant
 
-- **Étape 1 en cours — deux propositions de structure sur la table**, à arbitrer :
-  `conception/STRUCTURE_PROPOSEE_CODEX.md` (A) et `conception/STRUCTURE_PROPOSEE_CLAUDE.md` (B, révision).
-  Critique intermédiaire : `CRITIQUE_CLAUDE_STRUCTURE_CODEX.md` — décision `REVISER`, 11 constats.
-- Charpente commune aux deux : **noyau neuf** (pas d'élagage de DialogForge), ~1 540 lignes de production
-  **+ 2 300–3 000 de tests**, 14 modules, 4 commandes CLI, dossier de collaboration autonome et déplaçable.
+- **Étape 1 : `conception/CONCEPTION_FINALE.md` est prête à arbitrer.** Quatre tours conservés
+  séparément, aucun écrasé : `STRUCTURE_PROPOSEE_CODEX.md` (A) → `CRITIQUE_CLAUDE_STRUCTURE_CODEX.md`
+  (B, `REVISER`, 11 constats) → `STRUCTURE_PROPOSEE_CLAUDE.md` (A') → `STRUCTURE_PROPOSEE_CODEX_V2.md`
+  (B') → **`CONCEPTION_FINALE.md`**, avec `ANALYSE_VERS_CONCEPTION_FINALE.md` à côté.
+- Charpente : **noyau neuf** (pas d'élagage de DialogForge) · **~1 430 lignes** de production, bande
+  1 350–1 550 · tests 1 100–1 800, non normatif · 14 modules · 4 commandes CLI · dossier de
+  collaboration autonome et déplaçable.
+- **Sept accrétions retirées** de la V2 par audit contre les objectifs fondateurs : ~125 lignes et
+  **six concepts** — dont l'appareil d'approbation (6 concepts pour zéro conséquence mécanique) et le
+  mode de recherche externe (un mode indisponible, contraire à `POURQUOI` règle 3).
 - **Étape 0 close.** `conception/INVENTAIRE.md` v3 : **156 leçons** — 43 Code · 34 Prompt · 33 Règle · 23 Test · 23 Écarté.
 - Relecture Codex en deux passes, 42 observations, **toutes disposées** : 28 acceptées, 6 rejetées, 5 différées, 3 bloquantes. Détail dans `conception/DISPOSITION_RELECTURE.md`.
 - Les huit sources de `RECOLTE.md` sont dépouillées. `history.md` et `README.md` volontairement non ouverts — **Codex ne l'a pas contesté.**
@@ -67,4 +74,7 @@ identifiants exacts d'Opus 5 / Fable 5 sont déduits du code, pas mesurés. À f
 
 ## Blocages
 
-Aucun.
+- **B-2 reste à arbitrer** : `CONTEXT_ONLY` est incompatible avec Codex-en-B tant qu'une invocation sans
+  outils n'est pas démontrée ; `CONSULT` est une recommandation, pas une décision.
+- **Aucune CLI n'a jamais été lancée.** Les cinq points de `CONCEPTION_FINALE.md` §12.2 doivent être
+  mesurés avant de figer la spécification — le point 2 (réalité du mode sans outils) décide B-2.
