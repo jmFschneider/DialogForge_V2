@@ -5,7 +5,11 @@
 
 ## Ce fichier est l'étape 1 — pas l'étape en cours
 
-**L'étape en cours est la récolte : `RECOLTE.md`.** Elle passe d'abord, et la spécification ci-dessous ne prend en entrée que la colonne **Code** de l'inventaire qu'elle produit.
+**Récolte close le 2026-09-03.** `conception/INVENTAIRE.md` — 156 leçons, relues et disposées.
+
+La colonne **Code** (43 lignes) est le moteur de la structure. *Rectifié le 2026-09-03 :* le livrable 4
+a aussi besoin de la colonne **Prompt**, et le livrable 5 de la colonne **Test** — la formulation
+initiale « ne prend en entrée que la colonne Code » était trop étroite.
 
 Rien à coder tant que la spécification n'est pas arbitrée.
 

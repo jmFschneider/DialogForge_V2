@@ -8,13 +8,18 @@
 
 ## Prochaine action — une seule
 
-**L'étape 0 est close.** Ouvrir l'étape 1 : la spécification de `DEPART.md`, qui ne prend en entrée
-que la colonne **Code** de `conception/INVENTAIRE.md` — **43 lignes**.
+**Envoyer à Codex le prompt de `conception/PROMPT_STRUCTURE_CODEX.md`** — bloc unique, à copier tel quel.
 
-Deux points à traiter dans la spécification, pas avant :
+**Codex est A pour cette étape, Claude sera B.** Inversion assumée, cohérente avec `C15a`.
+Sa mission : vérifier la colonne Code contre le **code réel** — 4 931 lignes jamais ouvertes pendant
+la récolte — puis proposer la structure (les cinq livrables de `DEPART.md`).
 
-- **B-2, le contrat de B** — « aucun outil » est intenable depuis que B peut être Codex. Les trois termes à trancher sont posés en fin d'`INVENTAIRE.md`. *Reporté au troisième tour par le PO.*
-- La colonne **Code** plus longue que **Prompt** — *reporté après la phase 2.*
+Ensuite : critique par Claude, puis arbitrage humain **avant la première ligne de code**.
+
+Deux points qui ne se tranchent pas là :
+
+- **B-2, le contrat de B** — « aucun outil » est intenable depuis que B peut être Codex. Le prompt lui interdit de le refermer ; sa structure doit rester compatible avec les deux réponses. *Troisième tour.*
+- La colonne **Code** plus longue que **Prompt** — *après la phase 2.*
 
 ---
 
@@ -41,6 +46,14 @@ Deux points à traiter dans la spécification, pas avant :
 
 - La mission DialogForge `e35cfcf1-47e5-4354-a4b1-d40235b8e3cf` est **en pause**, pas annulée. Elle redémarrerait seule si on la reprenait (`dialogforge resume`). Ne pas la relancer sans décision.
 - Les quatre dossiers `C:\Projets\DialogForge*` et `C:\Projets\IAbinome` se référencent mutuellement. Point d'entrée du gel : `C:\Projets\DialogForge\ARRET_REFACTORING.md`.
+
+## Limite de preuve connue
+
+La récolte a lu des documents **qui parlent du code**, pas toujours le code. **4 931 lignes n'ont
+jamais été ouvertes** : `contracts.py` 857 · `subprocess_agent.py` 1109 · `codex.py` 675 · `claude.py`
+568 · `factory.py` 537 · `storage.py` 505 · `models.py` 303 · `base.py` 192 · `workflow.py` 119 ·
+`fake.py` 66. Plusieurs lignes de la colonne Code reposent donc sur des revues, pas sur la source.
+**C'est la première mission du prompt de Codex.**
 
 ## Blocages
 
