@@ -105,6 +105,31 @@ class TestParseReviewJsonBlock(unittest.TestCase):
         review = parse_review("\n  " + json.dumps(_VALID_REVIEW) + "  \n")
         self.assertEqual(review.decision, Decision.REVISER)
 
+    def test_sole_fenced_block_accepted(self) -> None:
+        review = parse_review("```json\n" + json.dumps(_VALID_REVIEW) + "\n```")
+        self.assertEqual(review.decision, Decision.REVISER)
+
+    def test_sole_fenced_block_without_language_accepted(self) -> None:
+        review = parse_review("```\n" + json.dumps(_VALID_REVIEW) + "\n```")
+        self.assertEqual(review.decision, Decision.REVISER)
+
+    def test_prefix_before_the_fence_rejected(self) -> None:
+        with self.assertRaises(ContractError):
+            parse_review("Voici :\n```json\n" + json.dumps(_VALID_REVIEW) + "\n```")
+
+    def test_suffix_after_the_fence_rejected(self) -> None:
+        with self.assertRaises(ContractError):
+            parse_review("```json\n" + json.dumps(_VALID_REVIEW) + "\n```\nMerci.")
+
+    def test_other_language_fence_rejected(self) -> None:
+        with self.assertRaises(ContractError):
+            parse_review("```python\n" + json.dumps(_VALID_REVIEW) + "\n```")
+
+    def test_two_fenced_blocks_rejected(self) -> None:
+        block = "```json\n" + json.dumps(_VALID_REVIEW) + "\n```"
+        with self.assertRaises(ContractError):
+            parse_review(block + "\n" + block)
+
     def test_bare_json_array_rejected(self) -> None:
         with self.assertRaises(ContractError):
             parse_review("[]")

@@ -137,9 +137,22 @@ def _check_ids(findings: list[Finding], prior_open_finding_ids: Collection[str])
         raise ContractError(f"constat(s) antérieur(s) disparu(s) : {sorted(missing)}")
 
 
+def _strip_sole_fence(text: str) -> str:
+    """Retire un unique bloc clôturé s'il couvre **toute** la réponse. Un
+    préfixe, un suffixe ou une étiquette de langage autre que `json` laissent
+    le texte intact — donc refusé plus bas, comme le veut §6."""
+    stripped = text.strip()
+    if not (stripped.startswith("```") and stripped.endswith("```")):
+        return stripped
+    first_line, _, rest = stripped.partition("\n")
+    if first_line[3:].strip() not in ("", "json"):
+        return stripped
+    return rest[: rest.rfind("```")]
+
+
 def _parse_sole_json_object(text: str) -> dict[str, Any]:
     try:
-        raw = json.loads(text.strip())
+        raw = json.loads(_strip_sole_fence(text))
     except json.JSONDecodeError as exc:
         raise ContractError(f"JSON invalide : {exc}") from exc
     if not isinstance(raw, dict):
