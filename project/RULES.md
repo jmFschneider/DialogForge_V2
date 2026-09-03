@@ -32,6 +32,7 @@
 
 **Claude produit, Codex relit palier par palier — et réciproquement.**
 *Motif : économie de tokens côté Claude, et la revue croisée rattrape ce que l'auteur ne voit pas.*
+**Suspendue en étape 2 le 2026-09-03, décision du PO** : la conception a déjà été contredite cinq tours, et sa précision rend la relecture de code palier par palier peu rentable. **La règle reste valable pour la conception**, où elle a produit les huit remarques techniques toutes retenues. Réouverture si un palier révèle un défaut que la relecture aurait attrapé.
 
 **Le contradicteur reçoit une consigne d'omission, pas une consigne de qualité :** « qu'est-ce qui a été écarté en silence ? »
 *Motif : c'est la seule vérification sérieuse qu'une récolte n'a rien perdu ; relire son propre travail ne la remplace pas.*

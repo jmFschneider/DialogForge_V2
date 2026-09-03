@@ -52,7 +52,8 @@ Toute demande qui commence par « et si on ajoutait un petit contrôle pour… �
 
 - **Étape 1 — spécification.** Produire ce qui reste, ce qui tombe, la disposition des fichiers, la surface CLI, les gabarits de prompts repris. **Arbitrage humain avant la première ligne de code.**
 - **Étape 2 — implémentation.** ~1 500 lignes + tests.
-- Claude produit, **Codex relit palier par palier**. Construire l'outil avec son propre protocole est la démonstration qu'il n'a jamais eu besoin de machinerie.
+- Claude produit. Construire l'outil avec son propre protocole est la démonstration qu'il n'a jamais eu besoin de machinerie.
+- **La relecture Codex palier par palier est suspendue depuis le 2026-09-03** — décision du PO : la conception est assez précise pour s'en passer. Portée et condition de réouverture dans `project/RULES.md`.
 
 ## 4. Sources — en lecture seule
 

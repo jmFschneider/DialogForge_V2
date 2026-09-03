@@ -18,7 +18,7 @@ Le point 5 — délai et terminaison d'arbre sous Windows — est désormais **c
 automatisé** (`test_transport.py`, `TestProcessTree`) : il reste à observer le comportement d'une vraie
 CLI d'agent, pas celui du mécanisme.
 
-### Alerte budget — à surveiller, pas encore bloquante
+### Budget — arbitré le 2026-09-03 : on continue
 
 | | Lignes |
 |---|---:|
@@ -29,11 +29,14 @@ CLI d'agent, pas celui du mécanisme.
 | **Projection si le reste tient son budget** | **1 672** |
 | Bande acceptable §11 | 1 350 – 1 550 |
 
-**La bande n'est pas dépassée aujourd'hui — la projection, si.** La règle de coupe §11 ne s'ouvre qu'au
-dépassement réel ; d'ici là, les quatre modules restants se tiennent à leur budget ou l'écart se
-rediscute. **Premier point de mesure : la clôture du palier 3.** Si `workflow.py` dépasse 175 lignes,
-appliquer les coupes §11 dans l'ordre (1. sorties de confort dont `status --json` · 2. abstractions à
-un seul appelant · 3. détection lexicale · 4. métadonnées d'origine facultatives · 5. arbitrage).
+**La bande n'est pas dépassée aujourd'hui — la projection, si. Le PO a arbitré le 2026-09-03 : on
+continue.** La règle de coupe §11 ne s'ouvre donc toujours qu'au dépassement **réel** de 1 550, et la
+garde de fond reste `POURQUOI` règle 1 — l'outil ne dépasse jamais le projet qu'il sert (FloraPi,
+58 894 lignes).
+
+**Point de mesure conservé : la clôture du palier 3.** Si `workflow.py` dépasse 175 lignes, appliquer
+les coupes §11 dans l'ordre (1. sorties de confort dont `status --json` · 2. abstractions à un seul
+appelant · 3. détection lexicale · 4. métadonnées d'origine facultatives · 5. arbitrage).
 
 ### Palier 1 — les cinq modules purs — CLOS le 2026-09-03
 
@@ -88,8 +91,10 @@ attendu). `models.py` 301 · `storage.py` 76 · `lock.py` 108 · `contracts.py` 
 frontière de l'OS et où le test ne rattrape pas une erreur.*
 **4.** `prompts.py` · `adapters/` (après caractérisation) · `cli.py`.
 
-**Codex n'a encore relu aucun palier.** `CLAUDE.md` §3 : « Claude produit, Codex relit palier par
-palier ». Les paliers 1 et 2 sont en attente de cette relecture.
+**La relecture Codex palier par palier est suspendue** — décision du PO le 2026-09-03 : la conception
+a déjà été contredite cinq tours, sa précision rend la relecture de code peu rentable. Aucun palier
+n'est donc en attente. **La règle reste valable pour la conception** (`RULES.md`). Réouverture si un
+palier révèle un défaut que la relecture aurait attrapé.
 
 ---
 

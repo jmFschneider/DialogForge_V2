@@ -414,3 +414,37 @@ vraisemblablement dans `workflow.py`. Le dépassement propre au transport est do
 CLI n'a jamais été lancée, c'est une manipulation humaine hors suite, et le point 2 décide B-2.
 
 **Codex n'a relu aucun palier.** `CLAUDE.md` §3 en fait le protocole ; les paliers 1 et 2 attendent.
+
+---
+
+## 2026-09-03 (PO) — Deux arbitrages : relecture Codex et budget
+
+### Décisions
+
+1. **La relecture Codex palier par palier est suspendue pour l'étape 2.** Motif du PO, à la suite
+   d'une recherche menée le même jour : **la conception est très précise**. Elle a été contredite
+   cinq tours avant la première ligne de code, et la dernière revue technique — huit remarques,
+   toutes retenues — ne portait déjà plus sur des choix mais sur des défauts vérifiables. La règle
+   **reste valable pour la conception**, où elle a payé ; c'est la relecture de **code** palier par
+   palier qui tombe. `CLAUDE.md` §3 et `RULES.md` amendés, non effacés.
+   **Réouverture si un palier révèle un défaut que la relecture aurait attrapé.**
+2. **Budget : on continue.** 1 002 lignes écrites pour 760 budgétés, projection à 1 672 contre une
+   bande de 1 350 – 1 550. La bande n'étant pas dépassée en réel, la règle de coupe §11 ne s'ouvre
+   pas. Point de mesure conservé à la clôture du palier 3. La garde de fond reste `POURQUOI` règle 1.
+
+### Ce que ça retire, en échange
+
+La suspension retire le seul dispositif qui, jusqu'ici, a rattrapé ce que l'auteur ne voyait pas —
+`RULES.md` le dit en toutes lettres. **Ce qui reste pour tenir ce rôle** : la spécification écrite
+avant le code, `ruff` et `mypy --strict` à chaque commit, et la suite de tests. Les deux écarts et le
+trou trouvés au palier 2 l'ont été en écrivant, pas par une revue — c'est un indice, pas une preuve,
+que ça suffit.
+
+### Commits
+
+`docs: acter la suspension de la relecture Codex et l arbitrage de budget`
+
+### À retenir
+
+**Prochaine action inchangée : la caractérisation des deux CLI (§12.2).** Elle ne dépend d'aucune de
+ces deux décisions.
