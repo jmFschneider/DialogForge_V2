@@ -25,6 +25,28 @@ class TestNormalize(unittest.TestCase):
         self.assertEqual(result.text, "contenu\n")
         self.assertEqual(result.transformations, ("bom_removed",))
 
+    def test_crlf_normalized_and_recorded(self) -> None:
+        """Une CLI d'agent écrit en mode texte : sous Windows, elle rend `\\r\\n`,
+        et la balise de première ligne ne serait jamais reconnue."""
+        result = normalize("IABINOME:DOCUMENT\r\ncorps\r\n")
+        self.assertEqual(result.text, "IABINOME:DOCUMENT\ncorps\n")
+        self.assertEqual(result.transformations, ("crlf_normalized",))
+
+    def test_bom_and_crlf_both_recorded(self) -> None:
+        result = normalize("﻿a\r\nb")
+        self.assertEqual(result.text, "a\nb")
+        self.assertEqual(result.transformations, ("bom_removed", "crlf_normalized"))
+
+    def test_lone_carriage_return_left_alone(self) -> None:
+        """Seule la fin de ligne `\\r\\n` est traitée : un `\\r` isolé vient d'une
+        sortie de progression, pas d'une fin de ligne, et reste du texte."""
+        result = normalize("a\rb")
+        self.assertEqual(result.text, "a\rb")
+        self.assertEqual(result.transformations, ())
+
+    def test_sha256_computed_after_crlf_normalized(self) -> None:
+        self.assertEqual(normalize("a\r\nb").sha256, normalize("a\nb").sha256)
+
     def test_sha256_deterministic(self) -> None:
         a = normalize("meme contenu")
         b = normalize("meme contenu")

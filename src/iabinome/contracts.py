@@ -36,13 +36,24 @@ class Normalized:
 
 
 def normalize(raw: str) -> Normalized:
-    """BOM en tête toléré, retiré et consigné comme transformation ; le
-    reste passe tel quel. L'empreinte porte sur le texte normalisé."""
+    """BOM en tête et fins de ligne `\\r\\n` tolérés, retirés, et consignés
+    comme transformations ; le reste passe tel quel. L'empreinte porte sur le
+    texte normalisé.
+
+    §0.1 : tout est écrit en UTF-8 sans BOM, fins de ligne `\\n`, y compris sous
+    Windows. Une CLI d'agent y écrit pourtant en mode texte, donc en `\\r\\n` —
+    mesuré le 2026-09-03 — et la balise `IABINOME:DOCUMENT` de la première ligne
+    ne serait alors jamais reconnue. Le brut, lui, reste intact sur le disque :
+    c'est cette copie-ci qui est normalisée, pas la preuve.
+    """
     text = raw
     transformations: list[str] = []
     if text.startswith("﻿"):
         text = text[1:]
         transformations.append("bom_removed")
+    if "\r\n" in text:
+        text = text.replace("\r\n", "\n")
+        transformations.append("crlf_normalized")
     digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
     return Normalized(text=text, transformations=tuple(transformations), sha256=digest)
 
