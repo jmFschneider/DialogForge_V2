@@ -1,0 +1,29 @@
+La sortie attendue suit un schéma précis (avec `decision`, `analysis`, `id`, `disposition`) différent de celui de l'outil ReportFindings ; je réponds donc directement en JSON brut, comme demandé.
+
+```json
+{"schema_version": 1,
+ "decision": "REVISER",
+ "analysis": "Le document est bien sourcé et ses citations vérifiées (lignes, empreintes SHA-256 du manifeste recalculées et concordantes) sont exactes. Mais il passe à côté d'une contradiction textuellement exacte du corpus qui répond directement à la question posée : RULES.md affirme en ligne 4 que les règles fondatrices « n'ont pas à être répétées ici », puis répète mot pour mot deux des cinq règles de POURQUOI.md dans sa section « Conduite de projet » (lignes 163 et 166 ≈ POURQUOI.md lignes 34 et 41). C'est potentiellement la meilleure illustration du corpus qu'appliquer une règle (ne pas dupliquer) laisserait une garde opérationnelle hors de vue, alors que la dupliquer — ce qui a été fait — enfreint cette même règle. La tension 1 retenue (revue croisée) est en outre bâtie sur une seule entrée (règle + son propre mémo de suspension), pas sur deux règles indépendantes citées textuellement comme l'exige la demande — la règle concurrente réelle (POURQUOI règle 2, « qu'est-ce que je retire en échange ? ») n'est jamais ancrée dans cette section. Une quatrième tension plausible, entre la métrique de garde (~1500 lignes) et l'imprécision mesurée des estimations (facteur 2 à 5, RULES.md lignes 125-126), n'est ni retenue ni écartée explicitement. Enfin, la réserve la plus importante du document — que le corpus ne montre aucune tension ayant effectivement reproduit l'échec fondateur — n'apparaît qu'en toute fin, alors que la « Conclusion » en tête laisse entendre une réponse plus tranchée qu'elle ne l'est. Ces manques sont réparables par une révision ciblée ; aucun ne requiert d'information humaine indisponible dans le corpus.",
+ "findings": [
+   {"id": "B-doublon-001",
+    "severity": "MAJOR",
+    "disposition": "OPEN",
+    "statement": "RULES.md viole sa propre règle de non-répétition (ligne 4) en recopiant mot pour mot deux règles de POURQUOI.md (l.163/166 ≈ POURQUOI.md l.34/41), une tension textuellement exacte que le document ne relève pas."},
+   {"id": "B-suspension-002",
+    "severity": "MAJOR",
+    "disposition": "OPEN",
+    "statement": "La tension 1 cite une règle et le mémo de sa propre suspension comme si c'étaient deux règles indépendantes, sans ancrer textuellement la règle concurrente (p. ex. POURQUOI règle 2) exigée par la demande."},
+   {"id": "B-metrique-003",
+    "severity": "MAJOR",
+    "disposition": "OPEN",
+    "statement": "Le document omet une tension plausible entre la métrique de garde (~1500 lignes, POURQUOI règle 1) et le constat mesuré que les estimations de lignes se trompent d'un facteur 2 à 5 (RULES.md l.125-126)."},
+   {"id": "B-lecture-004",
+    "severity": "MINOR",
+    "disposition": "OPEN",
+    "statement": "La section 3 n'exploite pas RULES.md ligne 4 (« les règles fondatrices... n'ont pas à être répétées ici »), qui borne pourtant directement l'hypothèse déjà avancée sur le déclencheur de la tension lectures/non-redondance."},
+   {"id": "B-conclusion-005",
+    "severity": "MINOR",
+    "disposition": "OPEN",
+    "statement": "La réserve centrale — le corpus ne montre aucune tension ayant reproduit l'échec fondateur — n'apparaît qu'en fin de document, alors que la « Conclusion » en tête suggère une réponse plus établie qu'elle ne l'est."}
+ ]}
+```

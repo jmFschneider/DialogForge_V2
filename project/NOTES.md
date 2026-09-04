@@ -8,25 +8,39 @@
 
 ## Prochaine action — une seule
 
-**Lot 11 : validations réelles et `GUIDE.md`. Bloqué sur une décision du PO — appels payants.**
-Les **lots 1 à 10 sont faits** (`project/correctifs/2026-09-04-plan-correctif-audit-v2.md`), et les
-onze constats de l'audit sont fermés sauf C-11. Rien d'autre n'est à coder.
+**Trancher §6 de `conception/OBSERVATIONS_MISSION_REELLE.md` : le bloc JSON clôturé précédé d'une
+phrase.** En mission réelle, B a rendu une revue substantiellement excellente précédée d'une phrase
+expliquant son choix de format ; `_strip_sole_fence` n'extrait un bloc que s'il couvre **toute** la
+réponse, donc refus — **conforme à la conception** (§6, « jamais de défaut permissif »), et une revue
+de 231 s jetée. Trois voies exclusives y sont écrites : statu quo · accepter un bloc `json` **unique**
+même entouré de prose · durcir le prompt de B. **Arbitrage coût contre principe, pas sûreté** : rien
+n'est dangereux, la réponse brute est préservée et `--retry-call` refait le seul appel perdu.
 
-Ce que le lot 11 demande, une fois l'autorisation donnée : déplacement d'une collaboration en cours
-d'usage puis reprise · une mission de **conception** et une de **recherche**, dans deux permutations
-différentes, **dans une collaboration jetable hors de tout dossier de valeur** (C-06 est ouvert) ·
-re-caractérisation des versions installées (`2.1.260` / `0.153.2`) · consignation des versions, des
-`invocation_args`, des commandes, des incidents, du coût et de la **friction du manifeste de corpus** ·
-puis `GUIDE.md`, **une page, écrite après** — prescrire une commande qu'on n'a pas lancée est
-justement ce que `RULES.md` interdit.
+Ensuite seulement : relancer la revue de la mission de recherche (`ERROR`, relançable ; la
+collaboration a **déjà été déplacée**, dans le dossier temporaire de session), puis `GUIDE.md`.
 
-**Second point à soumettre : la taille, rouverte le 2026-09-04 et non tranchée.** Voir le budget
-ci-dessous ; la question posée au PO est *qu'est-ce qu'on retire en échange ?*
+**`GUIDE.md` n'est toujours pas écrit, et c'est voulu.** La mission de conception en a produit un
+brouillon de 125 lignes — `conception/essais/2026-09-04-livrable-guide-brouillon.md` — mais B lui
+oppose **six constats ouverts** (dépasse une page, annexe non demandée, exemple à marques
+substitutives). `AWAITING_APPROVAL` veut dire exactement cela : à arbitrer avant adoption.
 
-**La première mission réelle est repoussée après les lots 1 à 4** (lot 5 en plus pour une mission de
-recherche) — arbitré le 2026-09-04. Motif : l'audit Codex montre qu'un second `run` en `WAITING_HUMAN`
-déclenche un **appel payant non demandé** et qu'un `resume` concurrent modifie la collaboration en
-annonçant un échec. Observer maintenant mesurerait ces défauts, pas la friction cherchée.
+---
+
+## Lot 11 — ce qui est fait, ce qui reste
+
+**Fait le 2026-09-04, deux missions payantes, neuf appels, 765 s** — journal complet dans
+`conception/OBSERVATIONS_MISSION_REELLE.md`, sorties réelles dans `conception/essais/`.
+
+- **Conception** (A = outil 1, B = outil 2) : allée au bout, `AWAITING_APPROVAL`, code `0`.
+- **Recherche** (A = outil 2, B = outil 1) : `ERROR` en `REVIEW_B`, cause de forme — voir ci-dessus.
+- **Déplacement en cours d'usage vérifié**, et **aucun chemin absolu persisté**.
+- **Deux défauts de prompt trouvés et corrigés** (`ea8a009`, `8b96d77`) : sans eux, **aucune mission ne
+  pouvait aller au bout**. Détail en §5 du journal.
+- **La prémisse de D-2 est fausse pour outil 1** : quota rendu sur `stdout` avec code `0`. Décision
+  conservée, motif corrigé.
+
+**Reste :** la revue de recherche à relancer · les permutations `1→1` et `2→2` · une boucle de révision
+réelle (`--max-revisions 0` cette fois) · `CONTEXT_ONLY` jamais essayé · `GUIDE.md`.
 
 ---
 

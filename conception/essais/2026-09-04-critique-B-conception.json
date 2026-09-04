@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "decision": "REVISER",
+  "analysis": "Le fond couvre presque toute la surface demandée, mais le livrable n’est ni limité au seul `GUIDE.md` ni crédiblement contenu sur une page. L’exemple principal n’est pas directement utilisable, et plusieurs formulations ajoutées créent des ambiguïtés sur les sources externes, le corpus et la reprise après interruption.",
+  "findings": [
+    {
+      "id": "B-format-001",
+      "severity": "MAJOR",
+      "disposition": "OPEN",
+      "statement": "La proposition dépasse manifestement la contrainte d’une page avec huit sections, un tableau et environ 110 lignes."
+    },
+    {
+      "id": "B-perimetre-002",
+      "severity": "MAJOR",
+      "disposition": "OPEN",
+      "statement": "L’annexe de production, ses preuves et ses recommandations ne font pas partie du `GUIDE.md` demandé et transforment le livrable en dossier de conception."
+    },
+    {
+      "id": "B-exemple-003",
+      "severity": "MAJOR",
+      "disposition": "OPEN",
+      "statement": "L’exemple annoncé comme complet emploie `ADAPTATEUR_1` et `ADAPTATEUR_2`, qui sont des placeholders plutôt que des valeurs concrètes permettant une exécution immédiate."
+    },
+    {
+      "id": "B-sources-004",
+      "severity": "MAJOR",
+      "disposition": "OPEN",
+      "statement": "L’affirmation absolue selon laquelle l’outil ne consulte aucune source externe entre en tension avec la description de `consult`, où B conserverait sans restriction explicite les capacités de son outil."
+    },
+    {
+      "id": "B-corpus-005",
+      "severity": "MINOR",
+      "disposition": "OPEN",
+      "statement": "Dire que le corpus contient exactement ce que l’utilisateur a déposé est imprécis puisque seuls les chemins explicitement inscrits dans le manifeste appartiennent au corpus."
+    },
+    {
+      "id": "B-reprise-006",
+      "severity": "MINOR",
+      "disposition": "OPEN",
+      "statement": "La promesse « rien n’est perdu » après Ctrl-C ou fermeture du terminal n’est pas établie et masque qu’un état `INTERRUPTED` exige une relance explicitement motivée."
+    }
+  ]
+}

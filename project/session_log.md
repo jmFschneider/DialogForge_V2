@@ -863,3 +863,61 @@ permis d'enchaîner dix lots sans relire le plan en entier.
 **État à la reprise :** 2 659 lignes brutes / 1 793 effectives, **255 tests verts** + 2 ignorés,
 `ruff` et `mypy --strict` verts, arbre propre. Deux décisions attendent le PO : l'autorisation
 d'appels payants (lot 11) et la taille (rouverte, non tranchée).
+
+---
+
+## 2026-09-04 (soir) — Lot 11 : deux missions réelles, et ce qu'elles ont trouvé
+
+**Scope :** « on enchaîne sur un essai avec un test grandeur nature ». Autorisation d'appels payants
+donnée. Sujet arbitré : IAbinome par lui-même, cycle court (`--max-revisions 0`).
+
+**Décision du PO sur la taille, en ouverture de session : « rien tout simplement ».** La condition
+rouverte le matin est refermée, sans condition de réouverture.
+
+### Résultat
+
+**Neuf appels, 765 s, deux permutations.** La conception (A = outil 1, B = outil 2) est allée au bout :
+`AWAITING_APPROVAL`, code `0`, livrable de 125 lignes. La recherche (A = outil 2, B = outil 1) s'est
+arrêtée en `ERROR` sur une cause de forme, décrite ci-dessous. Journal complet :
+`conception/OBSERVATIONS_MISSION_REELLE.md` ; sorties réelles conservées dans `conception/essais/`.
+
+### Les deux défauts, et pourquoi 259 tests verts ne les voyaient pas
+
+1. **`_A_REVISION` et `_A_FINAL` ne portaient pas les balises.** Ils disaient « rends DOCUMENT » quand
+   le contrat exige `IABINOME:DOCUMENT`. A a obéi littéralement. **Aucune mission ne pouvait aller au
+   bout**, et l'échec tombait au dernier appel, après avoir payé tous les autres.
+2. **Le prompt interdisait à A de lire son propre corpus.** « Tu ne modifies aucun fichier et
+   n'exécutes rien » : A a demandé à l'humain de coller le contenu des trois fichiers. La conception
+   promet l'inverse — le `cwd` est donné pour qu'il y lise.
+
+**`FakeAdapter` émet la bonne balise quoi qu'on lui demande : il ne lit pas le prompt.** Aucun test à
+faux agent ne pouvait voir un défaut de gabarit. `tests/test_prompts.py` lit désormais les gabarits.
+
+### Ce que la mécanique a tenu, elle
+
+`invocation_args` conforme à D-6b · `status` en lecture seule sous verrou tenu · **la table de relance
+N-01 a servi pour de vrai** et conservé deux appels déjà payés · `resume --answer` avec archive par
+copie · **déplacement d'une collaboration en cours d'usage**, aucun chemin absolu persisté · codes de
+sortie D-5 observés · aucun rejeu automatique dans aucun des deux échecs.
+
+### Un motif écrit qui s'est révélé faux
+
+**D-2 posait que quota épuisé rend `1` chez les deux outils. Faux pour outil 1 :** message sur `stdout`
+avec code `0`. Le garde-fou ne l'attrape pas, et le cycle finit en `CONTRACT_ERROR` — le diagnostic
+trompeur que D-2 disait éviter. Décision conservée, motif corrigé, reconnaissance de quota laissée
+hors du programme (§8 interdit de lire le texte du fournisseur).
+
+### Commits
+
+`ea8a009` balises des prompts de révision et finalisation · `8b96d77` lecture du corpus autorisée ·
+`8a5b40b` prémisse de D-2 et trois règles.
+
+### À retenir
+
+**Le grandeur nature a trouvé, en une soirée, deux défauts qu'aucune suite de tests ne pouvait voir —
+et l'un des deux rendait l'outil incapable de terminer une seule mission.** Le protocole, lui, a tenu
+sur chacun des deux échecs : réponse brute préservée, incident nommé, aucun rejeu, relance ciblée. Ce
+n'est pas la boucle A/B qui était fragile, ce sont les mots qu'on lui donnait.
+
+**Une décision attend le PO** : le bloc JSON clôturé précédé d'une phrase (§6 du journal). Coût contre
+principe, pas sûreté.
