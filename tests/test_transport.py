@@ -216,6 +216,52 @@ class TestProcessTree(TransportCase):
         self.assertFalse(marker.exists(), "un descendant a survecu a la terminaison")
 
 
+class TestBoundedCleanup(TransportCase):
+    """D-7 : la phase de nettoyage est **bornée**, et l'issue ne ment pas.
+
+    Mesuré avant correctif : parent sorti immédiatement, descendant tenant les
+    tubes 22 s → `run()` rendait après **22,11 s** en annonçant `COMPLETED`,
+    `resultat.json` présent. La terminaison n'avait ni borné la durée, ni changé
+    l'issue : chaque pompe recevait le délai plein, deux fois, et
+    `_terminate_tree` ajoutait le sien.
+    """
+
+    def test_a_descendant_holding_the_pipes_is_bounded_and_named(self) -> None:
+        # Dossier à part, nettoyage tolérant : le fil démon garde `stdout.txt`
+        # ouvert jusqu'à la fin réelle du descendant, et Windows refuse alors
+        # d'effacer le fichier. C'est la conséquence assumée de ne pas fermer un
+        # descripteur sous un lecteur vivant, pas une fuite.
+        tmp = TemporaryDirectory(ignore_cleanup_errors=True)
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        call_dir = root / "appel"
+        call_dir.mkdir()
+        held = 15.0
+        self.assertGreater(
+            held, transport.CLEANUP_LIMIT_SECONDS,
+            "le descendant doit tenir plus longtemps que la borne, sinon le test ne prouve rien",
+        )
+        started = time.monotonic()
+        result = transport.run(
+            fakes.command(
+                child_marker=str(root / "petit-fils.txt"),
+                child_delay_seconds=held,
+                sleep_seconds=0.0,
+            ),
+            cwd=root, call_dir=call_dir, timeout_seconds=60.0,
+        )
+        elapsed = time.monotonic() - started
+        self.assertIs(result.outcome, Outcome.STREAMS_UNCLOSED)
+        self.assertFalse(
+            (call_dir / "resultat.json").exists(),
+            "resultat.json affirmerait des flux complets sur des fichiers ouverts",
+        )
+        # La durée suit la **borne**, pas le descendant : c'est tout l'objet du
+        # lot. La marge absorbe la lenteur d'une machine chargée.
+        self.assertLess(elapsed, held - 2.0)
+        self.assertLess(elapsed, transport.CLEANUP_LIMIT_SECONDS + 5.0)
+
+
 class TestInterruption(TransportCase):
     def test_ctrl_c_terminates_and_keeps_the_call_incomplete(self) -> None:
         with mock.patch("iabinome.transport.time.monotonic", new=_InterruptOnSecondCall()):

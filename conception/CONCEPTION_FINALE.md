@@ -303,8 +303,25 @@ protocole existe pour empêcher.*
   l'OS peut ne pas suffire. **On ne le promet donc pas.** L'état sur disque dit déjà `CALLING`, ce que
   la reprise sait traiter : **la correction ne dépend jamais d'un nettoyage à la fermeture.**
 - **Processus fournisseur orphelin** — possible dans ce dernier cas. Le PID de l'enfant est écrit dans
-  `pid.txt` du dossier d'appel dès le retour de `Popen`, **pour qu'un humain puisse le retrouver**.
-  IAbinome ne le pourchasse pas au démarrage suivant : ce serait une surveillance, donc un worker.
+  `pid.txt` du dossier d'appel dès le retour de `Popen`, **pour qu'un humain retrouve l'enfant tant
+  qu'il vit**. Ce n'est **pas** le moyen de retrouver un orphelin : dans ce scénario-là, c'est
+  justement ce PID qui est mort et sa descendance qui survit. IAbinome ne la pourchasse pas au
+  démarrage suivant : ce serait une surveillance, donc un worker.
+
+**Nettoyage borné, et qui ne ment pas.** La phase de nettoyage tient sous une borne **commune** — deux
+échéances absolues encadrant la tentative de terminaison, jamais un délai plein par flux. Un flux resté
+ouvert donne l'issue `STREAMS_UNCLOSED`, **aucun `resultat.json`**, et un incident : on ne sait pas si
+les flux sont complets, donc on ne l'écrit pas.
+
+*Mesuré avant correctif : parent sorti immédiatement, descendant tenant les tubes 22 s → `run()`
+rendait après **22,11 s** en annonçant `COMPLETED`, avec un `resultat.json` présent. La terminaison
+n'avait ni borné la durée ni changé l'issue. Mesuré après : `STREAMS_UNCLOSED` en **10,2 s** pour une
+borne annoncée de 12 s.*
+
+*Conséquence assumée, sous Windows : les descripteurs ne sont pas fermés tant qu'une pompe lit encore,
+si bien qu'un descendant survivant garde `stdout.txt` ouvert — le dossier de collaboration ne peut
+alors pas être effacé avant sa fin. Fermer sous un lecteur vivant n'accélérerait rien et pourrait
+bloquer le coordinateur.*
 
 *Deux statuts suffisent : `PREPARED`, `LAUNCHING` et `STARTED` avaient la même conséquence après
 crash, et `APPLIED` dupliquait la phase déjà persistée.*

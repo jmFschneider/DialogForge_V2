@@ -33,6 +33,14 @@ OUTPUT_LIMIT_BYTES = 8 * 1024 * 1024
 _CHUNK = 65536
 _POLL_SECONDS = 0.02
 _GRACE_SECONDS = 5.0
+_TERMINATE_WAIT_SECONDS = 2.0
+
+# Borne **tenue** de la phase de nettoyage : deux échéances communes encadrant
+# la tentative de terminaison. Elle est annoncée parce qu'elle est mesurée — la
+# version précédente accordait `_GRACE_SECONDS` à chaque pompe, deux fois, plus
+# l'attente de `_terminate_tree` : un descendant tenant les tubes 22 s faisait
+# rendre `run()` après 22,11 s, en annonçant `COMPLETED` (D-7).
+CLEANUP_LIMIT_SECONDS = 2 * _GRACE_SECONDS + _TERMINATE_WAIT_SECONDS
 
 
 class TransportError(RuntimeError):
@@ -46,6 +54,7 @@ class Outcome(Enum):
     OUTPUT_LIMIT = "OUTPUT_LIMIT"
     TIMEOUT = "TIMEOUT"
     INTERRUPTED_BY_USER = "INTERRUPTED_BY_USER"
+    STREAMS_UNCLOSED = "STREAMS_UNCLOSED"
 
 
 @dataclass(frozen=True)
@@ -116,7 +125,10 @@ def run(
         threading.Thread(
             target=_feed, args=(proc.stdin, stdin_text.encode("utf-8")), daemon=True
         ).start()
-    # Dès le retour de Popen, pour qu'un humain retrouve un orphelin (§5).
+    # Dès le retour de Popen, pour qu'un humain retrouve **l'enfant tant qu'il
+    # vit**. Ce n'est pas le moyen de retrouver un orphelin : dans ce
+    # scénario-là, c'est justement ce PID qui est mort, et sa descendance qui
+    # survit (D-7).
     storage.write_atomic_text(call_dir / "pid.txt", f"{proc.pid}\n")
     assert proc.stdout is not None and proc.stderr is not None
     pumps = (
@@ -125,24 +137,18 @@ def run(
     )
     for pump in pumps:
         pump.start()
+    unclosed = False
     try:
         outcome = _wait(proc, pumps, started + timeout_seconds)
     finally:
-        for pump in pumps:
-            pump.join(_GRACE_SECONDS)
-        if any(pump.is_alive() for pump in pumps):
-            # Un descendant tient encore les tubes après la sortie de l'enfant.
-            # Sans cette terminaison, `resultat.json` affirmerait « flux
-            # complets » sur des fichiers qui grossissent encore.
-            _terminate_tree(proc)
-            for pump in pumps:
-                pump.join(_GRACE_SECONDS)
-        proc.stdout.close()
-        proc.stderr.close()
+        unclosed = _drain(proc, pumps)
     # Un flux peut déborder dans ce qu'il restait à vider après la sortie.
     if outcome is Outcome.COMPLETED and any(p.overflowed for p in pumps):
         _terminate_tree(proc)
         outcome = Outcome.OUTPUT_LIMIT
+    if unclosed:
+        # On ne sait pas si les flux sont complets, donc on ne l'écrit pas.
+        outcome = Outcome.STREAMS_UNCLOSED
     result = CallResult(
         outcome=outcome,
         return_code=proc.returncode,
@@ -158,6 +164,43 @@ def run(
             json.dumps(result.to_dict(), ensure_ascii=False, indent=2) + "\n",
         )
     return result
+
+
+def _drain(proc: subprocess.Popen[bytes], pumps: tuple[_Pump, ...]) -> bool:
+    """Clôt la phase de nettoyage sous une borne tenue, et dit si un flux est
+    resté ouvert.
+
+    Deux **échéances absolues communes**, jamais un délai plein par pompe : la
+    version précédente accordait `_GRACE_SECONDS` à chacune, deux fois, plus
+    l'attente de `_terminate_tree`, et la phase durait bien plus que sa borne
+    annoncée — sans changer l'issue.
+
+    Les descripteurs ne sont **pas fermés tant qu'une pompe lit encore** :
+    fermer sous un lecteur vivant n'accélère rien, et peut bloquer le
+    coordinateur. Le descripteur et le fil démon vivent alors jusqu'à la fin
+    réelle du descendant.
+    """
+    if _joined_before(pumps, time.monotonic() + _GRACE_SECONDS):
+        _close(proc)
+        return False
+    # Un descendant tient encore les tubes après la sortie de l'enfant.
+    _terminate_tree(proc)
+    if _joined_before(pumps, time.monotonic() + _GRACE_SECONDS):
+        _close(proc)
+        return False
+    return True
+
+
+def _joined_before(pumps: tuple[_Pump, ...], deadline: float) -> bool:
+    for pump in pumps:
+        pump.join(max(0.0, deadline - time.monotonic()))
+    return not any(pump.is_alive() for pump in pumps)
+
+
+def _close(proc: subprocess.Popen[bytes]) -> None:
+    for stream in (proc.stdout, proc.stderr):
+        if stream is not None:
+            stream.close()
 
 
 def read_result(call_dir: Path) -> CallResult | None:
@@ -238,12 +281,16 @@ def _terminate_tree(proc: subprocess.Popen[bytes]) -> None:
     """Termine l'enfant **et sa descendance** : une CLI d'agent lance ses propres
     processus, et ne tuer que l'enfant laisserait l'arbre vivant."""
     if os.name == "nt":
-        subprocess.run(
-            ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-        )
+        try:
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=_TERMINATE_WAIT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            pass  # la borne de nettoyage prime sur la réussite de la terminaison
     else:  # branche POSIX écrite, non testée en V0.1 (§0.1)
         # PID négatif = groupe entier ; il vaut le PID de l'enfant grâce à
         # `start_new_session`. Signal 9 en clair : `signal.SIGKILL` n'existe pas
@@ -254,7 +301,7 @@ def _terminate_tree(proc: subprocess.Popen[bytes]) -> None:
             pass
     proc.kill()
     try:
-        proc.wait(timeout=_GRACE_SECONDS)
+        proc.wait(timeout=_TERMINATE_WAIT_SECONDS)
     except subprocess.TimeoutExpired:
         pass
 
