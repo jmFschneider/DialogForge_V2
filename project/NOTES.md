@@ -8,17 +8,20 @@
 
 ## Prochaine action — une seule
 
-**Lot 3 du plan correctif : codes de sortie** (D-5, table déjà tranchée)
-(`project/correctifs/2026-09-04-plan-correctif-audit-v2.md`). Lots 1 et 2 faits. Le lot 3 est court
-(~10 lignes dans `_drive`) et porte un piège nommé dans le plan :
-`tests/test_cli.py::test_retry_call_needs_a_non_empty_reason` **attend `0` après un `run` interrompu
-par délai — ce test fige le défaut** et doit attendre `3`. Puis lots 4 et 5.
+**Lot 11 : validations réelles et `GUIDE.md`. Bloqué sur une décision du PO — appels payants.**
+Les **lots 1 à 10 sont faits** (`project/correctifs/2026-09-04-plan-correctif-audit-v2.md`), et les
+onze constats de l'audit sont fermés sauf C-11. Rien d'autre n'est à coder.
 
-**À soumettre au PO avant le lot 3 — la projection de lignes est rouverte** (§5 et §6 du plan). La
-projection validée (~2 275 brutes) est dépassée avant le lot 3 : **2 285 aujourd'hui**. Les
-estimations du plan se sont révélées basses d'un facteur 2 à 5 sur les deux lots mesurés. En **code
-effectif** — la seule unité comparable aux ~1 500 de `POURQUOI.md` — on est à **1 601**, projection
-~1 900. Question à poser telle quelle : *qu'est-ce qu'on retire en échange ?*
+Ce que le lot 11 demande, une fois l'autorisation donnée : déplacement d'une collaboration en cours
+d'usage puis reprise · une mission de **conception** et une de **recherche**, dans deux permutations
+différentes, **dans une collaboration jetable hors de tout dossier de valeur** (C-06 est ouvert) ·
+re-caractérisation des versions installées (`2.1.260` / `0.153.2`) · consignation des versions, des
+`invocation_args`, des commandes, des incidents, du coût et de la **friction du manifeste de corpus** ·
+puis `GUIDE.md`, **une page, écrite après** — prescrire une commande qu'on n'a pas lancée est
+justement ce que `RULES.md` interdit.
+
+**Second point à soumettre : la taille, rouverte le 2026-09-04 et non tranchée.** Voir le budget
+ci-dessous ; la question posée au PO est *qu'est-ce qu'on retire en échange ?*
 
 **La première mission réelle est repoussée après les lots 1 à 4** (lot 5 en plus pour une mission de
 recherche) — arbitré le 2026-09-04. Motif : l'audit Codex montre qu'un second `run` en `WAITING_HUMAN`
@@ -41,11 +44,18 @@ le `lock_id`. Le verrou ne passe plus par `storage.write_atomic_text` — il cr�
 
 **`contracts.py`** — la normalisation CRLF→LF et l'acceptation du bloc JSON clôturé sont des
 **tolérances**, pas des correctifs à un défaut observé : les deux CLI rendent du `\n` et du JSON nu.
-Le brut reste intact sur le disque ; seule la copie est normalisée.
+Le brut reste intact sur le disque ; seule la copie est normalisée. `Normalized.transformations` et
+`had_bom` existent mais **ne sont consignés nulle part** (D-8b) — le diagnostic se refait en comparant
+`reponse_brute.txt` à la forme canonique. `Review.to_dict()` est cette forme canonique : c'est elle
+qui va dans `echanges/`, jamais le texte de B, qu'un bloc clôturé rendait illisible par `json.loads`.
 
 **`transport.py`** — `taskkill /F /T` sous Windows, `os.kill(-pid, 9)` sous POSIX (`SIGKILL` n'est pas
 nommé : absent de Windows, il ferait échouer `mypy`). La **branche POSIX est écrite et non testée**
-(§0.1). Le prompt passe par `stdin_text`, écrit dans un fil.
+(§0.1). Le prompt passe par `stdin_text`, écrit dans un fil. Depuis le lot 7 : nettoyage borné par
+**deux échéances communes** (`CLEANUP_LIMIT_SECONDS` = 12 s), issue `STREAMS_UNCLOSED` si un flux reste
+ouvert, et **les descripteurs ne sont pas fermés sous un lecteur vivant**. Conséquence assumée : sous
+Windows, un descendant survivant garde `stdout.txt` ouvert et le dossier ne peut pas être effacé avant
+sa fin — un test doit alors utiliser `TemporaryDirectory(ignore_cleanup_errors=True)`.
 
 **`workflow.py`** — `_Engine` porte le contexte du cycle plutôt que douze signatures. **Aucun compteur
 de garde sur la boucle** : `max_revisions` la borne, un compteur serait un quota interne. Les issues
@@ -99,30 +109,31 @@ mutation), et `status_marker` fait relire `etat.json` **par le processus lancé*
 
 ---
 
-## Budget — **condition rouverte le 2026-09-04 après le lot 2**, décision PO attendue
+## Budget — **rouvert le 2026-09-04, décision PO attendue** (les dix lots sont faits)
 
-La projection validée le matin (**~2 275 brutes**) est **dépassée avant le lot 3** : 2 285. Les deux
-lots mesurés ont coûté 2 à 5 fois leur estimation (lot 1 : 37 → 73 ; lot 2 : 30 → 142). Rien ne dit
-que les huit estimations restantes soient mieux calibrées.
+La projection validée le matin (**~2 275 brutes**) était fausse : le total est **2 659**. Les
+estimations lot par lot étaient basses d'un facteur 2 à 5 (+205 estimées, **+589 mesurées**).
 
 | Module | Visé (§11) | Brut | Code effectif |
 |---|---:|---:|---:|
-| `cli.py` | 155 | **225** | 178 |
-| `workflow.py` | 175 | **607** | 422 |
-| `models.py` | 130 | 301 | 220 |
-| `transport.py` | 160 | 265 | 191 |
-| `contracts.py` | 150 | 200 | 131 |
+| `workflow.py` | 175 | **674** | 485 |
+| `models.py` | 130 | 323 | 235 |
+| `transport.py` | 160 | 313 | 225 |
+| `cli.py` | 155 | 260 | 203 |
+| `contracts.py` | 150 | 232 | 152 |
 | `lock.py` | — | 181 | 120 |
+| `corpus.py` | — | 152 | 116 |
 | paquet `adapters/` | 230 | 178 | 99 |
-| **Total production (12/12)** | **~1 430** | **2 285** | **1 601** |
+| **Total production (12/12)** | **~1 430** | **2 659** | **1 793** |
 
-*Mesuré le 2026-09-04 après le lot 2. « Code effectif » = hors blanches, commentaires et docstrings
-(script jetable, `ast` + `tokenize`). Ratio 70 %, conforme au taux annoncé.*
+*Mesuré le 2026-09-04, lots 1 à 10 fermés. « Code effectif » = hors blanches, commentaires et
+docstrings (`ast` + `tokenize`). Ratio 67 %.*
 
-**Ce qu'il faut dire au PO :** contre les ~1 500 de `POURQUOI.md`, la mesure comparable est **1 601**,
-pas 2 285 — l'écart brut est à 65 % de la documentation, et ce projet documente le motif de chaque
-garantie par choix. Projection à terminaison : ~1 900 effectives. La question n'est pas « accepte-t-on
-le chiffre ? » mais **« qu'est-ce qu'on retire en échange ? »** — marge en lots 7, 9 et 10.
+**Ce qu'il faut dire au PO :** contre les ~1 500 de `POURQUOI.md`, la mesure comparable est **1 793,
+soit +20 %** — et non +77 % comme le brut le laisse croire. Les deux tiers de l'écart brut sont de la
+documentation : ce code porte le motif de chaque garantie, par choix, et c'est ce qui a permis de
+dérouler dix lots sans relire le plan en entier. La question n'est pas « accepte-t-on le chiffre ? »
+mais **« qu'est-ce qu'on retire en échange ? »**. Aucun des cinq interdits n'a été touché.
 
 **Jamais sacrifiés pour tenir un chiffre** (§11) : état strict · absence de rejeu automatique · délai
 dur et terminaison d'arbre · `fsync` et publication atomique · artefact avant transition · les quatre
@@ -133,14 +144,15 @@ permutations · registre de constats · porte `QUESTION` · terminal non ambigu.
 ## État courant
 
 - **Étapes 0 et 1 closes.** Spécification : `conception/CONCEPTION_FINALE.md`.
-- **Étape 2 : les quatre paliers sont écrits, testés, verts, committés (`61622a0`).** L'étape **n'est
-  pas close** : audit Codex du 2026-09-04, onze constats, dont deux bloquants — plan correctif en
-  onze lots, **tous les arbitrages tranchés**, dans
-  `project/correctifs/2026-09-04-plan-correctif-audit-v2.md`. **Lots 1 et 2 faits** ; C-01, C-02,
-  N-01 et N-02 fermés. Suite : 222 tests verts, `ruff` et `mypy --strict` verts.
-- **Codes de sortie (D-5, tranché le 2026-09-04)** : `0` AWAITING_APPROVAL · `1` refus avant mutation ·
-  `2` réservé à argparse · `3` INTERRUPTED · `4` ERROR · `5` WAITING_HUMAN. Décision du PO **contre
-  l'avis de Codex**, qui recommandait `0` pour WAITING_HUMAN.
+- **Étape 2 : les quatre paliers écrits, plus les dix lots correctifs de l'audit Codex.** **Lots 1 à
+  10 faits** — C-01 à C-10, N-01, N-02, D-4 à D-8 fermés. **C-11 seul reste ouvert** : il exige des
+  appels payants. Suite : **255 tests verts** + 2 ignorés (liens symboliques, privilège absent sur
+  cette machine), `ruff` et `mypy --strict` verts.
+- **Chaque correctif a été prouvé capable de voir son défaut** par neutralisation, un par un — tableau
+  complet dans le plan, §4. C'est la garantie que la suite n'est pas verte pour la mauvaise raison.
+- **Codes de sortie (D-5, tranché le 2026-09-04, appliqué au lot 3)** : `0` AWAITING_APPROVAL · `1`
+  refus avant mutation · `2` réservé à argparse · `3` INTERRUPTED · `4` ERROR · `5` WAITING_HUMAN.
+  Décision du PO **contre l'avis de Codex**, qui recommandait `0` pour WAITING_HUMAN.
 - **C-06 (frontière d'effets) est un risque accepté, pas un défaut à corriger** : les agents ne sont
   pas mécaniquement confinés. Tant qu'il est ouvert, toute mission réelle se fait dans une
   collaboration jetable, hors de tout dossier de valeur.

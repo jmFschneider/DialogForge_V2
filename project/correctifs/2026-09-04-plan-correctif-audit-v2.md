@@ -453,15 +453,38 @@ conditionne un éventuel durcissement ultérieur.
 |---|---|---|---:|---|
 | 1 — verrou atomique | C-02b, N-02 | **oui** | +73 *(mesuré)* | **fait** — suite verte, 202 tests |
 | 2 — porte d'état + intervention | C-01, C-02a, D-4, **N-01** | **oui** | +142 brut / **+64 effectif** *(mesuré, pour ~30 estimées)* | **fait** — suite verte, 222 tests |
-| 3 — codes de sortie | C-03, D-5 | **oui** | ~10 | à faire |
-| 4 — intégrité de reprise | C-05 | **oui** | ~25 | à faire |
-| 5 — corpus sous verrou | C-04 | **oui pour une mission de recherche** | ~37 | à faire |
-| 6 — validation numérique | C-08 | non | ~14 | à faire |
-| 7 — nettoyage borné | C-07, D-7 | non | ~14 | à faire |
-| 8 — classification des erreurs | C-10 | non | ~18 | à faire |
-| 9 — revue canonique | C-09, D-8 | non | ~16 | à faire |
-| 10 — frontière d'effets | C-06, D-6 | décision, pas correctif | ~4 + doc | à faire |
-| 11 — validations réelles et guide | C-11 | — | doc | à faire |
+| 3 — codes de sortie | C-03, D-5 | **oui** | ~10 | **fait** |
+| 4 — intégrité de reprise | C-05 | **oui** | ~25 | **fait** |
+| 5 — corpus sous verrou | C-04 | **oui pour une mission de recherche** | ~37 | **fait** |
+| 6 — validation numérique | C-08 | non | ~14 | **fait** |
+| 7 — nettoyage borné | C-07, D-7 | non | ~14 | **fait** |
+| 8 — classification des erreurs | C-10 | non | ~18 | **fait** |
+| 9 — revue canonique | C-09, D-8 | non | ~16 | **fait** |
+| 10 — frontière d'effets | C-06, D-6 | décision, pas correctif | ~4 + doc | **fait** |
+| 11 — validations réelles et guide | C-11 | — | doc | **bloqué : autorisation PO** |
+
+**Lots 1 à 10 fermés le 2026-09-04.** Suite : **255 tests verts** + 2 ignorés (liens symboliques,
+privilège absent sur cette machine), `ruff` et `mypy --strict` verts. Production : **2 659 lignes
+brutes / 1 793 en code effectif**.
+
+**Chaque correctif a été prouvé capable de voir son défaut**, un par un, par neutralisation :
+
+| Lot | Correctif neutralisé | Ce que la suite a montré |
+|---|---|---|
+| 2 | porte d'état | second `run` après `QUESTION` : `calls` `(1, 0)` → `(2, 1)` — A **et** B rappelés |
+| 2 | tolérance d'intégrité | le rejeu de `--answer` refusé **avant d'avoir pu réparer** |
+| 2 | archive idempotente | `demande.md.001` **et** `.002` après un arrêt injecté |
+| 4 | empreintes prompt/réponse | prompt et réponse substitués repris **sans un mot** |
+| 4 | empreintes de flux | `stdout.txt` altéré part au contrat et finit en `ERROR` |
+| 5 | contenu du corpus | fichier altéré, absent et surnuméraire passent **tous les trois** |
+| 6 | domaine du délai | un `run` à `timeout=0` laisse **partir un appel** |
+| 7 | borne de nettoyage | *(mesure directe)* 22,11 s en `COMPLETED` → **10,2 s** en `STREAMS_UNCLOSED` |
+| 8 | classification d'incident | `Popen` en échec sort en code 1 avec un état `RUNNING` |
+| 9 | revue canonique | le registre est **illisible par `json.loads`**, `severity` absente |
+
+**Le lot 11 reste entier et bloqué sur une décision** : il exige des appels payants. `GUIDE.md` n'est
+volontairement pas écrit d'avance — prescrire une commande qu'on n'a jamais lancée est exactement ce
+que `RULES.md` interdit.
 
 **Conditions avant la première mission réelle** (reprises de Codex, retenues) : lots 1 à 4 fermés ·
 lot 5 fermé pour toute mission de **recherche** · collaboration jetable et isolée tant que C-06 est
@@ -482,22 +505,22 @@ Le PO a validé l'augmentation le 2026-09-04. Chiffres tenus à jour par honnêt
 | | Brut | Code effectif |
 |---|---:|---:|
 | Production au moment du plan (12 modules) | 2 070 | 1 537 *(à HEAD du lot 1)* |
-| Lots 1 et 2, **mesurés** | +215 | +64 *(lot 2 seul ; lot 1 non recompté)* |
-| **Production après le lot 2** | **2 285** | **1 601** |
-| Reste estimé, lots 3 à 10 | ~+138 | ~+138 |
-| **Projection v2** | ~2 275 | — |
+| **Production, lots 1 à 10 fermés** | **2 659** | **1 793** |
+| Écart au plan | **+589** pour ~+205 estimées | +256 |
+| Projection v2, annoncée | ~2 275 | — |
 
-**La projection v2 est dépassée avant le lot 3, et elle est à rouvrir.** Deux faits, mesurés :
+**La projection v2 était fausse d'un facteur ~3 sur le brut, et le chiffre final est là.** Deux faits,
+mesurés — non plus extrapolés :
 
-- **Les estimations de ce plan sont basses d'un facteur 2 à 5** : lot 1, 37 estimées → 73 brutes ;
-  lot 2, 30 estimées → 142 brutes. Appliquer ce taux aux ~138 restantes donne **2 560 à 2 700 brutes**,
-  et non 2 275. Aucune raison de croire que les huit estimations restantes soient mieux calibrées que
-  les deux qui ont été vérifiées.
-- **Le brut n'est pas la bonne unité pour ce projet.** Mesuré ce jour : **1 601 lignes de code
-  effectif** pour 2 285 brutes — 70 %, le taux annoncé. L'écart brut du lot 2 est à **65 %** de la
-  documentation, parce que ce code porte le motif de chaque garantie. Contre l'objectif de ~1 500 de
-  `POURQUOI.md`, la mesure honnête est **1 601, pas 2 285** — et la projection à terminaison est de
-  l'ordre de **1 850 à 1 900 effectives**.
+- **Les estimations de ce plan étaient basses d'un facteur 2 à 5 lot par lot** : lot 1, 37 → 73 ;
+  lot 2, 30 → 142. Sur l'ensemble, +205 estimées contre **+589 mesurées**. La prévision par lot n'a
+  jamais été fiable ici, et il n'y a pas de raison de croire qu'elle le devienne : ce qui coûte, ce
+  n'est pas le correctif, c'est le motif écrit à côté.
+- **Le brut n'est pas la bonne unité pour ce projet.** Mesuré : **1 793 lignes de code effectif** pour
+  2 659 brutes — 67 %. Contre l'objectif de ~1 500 de `POURQUOI.md`, la mesure comparable est donc
+  **1 793, soit +20 %**, et non +77 % comme le brut le laisserait croire. L'écart est à deux tiers de
+  la documentation, parce que ce code porte le motif de chaque garantie — c'est un choix du projet,
+  pas une dérive, et c'est précisément ce qui a permis de reprendre ce plan sans le relire en entier.
 
 Trois choses restent vraies, et elles répondent au « nous sommes extrêmement loin du projet initial » :
 

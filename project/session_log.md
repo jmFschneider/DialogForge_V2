@@ -801,3 +801,65 @@ aucun lot ; l'avoir laissé au suivant aurait livré une version où `ERROR` ne 
 **État à la reprise :** 2 285 lignes brutes / 1 601 effectives, **222 tests verts** + 1 ignoré, `ruff`
 et `mypy --strict` verts. Lot 3 non commencé — court, mais il doit corriger un test qui fige le défaut
 (`tests/test_cli.py::test_retry_call_needs_a_non_empty_reason` attend `0`, doit attendre `3`).
+
+---
+
+## 2026-09-04 (suite) — Lots 3 à 10 : l'audit Codex refermé, sauf C-11
+
+**Scope déclaré :** « enchaînons sur les lots suivants ». Huit lots, huit commits.
+
+| Lot | Constat | Ce qui a changé |
+|---|---|---|
+| 3 | C-03 | Table D-5 dans `_drive`. Le test qui **figeait le défaut** (`0` après un délai) attend `3`. |
+| 4 | C-05 | `read_result` confronte `resultat.json` aux flux ; prompt et réponse confrontés à leurs empreintes **avant toute branche**. `IntegrityError` → `INTEGRITY_MISMATCH`. |
+| 5 | C-04 | `corpus.read_manifest` strict ; contrôle complet du **contenu** sous verrou, juste avant l'appel. |
+| 6 | C-08 | `positive_seconds` aux trois entrées ; `--max-revisions` ≥ 0 ; `schema_version: true` refusé. |
+| 7 | C-07, D-7 | `_drain` : deux échéances communes, `STREAMS_UNCLOSED`, descripteurs non fermés sous lecteur vivant. |
+| 8 | C-10 | Enveloppe par types nommés, sans capture globale de `ValueError` ; `LAUNCH_FAILED` et `DECODE_FAILED`. |
+| 9 | C-09, D-8 | `Review.to_dict()` canonique dans `echanges/` ; `revue_normalisee.json` sort de §7 ; D-8b appliqué. |
+| 10 | C-06, D-6 | `invocation_args` sans `argv[0]` ; frontière d'effets écrite comme **limite déclarée**. |
+
+### Les contre-épreuves, une par lot
+
+Chaque correctif a été neutralisé avant d'être cru. Aucune n'a été décevante :
+
+- **lot 4** — sans les empreintes, un prompt et une réponse **substitués** sont repris sans un mot ;
+  sans le contrôle de flux, un `stdout.txt` altéré part au contrat et finit en `ERROR` ;
+- **lot 5** — fichier altéré, absent et surnuméraire passent **tous les trois** ;
+- **lot 6** — un `run` à `timeout=0` **laisse partir un appel** ;
+- **lot 7** — mesure directe, hors suite : **22 s en `COMPLETED`** avant, **10,2 s en
+  `STREAMS_UNCLOSED`** après, pour une borne annoncée de 12 s ;
+- **lot 8** — un `Popen` en échec sortait en code 1 avec un état `RUNNING`, le faux « possiblement
+  payé » exactement ;
+- **lot 9** — le registre des constats est **illisible par `json.loads`** et sa `severity` absente.
+
+### Deux découvertes de plateforme, mises en règle
+
+- **`Path.glob` est insensible à la casse sous Windows.** Un test cherchait le dossier d'appel de B
+  par `glob("*B*")` : il a désigné celui de **A** dès que son UUID contenait un `b`. Le test passait
+  pour la mauvaise raison jusqu'à ce que la forme canonique le fasse échouer.
+- **Un descendant survivant garde `stdout.txt` ouvert**, donc le dossier n'est pas effaçable avant sa
+  fin. C'est la conséquence assumée de ne pas fermer un descripteur sous un lecteur vivant, pas une
+  fuite — documentée en §5, et le test concerné utilise `ignore_cleanup_errors=True`.
+
+### Ce qui reste
+
+**C-11 seul, et il est bloqué sur une décision : appels payants.** `GUIDE.md` n'est volontairement pas
+écrit d'avance — prescrire une commande qu'on n'a jamais lancée est ce que `RULES.md` interdit.
+
+### Commits
+
+`49a4254` porte d'état + intervention · `22992c4` codes de sortie · `77029bb` intégrité de reprise ·
+`a94e78d` corpus sous verrou · `5dabd67` paramètres numériques · `2fa2676` nettoyage borné ·
+`0ebe760` classification des erreurs · `0aec8e1` revue canonique · `421c0b9` frontière d'effets.
+
+### À retenir
+
+**Le brut n'est pas la bonne unité pour juger ce projet.** +589 lignes brutes pour ~205 estimées fait
+peur ; +256 en code effectif, pour un total de **1 793 contre les ~1 500 visés**, dit la vérité. Les
+deux tiers de l'écart sont le motif écrit à côté de chaque garantie — et c'est justement ce qui a
+permis d'enchaîner dix lots sans relire le plan en entier.
+
+**État à la reprise :** 2 659 lignes brutes / 1 793 effectives, **255 tests verts** + 2 ignorés,
+`ruff` et `mypy --strict` verts, arbre propre. Deux décisions attendent le PO : l'autorisation
+d'appels payants (lot 11) et la taille (rouverte, non tranchée).
