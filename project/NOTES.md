@@ -109,10 +109,15 @@ mutation), et `status_marker` fait relire `etat.json` **par le processus lancé*
 
 ---
 
-## Budget — **rouvert le 2026-09-04, décision PO attendue** (les dix lots sont faits)
+## Budget — **tranché le 2026-09-04 : rien n'est retiré. Question close.**
 
-La projection validée le matin (**~2 275 brutes**) était fausse : le total est **2 659**. Les
-estimations lot par lot étaient basses d'un facteur 2 à 5 (+205 estimées, **+589 mesurées**).
+**Décision du PO, mot pour mot : « rien tout simplement. Le nombre de lignes est encore tout à fait
+raisonnable. »** La condition rouverte le matin est donc **refermée**, et cette fois sans condition de
+réouverture : le chiffre final est mesuré, plus projeté, et il est accepté tel quel. Ne pas rouvrir ce
+débat sans un fait nouveau — une croissance venant d'ailleurs que des garanties déjà annoncées.
+
+Pour mémoire, la projection validée le matin (~2 275 brutes) était fausse : le total est **2 659**, et
+les estimations lot par lot étaient basses d'un facteur 2 à 5 (+205 estimées, **+589 mesurées**).
 
 | Module | Visé (§11) | Brut | Code effectif |
 |---|---:|---:|---:|
@@ -129,11 +134,10 @@ estimations lot par lot étaient basses d'un facteur 2 à 5 (+205 estimées, **+
 *Mesuré le 2026-09-04, lots 1 à 10 fermés. « Code effectif » = hors blanches, commentaires et
 docstrings (`ast` + `tokenize`). Ratio 67 %.*
 
-**Ce qu'il faut dire au PO :** contre les ~1 500 de `POURQUOI.md`, la mesure comparable est **1 793,
-soit +20 %** — et non +77 % comme le brut le laisse croire. Les deux tiers de l'écart brut sont de la
-documentation : ce code porte le motif de chaque garantie, par choix, et c'est ce qui a permis de
-dérouler dix lots sans relire le plan en entier. La question n'est pas « accepte-t-on le chiffre ? »
-mais **« qu'est-ce qu'on retire en échange ? »**. Aucun des cinq interdits n'a été touché.
+**Motif retenu :** contre les ~1 500 de `POURQUOI.md`, la mesure comparable est **1 793, soit +20 %** —
+et non +77 % comme le brut le laisse croire. Les deux tiers de l'écart brut sont de la documentation :
+ce code porte le motif de chaque garantie, par choix, et c'est ce qui a permis de dérouler dix lots
+sans relire le plan en entier. Aucun des cinq interdits n'a été touché.
 
 **Jamais sacrifiés pour tenir un chiffre** (§11) : état strict · absence de rejeu automatique · délai
 dur et terminaison d'arbre · `fsync` et publication atomique · artefact avant transition · les quatre

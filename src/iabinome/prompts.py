@@ -51,16 +51,17 @@ Le JSON de revue v1 a exactement cette forme, sans clé en plus :
                "statement": "le constat, en une phrase"}]}"""
 
 _A_REVISION = """\
-Tu es A. Rends QUESTION si un constat révèle une information humaine indispensable.
-Sinon rends DOCUMENT, puis une version complète qui traite la critique sans masquer
-les désaccords ni les limites restantes. Ne réponds pas point par point à la place
-du livrable."""
+Tu es A. Commence par IABINOME:QUESTION si un constat révèle une information humaine
+indispensable. Sinon commence par IABINOME:DOCUMENT, puis donne une version complète
+qui traite la critique sans masquer les désaccords ni les limites restantes. Ne
+réponds pas point par point à la place du livrable."""
 
 _A_FINAL = """\
-Tu es A. Rends QUESTION s'il manque encore une information humaine indispensable.
-Sinon rends DOCUMENT, puis le document final autonome à partir de la version
-courante. Intègre les apports utiles sans raconter le dialogue. Garde visibles les
-incertitudes, les non-décisions et les constats encore ouverts."""
+Tu es A. Commence par IABINOME:QUESTION s'il manque encore une information humaine
+indispensable. Sinon commence par IABINOME:DOCUMENT, puis donne le document final
+autonome à partir de la version courante. Intègre les apports utiles sans raconter le
+dialogue. Garde visibles les incertitudes, les non-décisions et les constats encore
+ouverts."""
 
 _CORPUS = "Le corpus local est un instantané du {date}, sous corpus/fichiers/."
 _CONTEXT_ONLY = (
