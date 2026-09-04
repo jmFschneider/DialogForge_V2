@@ -125,6 +125,9 @@
 **Estimer un correctif en lignes, c'est se tromper d'un facteur 2 à 5 ; mesurer après coup, et en code effectif.**
 *Motif mesuré le 2026-09-04 : lot 1 estimé 37 → 73 brutes ; lot 2 estimé 30 → **142** brutes. Mais 64 en code effectif — l'écart est à 65 % de la documentation. Comparer du brut à l'objectif de ~1 500 de `POURQUOI.md` fait paniquer sur une dérive qui n'existe pas ; comparer du code effectif à du code effectif donne le vrai chiffre.*
 
+**`Path.glob` est insensible à la casse sous Windows : ne jamais s'en servir pour sélectionner par un champ.**
+*Motif mesuré le 2026-09-04 : un test cherchait le dossier d'appel de B par `glob("*B*")`. Les dossiers s'appellent `NNNN-<role>-<uuid>`, et `*B*` a désigné celui de **A** dès que son UUID contenait un `b`. Découper le nom et comparer le champ est exact ; le glob ne l'est pas.*
+
 **Sous Windows, résoudre l'exécutable avec `shutil.which()` avant `Popen`.**
 *Motif : une entrée de PATH installée par npm est un script sans extension ; `CreateProcess` rend `WinError 2`. `shutil.which` rend le `.CMD` qui, lui, se lance.*
 

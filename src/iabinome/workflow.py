@@ -534,9 +534,14 @@ class _Engine:
 
     def apply_b(self, state: State, call: CallState, text: str) -> State:
         review = contracts.parse_review(text, state.open_finding_ids)
+        # La **forme canonique**, pas le texte de B : c'est ce fichier que le
+        # programme relit comme registre des constats, et un bloc clôturé ou une
+        # `severity` omise le rendaient illisible par `json.loads`. La preuve
+        # exacte reste `reponse_brute.txt` (D-8).
+        canonical = json.dumps(review.to_dict(), ensure_ascii=False, indent=2) + "\n"
         state = replace(
             state, current_call=None,
-            latest_review=self.write_exchange(call.sequence, "critique-B.json", text),
+            latest_review=self.write_exchange(call.sequence, "critique-B.json", canonical),
             open_finding_ids=contracts.open_finding_ids(review),
         )
         if review.decision is Decision.BLOQUE:

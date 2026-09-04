@@ -36,9 +36,13 @@ class Normalized:
 
 
 def normalize(raw: str) -> Normalized:
-    """BOM en tête et fins de ligne `\\r\\n` tolérés, retirés, et consignés
-    comme transformations ; le reste passe tel quel. L'empreinte porte sur le
-    texte normalisé.
+    """BOM en tête et fins de ligne `\\r\\n` tolérés et retirés ; le reste passe
+    tel quel. L'empreinte porte sur le texte normalisé.
+
+    `transformations` **n'est consigné nulle part** — le dire serait promettre
+    une trace qui n'existe pas. Le diagnostic se refait en comparant la preuve
+    brute (`appels/…/reponse_brute.txt`) à la forme canonique, ce qui est plus
+    sûr qu'une étiquette (D-8b).
 
     §0.1 : tout est écrit en UTF-8 sans BOM, fins de ligne `\\n`, y compris sous
     Windows. Un producteur qui écrit en mode texte rend pourtant `\\r\\n`, et la
@@ -93,6 +97,33 @@ class Review:
     decision: Decision
     analysis: str
     findings: tuple[Finding, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        """La forme **canonique** de la revue : valeurs d'enums, `analysis`
+        conservée, et `severity` **toujours émise** — `UNKNOWN` comprise, là où
+        B avait le droit de l'omettre.
+
+        C'est elle qui est écrite dans `echanges/NNNN-critique-B.json`, et non
+        le texte de B tel quel : un bloc clôturé ou une clé absente rendaient ce
+        fichier illisible par `json.loads`, alors même que le programme s'en
+        sert comme registre des constats. La preuve exacte, elle, reste
+        `appels/…/reponse_brute.txt` — **aucun troisième artefact** n'est créé
+        pour cela (D-8).
+        """
+        return {
+            "schema_version": self.schema_version,
+            "decision": self.decision.value,
+            "analysis": self.analysis,
+            "findings": [
+                {
+                    "id": f.id,
+                    "severity": f.severity.value,
+                    "disposition": f.disposition.value,
+                    "statement": f.statement,
+                }
+                for f in self.findings
+            ],
+        }
 
 
 def parse_review(text: str, prior_open_finding_ids: Collection[str] = ()) -> Review:

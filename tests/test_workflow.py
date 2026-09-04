@@ -196,6 +196,60 @@ class TestContractFailure(WorkflowCase):
         self.assertIs(state.status, Status.ERROR)  # type: ignore[attr-defined]
 
 
+class TestCanonicalReview(WorkflowCase):
+    """C-09 / D-8 : `echanges/NNNN-critique-B.json` porte la forme canonique.
+
+    Le programme relit ce fichier comme **registre des constats**. Y écrire le
+    texte de B tel quel le rendait illisible par `json.loads` dès que B le
+    rendait dans un bloc clôturé — pourtant accepté par le contrat. La preuve
+    exacte reste `appels/…/reponse_brute.txt` : aucun troisième artefact.
+    """
+
+    def review_path(self, collab: Path) -> Path:
+        return collab / "echanges" / "0002-critique-B.json"
+
+    def test_a_fenced_review_is_stored_as_readable_json(self) -> None:
+        fenced = "```json\n" + fakes.review("BLOQUE") + "\n```"
+        collab = self.build(a=(_DOC,), b=(fenced,))
+        self.run_engine(collab)
+        stored = fakes.read_json(self.review_path(collab))  # json.loads, sans détour
+        self.assertEqual(stored["decision"], "BLOQUE")
+        self.assertEqual(stored["findings"][0]["id"], "B-001")
+        # Sélection par le champ de rôle, jamais par un glob : `Path.glob` est
+        # **insensible à la casse** sous Windows, et `*B*` désignait le dossier
+        # de A dès que son UUID contenait un `b`.
+        raw = next(p for p in (collab / "appels").iterdir() if p.name.split("-")[1] == "B")
+        self.assertTrue(
+            (raw / "reponse_brute.txt").read_text(encoding="utf-8").startswith("```json"),
+            "la preuve brute doit rester exactement ce que B a rendu",
+        )
+
+    def test_an_omitted_severity_is_emitted_as_unknown(self) -> None:
+        """B a le droit d'omettre `severity` ; le registre, lui, l'émet toujours."""
+        sans_severite = ({"id": "B-007", "disposition": "OPEN", "statement": "Manque Y."},)
+        collab = self.build(a=(_DOC,), b=(fakes.review("BLOQUE", findings=sans_severite),))
+        self.run_engine(collab)
+        stored = fakes.read_json(self.review_path(collab))
+        self.assertEqual(stored["findings"][0]["severity"], "UNKNOWN")
+
+    def test_the_open_findings_survive_a_reread_of_the_canonical(self) -> None:
+        """Le registre doit se relire sans peine : c'est lui qui alimente le
+        prompt de la revue suivante."""
+        fenced = "```json\n" + fakes.review("REVISER") + "\n```"
+        collab = self.build(
+            a=(_DOC, _DOC2, _FINAL),
+            b=(fenced, fakes.review("ACCEPTER", findings=_RESOLVED)),
+        )
+        self.run_engine(collab)
+        self.assertIn("B-001", self.b.prompts[1])
+        self.assertIn("Manque X.", self.b.prompts[1])
+
+    def test_no_third_artifact_is_created(self) -> None:
+        collab = self.build(a=(_DOC,), b=(fakes.review("BLOQUE"),))
+        self.run_engine(collab)
+        self.assertEqual(list(collab.rglob("revue_normalisee.json")), [])
+
+
 class TestPreflight(WorkflowCase):
     def test_unknown_adapter_refused_before_any_mutation(self) -> None:
         collab = self.build(a=(_DOC,), b=(), adapter_a="absent")

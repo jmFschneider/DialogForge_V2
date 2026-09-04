@@ -21,8 +21,9 @@ _WINDOWS_REPLACE_DELAY_SECONDS = 0.05
 
 def read_text(path: Path) -> tuple[str, bool]:
     """Lit un fichier UTF-8. Un BOM en tête est toléré et retiré ; le second
-    élément du tuple le signale, pour que l'appelant le consigne comme
-    transformation."""
+    élément du tuple le signale à l'appelant, qui n'en consigne rien nulle part
+    — le diagnostic se refait en comparant la preuve brute à la forme
+    canonique, pas par une étiquette (D-8b)."""
     raw = path.read_bytes()
     had_bom = raw.startswith(_BOM)
     if had_bom:

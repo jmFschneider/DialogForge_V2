@@ -45,7 +45,7 @@ Python 3.12, **bibliothèque standard seule**, zéro dépendance de production. 
 
 | | Valeur | Motif |
 |---|---|---|
-| **Encodage** | Tout est écrit en **UTF-8 sans BOM, fins de ligne `\n`**, y compris sous Windows. À la lecture, un BOM UTF-8 est toléré, retiré, et **consigné comme transformation** dans la normalisation. | Un dossier de collaboration doit se déplacer entre machines. Le BOM toléré-mais-tracé reprend le comportement du normaliseur de DialogForge. |
+| **Encodage** | Tout est écrit en **UTF-8 sans BOM, fins de ligne `\n`**, y compris sous Windows. À la lecture, un BOM UTF-8 est toléré et retiré. | Un dossier de collaboration doit se déplacer entre machines. Le BOM toléré reprend le comportement du normaliseur de DialogForge. **Aucune trace n'en est consignée** : la promettre serait fausse, et la différence entre preuve brute et forme canonique refait le diagnostic (D-8b). |
 | **Plafond de sortie** | **8 MiB par flux**, constante nommée, **sans option de configuration**. Dépassement → terminaison de l'arbre, incident `OUTPUT_LIMIT`, flux conservés comme partiels. | Le plus gros livrable observé pèse 3 850 lignes ≈ 250 Kio. 8 MiB attrape une boucle folle sans jamais gêner un document. Une option serait un réglage de plus à justifier. |
 | **Systèmes** | **Windows : supporté et testé.** POSIX : les branches existent et sont écrites, **non testées en V0.1**. | Honnête plutôt que rassurant. Le poste de développement est Windows 11, et le prédécesseur était orienté Windows. Promettre une matrice qu'on ne peut pas exécuter serait une intention documentaire, pas une preuve — `R15`. |
 
@@ -178,13 +178,21 @@ collaboration/
 │   ├── prompt.txt
 │   ├── stdout.txt  stderr.txt  # au fil de l'eau, bornés
 │   ├── resultat.json           # écrit en dernier : sa présence = flux complets
-│   ├── reponse_brute.txt
-│   ├── revue_normalisee.json   # B seulement
+│   ├── reponse_brute.txt       # la preuve exacte de ce que l'agent a rendu
 │   └── incident.json           # échec seulement
 ├── echanges/
 │   ├── 0001-proposition-A.md  0002-critique-B.json  0003-revision-1-A.md
 └── livrables/version_finale.md
 ```
+
+**Deux artefacts pour une revue, jamais trois.** `appels/…/reponse_brute.txt` est la **preuve exacte**
+de ce que B a rendu ; `echanges/NNNN-critique-B.json` est l'**autorité canonique** — `Review.to_dict()`,
+valeurs d'enums, `analysis` conservée, `severity` toujours émise, `UNKNOWN` comprise.
+
+*Motif : le programme relit ce second fichier comme registre des constats. Y écrire le texte de B tel
+quel le rendait illisible par `json.loads` dès que B le rendait dans un bloc clôturé — pourtant accepté
+par le contrat — ou omettait `severity`. Un troisième fichier `revue_normalisee.json` aurait résolu le
+même problème en créant une vérité de plus à tenir d'accord.*
 
 **Tous les chemins persistés sont relatifs au dossier de collaboration.** Aucun chemin absolu, nulle
 part. *Fait : `configuration.json` de DialogForge en persiste un.*
@@ -659,7 +667,7 @@ incertitudes, les non-décisions et les constats encore ouverts.
 | Appel durable | Crash en `CALLING` **sans** `resultat.json` → `INTERRUPTED` sans appel · **crash en `CALLING` AVEC `resultat.json` valide → retraité localement, sans appel** · crash en `RESPONSE_STORED` → retraitement local · artefact avant transition · UUID sans nom de fournisseur · **code de retour non nul → incident `CLI_FAILED`, `INTERRUPTED`, sans tentative de contrat (D-2)** |
 | Interruption | Ctrl-C → arbre terminé, incident écrit, flux partiels conservés, état `CALLING` · `pid.txt` présent dès le lancement |
 | CLI | `--agent-a`/`--agent-b`/`--reviewer-access` manquants → refus · recherche sans corpus ou corpus vide → refus · `--answer` ne touche pas au corpus |
-| Encodage | Écriture UTF-8 sans BOM, `\n` · lecture d'un BOM tolérée, retirée et **consignée comme transformation** |
+| Encodage | Écriture UTF-8 sans BOM, `\n` · lecture d'un BOM tolérée et retirée, **sans trace consignée** |
 | Reprise | Relance sans motif refusée · motif copié · nouvel UUID lié · nouvelle demande complète remplace l'autorité · ancienne archivée · options incompatibles refusées |
 | Transport | Deux flux concurrents · sortie vide · code non nul · délai · arbre terminé · plafond dur · **partiel jamais présenté comme complet** |
 | Accès | Profil non supporté refusé **avant mutation** · `cwd` transmis = collaboration, **sans prétendre tester une isolation OS** |
