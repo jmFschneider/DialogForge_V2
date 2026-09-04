@@ -8,9 +8,11 @@
 
 ## Prochaine action — une seule
 
-**Lot 1 du plan correctif : verrou atomique** (`project/correctifs/2026-09-04-plan-correctif-audit-v2.md`).
-`lock._try_acquire` n'est pas atomique et la récupération d'un verrou mort a une course. Lot autonome,
-aucun autre n'en dépend. Puis lots 2 à 5 dans l'ordre du plan.
+**Lot 2 du plan correctif : porte d'état et intervention sous verrou**
+(`project/correctifs/2026-09-04-plan-correctif-audit-v2.md`). Le lot 1 est fait (`373479d`).
+Le lot 2 est le plus gros : porte d'état sous verrou **après** l'intervention, `_apply_answer` et
+`_prepare_retry` quittent `cli.py` pour le moteur, `--answer` rejouable après crash, `--retry-call`
+sans état intermédiaire, `command()` appelé avant `CALLING`. Puis lots 3 à 5.
 
 **La première mission réelle est repoussée après les lots 1 à 4** (lot 5 en plus pour une mission de
 recherche) — arbitré le 2026-09-04. Motif : l'audit Codex montre qu'un second `run` en `WAITING_HUMAN`
@@ -25,7 +27,11 @@ annonçant un échec. Observer maintenant mesurerait ces défauts, pas la fricti
 motif. `Decision`, `Severity`, `Disposition` y restent (vocabulaire fermé unique).
 
 **`storage.py` / `lock.py`** — sur Windows, **ne jamais utiliser `os.kill(pid, 0)`** : l'implémentation
-y appelle `TerminateProcess`, y compris pour le signal `0`. Vivacité par `ctypes`/`OpenProcess`.
+y appelle `TerminateProcess`, y compris pour le signal `0`. Vivacité par `ctypes`/`OpenProcess` — mais
+un PID terminé y reste **vivant tant qu'un handle est ouvert** (`RULES.md`). Depuis le lot 1
+(`373479d`) : acquisition par `O_CREAT | O_EXCL`, récupération d'un verrou mort **sous jeton exclusif**
+`verrou.json.recuperation` (un candidat sans jeton ne touche jamais au verrou), libération vérifiée sur
+le `lock_id`. Le verrou ne passe plus par `storage.write_atomic_text` — il crée, il ne remplace pas.
 
 **`contracts.py`** — la normalisation CRLF→LF et l'acceptation du bloc JSON clôturé sont des
 **tolérances**, pas des correctifs à un défaut observé : les deux CLI rendent du `\n` et du JSON nu.
