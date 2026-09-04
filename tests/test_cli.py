@@ -148,6 +148,18 @@ class TestRunAndResume(CliCase):
         etat = fakes.read_json(self.collab / "etat.json")
         self.assertEqual(etat["status"], "WAITING_HUMAN")
 
+    def test_a_second_run_while_the_human_is_awaited_is_refused(self) -> None:
+        """La porte d'état vue depuis la CLI : refus lisible, pas de traceback,
+        et surtout aucun appel supplémentaire (C-01)."""
+        self.build()
+        self.a.responses = [_QUESTION]
+        self.assertEqual(cli.main(["run", str(self.collab)]), 0)
+        with redirect_stderr(io.StringIO()) as err:
+            code = cli.main(["run", str(self.collab)])
+        self.assertEqual(code, 1)
+        self.assertIn("WAITING_HUMAN", err.getvalue())
+        self.assertEqual(self.a.calls, 1, "un appel a ete paye")
+
     def test_absent_cli_is_reported_not_crashed(self) -> None:
         self.build()
         self.a.present = False

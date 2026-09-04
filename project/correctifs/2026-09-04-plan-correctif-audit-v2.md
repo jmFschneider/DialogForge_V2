@@ -247,7 +247,31 @@ laisser passer ce cas précis, sans quoi la reprise est refusée avant d'avoir p
 de `CALLING` (deux lignes déplacées dans `new_call`). Un exécutable disparu entre le prévol et l'appel
 cesse ainsi de produire un faux « possiblement payé ».
 
-**Coût estimé.** ~+30 lignes nettes (`workflow.py` +55, `cli.py` −25).
+**Ce qui a changé à l'écriture, et pourquoi.**
+
+- **N-01 est entré dans ce lot**, alors qu'aucun lot ne le portait. La porte d'état refuse `ERROR` ;
+  sans la table fermée d'incidents relançables, `ERROR` devenait un **cul-de-sac** — plus aucune
+  commande n'en sortait. `DECODE_FAILED` y figure déjà bien qu'il naisse au lot 8 : une entrée sans
+  producteur ne coûte rien, un statut sans sortie coûte la collaboration.
+- **Le rejeu de `--answer` après la troisième écriture est un refus explicite, pas un no-op.** Les deux
+  premiers points d'arrêt se rejouent ; le troisième a **déjà** appliqué l'intervention, et c'est
+  `resume` seul qui enchaîne. Reconnaître ce cas aurait demandé une seconde branche de reprise —
+  exactement ce que cette v2 avait simplifié en écrivant « une seule branche suffit ».
+- **L'archive est idempotente** : elle ne recopie pas si la dernière archive porte déjà ce texte. La v2
+  ne le disait pas, et sans cela un arrêt entre l'archive et l'écriture de `demande.md` empilait une
+  seconde archive au rejeu — **mesuré** par contre-épreuve (`demande.md.001` **et** `.002`).
+- **La preuve que `CALLING` précède `Popen` a changé de point d'observation.** Elle se lisait dans
+  `FakeAdapter.command()` ; `command()` étant désormais résolu **avant** la publication, ce point ne
+  prouvait plus l'ordre. Elle se lit maintenant dans le **processus lancé**, qui relit `etat.json`
+  depuis son `cwd`. Le point d'observation d'origine reste utile, et teste l'autre garantie : il y voit
+  `READY`, donc `command()` est bien résolu avant toute mutation.
+
+**Coût — mesuré, pas estimé.** `workflow.py` 417 → **607** (+190), `cli.py` 273 → **225** (−48) :
+**+142 lignes brutes** pour ~30 annoncées. En **code effectif** (hors blanches, commentaires et
+docstrings, mesuré ce jour) : 1 537 → **1 601**, soit **+64** — l'essentiel de l'écart brut est de la
+documentation, au taux habituel du projet (70 %). L'estimation à 30 était fausse d'un facteur 2 sur le
+code, et de 4,7 sur le brut : elle n'avait chiffré ni N-01, ni la tolérance d'intégrité, ni l'archive
+idempotente, ni le déport des trois fonctions de `cli.py`. **Voir §5 — la projection est à rouvrir.**
 
 **Tests exigés** : second `run` après `QUESTION`, après `BLOQUE`, après `ERROR`, après
 `AWAITING_APPROVAL` — `FakeAdapter.calls` **inchangé** et code de sortie attendu ; `run` en `RUNNING`
@@ -255,6 +279,20 @@ avec appel courant toujours accepté (non-régression §5) ; `resume --answer` e
 sous verrou détenu — `demande.md` et `etat.json` **inchangés octet pour octet** ; arrêt injecté après
 chacune des trois écritures de `--answer`, puis rejeu — une seule archive, état cohérent ; arrêt injecté
 entre la validation de `--retry-call` et `new_call` — l'`INTERRUPTED` reste rejouable.
+**Tous écrits** (`tests/test_intervention.py`, 18 tests), plus la table fermée de N-01 dans les deux
+sens et le refus vu depuis la CLI.
+
+**Les correctifs ont été prouvés capables de voir leur défaut** (`RULES.md`), un par un :
+
+| Correctif neutralisé | Ce que la suite a montré |
+|---|---|
+| porte d'état | second `run` après `QUESTION` : `calls` passe de `(1, 0)` à `(2, 1)` — **A et B rappelés**, deux appels payants |
+| tolérance d'intégrité du prévol | le rejeu après la deuxième écriture est **refusé avant d'avoir pu réparer** |
+| archive idempotente | le rejeu après la première écriture laisse `demande.md.001` **et** `demande.md.002` |
+
+La première contre-épreuve a **corrigé le test** : le compteur d'appels était vérifié *dans* un
+`assertRaises`, si bien qu'une porte absente faisait échouer sur « exception non levée » et **masquait
+l'appel payant** que le test cherche. Il est désormais vérifié avant.
 
 ### Lot 3 — Codes de sortie *(C-03, D-5)*
 
@@ -414,7 +452,7 @@ conditionne un éventuel durcissement ultérieur.
 | Lot | Constats | Préalable à un appel payant | Coût estimé | État |
 |---|---|---|---:|---|
 | 1 — verrou atomique | C-02b, N-02 | **oui** | +73 *(mesuré)* | **fait** — suite verte, 202 tests |
-| 2 — porte d'état + intervention | C-01, C-02a, D-4 | **oui** | ~30 | à faire |
+| 2 — porte d'état + intervention | C-01, C-02a, D-4, **N-01** | **oui** | +142 brut / **+64 effectif** *(mesuré, pour ~30 estimées)* | **fait** — suite verte, 222 tests |
 | 3 — codes de sortie | C-03, D-5 | **oui** | ~10 | à faire |
 | 4 — intégrité de reprise | C-05 | **oui** | ~25 | à faire |
 | 5 — corpus sous verrou | C-04 | **oui pour une mission de recherche** | ~37 | à faire |
@@ -441,11 +479,25 @@ mis à jour dans ce tableau.
 
 Le PO a validé l'augmentation le 2026-09-04. Chiffres tenus à jour par honnêteté, pas comme une porte :
 
-| | Lignes |
-|---|---:|
-| Production aujourd'hui (12 modules) | 2 070 |
-| Ajout estimé, lots 1 à 10 (v2) | ~+205 |
-| **Projection** | **~2 275** *(pour ~1 430 visés en §11)* |
+| | Brut | Code effectif |
+|---|---:|---:|
+| Production au moment du plan (12 modules) | 2 070 | 1 537 *(à HEAD du lot 1)* |
+| Lots 1 et 2, **mesurés** | +215 | +64 *(lot 2 seul ; lot 1 non recompté)* |
+| **Production après le lot 2** | **2 285** | **1 601** |
+| Reste estimé, lots 3 à 10 | ~+138 | ~+138 |
+| **Projection v2** | ~2 275 | — |
+
+**La projection v2 est dépassée avant le lot 3, et elle est à rouvrir.** Deux faits, mesurés :
+
+- **Les estimations de ce plan sont basses d'un facteur 2 à 5** : lot 1, 37 estimées → 73 brutes ;
+  lot 2, 30 estimées → 142 brutes. Appliquer ce taux aux ~138 restantes donne **2 560 à 2 700 brutes**,
+  et non 2 275. Aucune raison de croire que les huit estimations restantes soient mieux calibrées que
+  les deux qui ont été vérifiées.
+- **Le brut n'est pas la bonne unité pour ce projet.** Mesuré ce jour : **1 601 lignes de code
+  effectif** pour 2 285 brutes — 70 %, le taux annoncé. L'écart brut du lot 2 est à **65 %** de la
+  documentation, parce que ce code porte le motif de chaque garantie. Contre l'objectif de ~1 500 de
+  `POURQUOI.md`, la mesure honnête est **1 601, pas 2 285** — et la projection à terminaison est de
+  l'ordre de **1 850 à 1 900 effectives**.
 
 Trois choses restent vraies, et elles répondent au « nous sommes extrêmement loin du projet initial » :
 
@@ -463,7 +515,15 @@ Trois choses restent vraies, et elles répondent au « nous sommes extrêmement 
 
 ## 6. Ce qui reste à décider
 
-**Une seule chose : l'autorisation d'appels payants** pour le lot 11, une fois les lots 1 à 5 fermés.
+**Deux choses.**
+
+1. **L'autorisation d'appels payants** pour le lot 11, une fois les lots 1 à 5 fermés.
+2. **La projection de lignes, rouverte le 2026-09-04 après la mesure du lot 2** (§5). Le PO avait
+   validé une augmentation sur une projection de ~2 275 brutes ; elle est dépassée avant le lot 3, et
+   la mesure suggère 2 560 à 2 700 à terminaison — soit ~1 900 en code effectif. La question à
+   trancher n'est pas « accepte-t-on le chiffre ? » mais **« qu'est-ce qu'on retire en échange ? »**
+   (`POURQUOI.md`, règle 2). La marge reste celle du §5 : lots 7, 9 et 10, les trois qui retirent une
+   promesse au lieu de la financer.
 
 Aucun arbitrage technique n'est ouvert. D-4 à D-8, N-01, N-02 et D-5 sont tranchés ; Codex a écrit que
 l'implémentation peut commencer sans nouveau tour de sa part une fois ses points intégrés — ils le sont.

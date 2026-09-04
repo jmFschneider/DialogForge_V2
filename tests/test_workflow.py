@@ -91,11 +91,26 @@ class TestFullCycle(WorkflowCase):
         self.assertTrue(final.endswith("Corps final."))
 
     def test_calling_is_published_before_popen(self) -> None:
-        """Étape 4 : l'adaptateur relit `etat.json` juste avant `Popen`."""
+        """Étape 4 : le processus **lancé** relit `etat.json` et y voit RUNNING.
+
+        Le point d'observation est dans le processus fils, pas dans le
+        programme : `command()` est désormais résolu avant la publication de
+        `CALLING`, si bien qu'y relire l'état ne prouverait plus rien de
+        l'ordre entre publication et `Popen`.
+        """
+        collab = self.build(a=(_QUESTION,), b=())
+        marker = self.root / "statut-vu.txt"
+        self.a.status_marker = str(marker)
+        self.run_engine(collab)
+        self.assertEqual(marker.read_text(encoding="utf-8"), "RUNNING")
+        self.assertEqual(fakes.read_json(collab / "etat.json")["status"], "WAITING_HUMAN")
+
+    def test_the_command_is_resolved_before_calling_is_published(self) -> None:
+        """Un exécutable disparu entre le prévol et l'appel doit être un refus
+        sans mutation, pas un faux « possiblement payé » (lot 2)."""
         collab = self.build(a=(_QUESTION,), b=())
         self.run_engine(collab)
-        self.assertEqual(self.a.observed_status, ["RUNNING"])
-        self.assertEqual(fakes.read_json(collab / "etat.json")["status"], "WAITING_HUMAN")
+        self.assertEqual(self.a.observed_status, ["READY"])
 
     def test_intention_records_the_observed_version_not_a_provider_name(self) -> None:
         collab = self.build(a=(_QUESTION,), b=())

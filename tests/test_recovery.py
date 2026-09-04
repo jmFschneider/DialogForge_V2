@@ -123,14 +123,15 @@ class TestRetry(RecoveryCase):
     def test_retry_gets_a_new_uuid_and_carries_the_reason(self) -> None:
         self.crash_mid_call(response=None, result=False)
         self.resume()  # laisse l'appel en INTERRUPTED
-        # Une relance humaine remet l'état en phase et fournit un motif.
-        etat = fakes.read_json(self.collab / "etat.json")
-        etat.update(status="READY", current_call=None)
-        fakes.write_json(self.collab / "etat.json", etat)
+        # La relance humaine remet l'état en phase **sous le verrou** : rien
+        # n'est publié entre la validation et `intention.json`.
+        reason = self.root / "motif.txt"
+        reason.write_text("quota epuise, credits recharges\n", encoding="utf-8")
         self.a.responses = [_DOC]
         state = workflow.run(
             self.collab, adapters=self.adapters, timeout_seconds=30.0,
-            retry_of="abcdef", retry_reason="quota epuise, credits recharges",
+            command_label="resume",
+            intervention=workflow.RetryCall("abcdef", reason),
         )
         self.assertIs(state.status, Status.WAITING_HUMAN)
         self.assertEqual(self.a.calls, 1)

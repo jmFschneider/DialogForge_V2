@@ -113,6 +113,18 @@
 **Sous Windows, un PID terminé reste « vivant » pour `OpenProcess` tant qu'un handle du processus est ouvert.** Un test qui fabrique un PID mort doit laisser l'objet `Popen` sortir de portée avant de s'en servir.
 *Motif mesuré le 2026-09-04 : dans la contre-épreuve du verrou, l'objet `Popen` gardé en variable locale faisait passer un processus attendu jusqu'à sa sortie pour un détenteur vivant — les trois concurrents refusaient le verrou pour la mauvaise raison, et la preuve semblait acquise alors que rien n'avait été testé.*
 
+**Le compteur de ce qu'un test interdit se vérifie *avant* l'exception attendue, jamais à l'intérieur d'un `assertRaises`.**
+*Motif mesuré le 2026-09-04 : le test de la porte d'état affirme qu'un second `run` ne paie aucun appel. Le compteur était vérifié dans le bloc `assertRaises` ; porte neutralisée, le test échouait sur « exception non levée » et **n'atteignait jamais le compteur** — il ne montrait pas l'appel payant qu'il cherche. Sorti du bloc, la contre-épreuve affiche `(2, 1) != (1, 0)` : A **et** B rappelés.*
+
+**Déplacer une garantie déplace son point d'observation : vérifier que le test prouve encore ce qu'il dit.**
+*Motif mesuré le 2026-09-04 : « `CALLING` publié avant `Popen` » se lisait dans `FakeAdapter.command()`. Le lot 2 ayant avancé `command()` **avant** la publication, ce point ne prouvait plus l'ordre — il aurait fallu changer l'assertion attendue, ce qui aurait rendu le test vide. La preuve est passée dans le **processus lancé**, qui relit `etat.json` depuis son `cwd`, et l'ancien point sert désormais l'autre garantie.*
+
+**Une porte qui refuse un statut doit s'accompagner de la commande qui en sort — sinon le statut devient un cul-de-sac.**
+*Motif : la porte d'état du lot 2 refuse `ERROR`. Sans N-01 — la table fermée d'incidents relançables — plus aucune commande ne sortait d'`ERROR`, et le correctif transformait un défaut en blocage. La règle vaut pour l'humain aussi : le message de refus nomme la commande.*
+
+**Estimer un correctif en lignes, c'est se tromper d'un facteur 2 à 5 ; mesurer après coup, et en code effectif.**
+*Motif mesuré le 2026-09-04 : lot 1 estimé 37 → 73 brutes ; lot 2 estimé 30 → **142** brutes. Mais 64 en code effectif — l'écart est à 65 % de la documentation. Comparer du brut à l'objectif de ~1 500 de `POURQUOI.md` fait paniquer sur une dérive qui n'existe pas ; comparer du code effectif à du code effectif donne le vrai chiffre.*
+
 **Sous Windows, résoudre l'exécutable avec `shutil.which()` avant `Popen`.**
 *Motif : une entrée de PATH installée par npm est un script sans extension ; `CreateProcess` rend `WinError 2`. `shutil.which` rend le `.CMD` qui, lui, se lance.*
 

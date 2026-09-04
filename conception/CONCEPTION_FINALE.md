@@ -323,6 +323,29 @@ garantie de durabilité ne se troque contre des lignes.***
 décision humaine **attribuable**, pas que la cause a changé ; c'est une trace, pas une preuve, et le
 dire évite de s'en croire protégé.* **Aucun plafond de relances** : ce serait un quota interne.
 
+**Statuts d'où l'on relance.** `INTERRUPTED` se relance. `ERROR` **n'en sort que par une table fermée
+d'incidents relançables** — aujourd'hui `CONTRACT_ERROR` et `DECODE_FAILED` —, et seulement quand
+`last_incident` est lisible et appartient à l'appel désigné. *Motif : le statut `ERROR` couvre tout ce
+qui rend une réponse inexploitable ; hériter la relance du statut ferait relancer, un jour, une famille
+d'erreur pour laquelle elle n'a aucun sens. Toute famille nouvelle s'y ajoute explicitement.*
+
+**La relance ne publie aucun état intermédiaire.** L'état remis en `READY` reste **en mémoire** ;
+`intention.json` — qui porte `retries` et le motif — est le premier écrit, puis `RUNNING` est publié.
+*Un arrêt avant cette publication laisse l'`INTERRUPTED` d'origine intact : la même commande est
+rejouable à l'identique, et le lien vers l'appel relancé n'est jamais perdable.*
+
+### Porte d'état
+
+**Sous le verrou et après l'intervention humaine**, le moteur lit `status` avant de décider : seuls
+`READY` **sans** appel courant et `RUNNING` **avec** appel courant enchaînent le cycle. Tout autre
+statut est un refus qui nomme la commande qui en sort.
+
+*Motif : décider sur la seule présence de `current_call` faisait repartir un second `run` en
+`WAITING_HUMAN` sur un **appel payant**, porte humaine contournée. La validation reste à un seul
+niveau — sous le verrou, jamais dupliquée au prévol : deux copies de la même règle à tenir d'accord
+sont le défaut qu'on corrige ici. Le prix est explicite : un `run` refusé aura payé deux sondages
+`--version` avant son refus.*
+
 ## 6. Contrats
 
 ### A — document ou question
@@ -413,8 +436,16 @@ noyau. Il est résolu au `new` puis persisté. *Cela garde les noms de fournisse
 
 `new` fait tous ses prévols dans un répertoire temporaire frère, y copie demande et corpus, puis
 publie par renommage. Il refuse une destination existante.
-`run` est l'unique moteur synchrone. `resume` **ne contient pas un second moteur** : il enregistre
-l'intervention, remet l'état dans une phase admissible, et appelle le même moteur.
+`run` est l'unique moteur synchrone. `resume` **ne contient pas un second moteur** : il **transmet**
+l'intervention au moteur, qui l'applique **sous le verrou**, remet l'état dans une phase admissible,
+puis enchaîne le cycle. `resume` ne garde que la validation de ses arguments — **aucune commande ne
+mute la collaboration hors du verrou**.
+*Motif : muter `demande.md` et `etat.json` avant de prendre le verrou laissait un `resume` concurrent
+modifier la collaboration d'un cycle en cours, puis annoncer un échec.*
+
+`--answer` est **rejouable après un arrêt brutal** : l'ancienne demande est archivée par **copie** —
+`demande.md` n'est jamais absent, fût-ce une seconde —, puis `demande.md` est écrit, puis l'état
+publié. Un rejeu ne réarchive pas un texte déjà archivé.
 `status` est strictement en lecture seule : âge du corpus, politique de revue, constats ouverts, phase.
 
 **Il n'existe ni `worker`, ni `serve`, ni `implement`, ni `apply`, ni `watch`, ni `repair`.**

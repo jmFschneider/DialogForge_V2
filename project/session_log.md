@@ -736,3 +736,68 @@ serait verte avec un test de course structurellement aveugle.
 
 **État à la reprise :** 2 143 lignes de production, **202 tests verts** + 1 ignoré, `ruff` et
 `mypy --strict` verts, arbre git propre. Lot 2 non commencé, non bloqué — c'est le plus gros du plan.
+
+---
+
+## 2026-09-04 (soir) — Lot 2 : porte d'état et intervention sous verrou
+
+**Scope déclaré :** lot 2 du plan correctif. Constats fermés : **C-01**, **C-02 volet A**, **D-4**, et
+**N-01** — qui n'était porté par aucun lot.
+
+### Ce qui a été fait
+
+`workflow.run()` reçoit désormais l'intervention humaine (`Answer` / `RetryCall`) et l'applique **sous
+le verrou**, entre la relecture et la nouvelle **porte d'état** ; `cli.py` ne lit ni n'écrit plus aucun
+état, il valide ses arguments et transmet. `_apply_answer`, `_archive` et `_prepare_retry` ont quitté
+`cli.py`. `--answer` archive par **copie** puis écrit puis publie ; `--retry-call` ne publie **aucun
+état intermédiaire**. `command()` est résolu avant la publication de `CALLING`.
+
+### Décisions prises en cours d'écriture
+
+- **N-01 est entré dans ce lot.** La porte refuse `ERROR` ; sans la table fermée d'incidents
+  relançables, `ERROR` devenait un cul-de-sac dont plus aucune commande ne sortait. Le correctif aurait
+  transformé un défaut en blocage.
+- **Le rejeu de `--answer` après la troisième écriture est un refus explicite, pas un no-op.**
+  L'intervention est déjà appliquée ; `resume` seul enchaîne. Reconnaître ce cas aurait demandé une
+  seconde branche de reprise — ce que la v2 avait justement simplifié.
+- **L'archive est idempotente**, ce que la v2 ne disait pas : sans cela, un arrêt entre l'archive et
+  l'écriture de `demande.md` empilait une seconde archive au rejeu.
+- **La preuve « `CALLING` avant `Popen` » a changé de point d'observation** : `command()` étant
+  désormais résolu avant la publication, la lire dans `FakeAdapter.command()` ne prouvait plus l'ordre.
+  Elle se lit dans le **processus lancé**, qui relit `etat.json` depuis son `cwd`.
+
+### Les trois contre-épreuves
+
+Chaque correctif a été neutralisé un par un, et la suite a montré le défaut attendu :
+
+| Correctif neutralisé | Ce que la suite a montré |
+|---|---|
+| porte d'état | second `run` après `QUESTION` : `calls` `(1, 0)` → `(2, 1)` — **A et B rappelés** |
+| tolérance d'intégrité du prévol | le rejeu est **refusé avant d'avoir pu réparer** |
+| archive idempotente | `demande.md.001` **et** `demande.md.002` |
+
+La première a **corrigé le test** : le compteur d'appels était vérifié *dans* un `assertRaises`, si
+bien qu'une porte absente faisait échouer sur « exception non levée » et masquait l'appel payant.
+
+### Le budget, rouvert
+
+Le lot a coûté **+142 lignes brutes** pour ~30 annoncées — mais **+64 en code effectif**. Première
+mesure complète du projet en code effectif (hors blanches, commentaires, docstrings) : **1 601 pour
+2 285 brutes**, ratio 70 %. La projection validée le matin (~2 275 brutes) est dépassée avant le lot 3.
+
+**Décision PO attendue avant le lot 3.** Contre les ~1 500 de `POURQUOI.md`, la mesure comparable est
+1 601, pas 2 285 ; projection à terminaison ~1 900 effectives. Question posée telle quelle :
+*qu'est-ce qu'on retire en échange ?* — marge en lots 7, 9 et 10.
+
+### Commits
+
+`0362082` docs: journaliser la session precedente · le lot 2 dans cette session.
+
+### À retenir
+
+**Un correctif qui ferme une porte doit ouvrir la sortie dans le même lot.** N-01 n'était rattaché à
+aucun lot ; l'avoir laissé au suivant aurait livré une version où `ERROR` ne se quitte plus.
+
+**État à la reprise :** 2 285 lignes brutes / 1 601 effectives, **222 tests verts** + 1 ignoré, `ruff`
+et `mypy --strict` verts. Lot 3 non commencé — court, mais il doit corriger un test qui fige le défaut
+(`tests/test_cli.py::test_retry_call_needs_a_non_empty_reason` attend `0`, doit attendre `3`).

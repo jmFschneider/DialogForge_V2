@@ -8,11 +8,17 @@
 
 ## Prochaine action — une seule
 
-**Lot 2 du plan correctif : porte d'état et intervention sous verrou**
-(`project/correctifs/2026-09-04-plan-correctif-audit-v2.md`). Le lot 1 est fait (`373479d`).
-Le lot 2 est le plus gros : porte d'état sous verrou **après** l'intervention, `_apply_answer` et
-`_prepare_retry` quittent `cli.py` pour le moteur, `--answer` rejouable après crash, `--retry-call`
-sans état intermédiaire, `command()` appelé avant `CALLING`. Puis lots 3 à 5.
+**Lot 3 du plan correctif : codes de sortie** (D-5, table déjà tranchée)
+(`project/correctifs/2026-09-04-plan-correctif-audit-v2.md`). Lots 1 et 2 faits. Le lot 3 est court
+(~10 lignes dans `_drive`) et porte un piège nommé dans le plan :
+`tests/test_cli.py::test_retry_call_needs_a_non_empty_reason` **attend `0` après un `run` interrompu
+par délai — ce test fige le défaut** et doit attendre `3`. Puis lots 4 et 5.
+
+**À soumettre au PO avant le lot 3 — la projection de lignes est rouverte** (§5 et §6 du plan). La
+projection validée (~2 275 brutes) est dépassée avant le lot 3 : **2 285 aujourd'hui**. Les
+estimations du plan se sont révélées basses d'un facteur 2 à 5 sur les deux lots mesurés. En **code
+effectif** — la seule unité comparable aux ~1 500 de `POURQUOI.md` — on est à **1 601**, projection
+~1 900. Question à poser telle quelle : *qu'est-ce qu'on retire en échange ?*
 
 **La première mission réelle est repoussée après les lots 1 à 4** (lot 5 en plus pour une mission de
 recherche) — arbitré le 2026-09-04. Motif : l'audit Codex montre qu'un second `run` en `WAITING_HUMAN`
@@ -45,7 +51,19 @@ nommé : absent de Windows, il ferait échouer `mypy`). La **branche POSIX est �
 de garde sur la boucle** : `max_revisions` la borne, un compteur serait un quota interne. Les issues
 non-`COMPLETED` du transport, **et un `return_code` non nul (D-2)**, mènent à `INTERRUPTED`, jamais à
 un rejeu ; `ERROR` est réservé à l'échec de contrat. Transition et `current_call = null` sont une
-**seule** écriture atomique.
+**seule** écriture atomique. Depuis le lot 2 : ordre imposé **sous verrou** — relecture, puis
+`intervene`, puis `gate`, puis dispatch. La **porte d'état** n'accepte que `READY` sans appel courant
+et `RUNNING` avec appel courant ; `ERROR` n'en sort que par la **table fermée** `_RELAUNCHABLE`
+(`CONTRACT_ERROR`, `DECODE_FAILED` — ce dernier naîtra au lot 8). `command()` est résolu **avant** la
+publication de `CALLING`. L'intervention (`Answer` / `RetryCall`) est un paramètre du moteur, plus une
+mutation de `cli.py`.
+
+**Rejouabilité de `--answer`** — ordre archive **par copie** → `demande.md` → `etat.json`. Deux pièces
+que rien n'annonce dans le code : `_check_demande` **tolère** que `demande.md` porte déjà l'empreinte
+de la réponse (sans quoi la reprise est refusée avant d'avoir pu réparer), et `_archive` **ne recopie
+pas** si la dernière archive porte déjà ce texte (sans quoi le rejeu empile `.002`). Le rejeu après la
+**troisième** écriture est un refus explicite : l'intervention est déjà appliquée, `resume` seul
+enchaîne.
 
 **`prompts.py`** — le schéma du JSON de revue est dans le prompt de B — sans lui, aucune revue ne
 pouvait être conforme.
@@ -66,35 +84,45 @@ substituer `cli.ADAPTERS`, sans quoi il appelle un vrai fournisseur (`RULES.md`)
 **`cli.py`** — `new` construit tout dans un dossier temporaire frère (`.new-<nom>-<uuid>`) et publie
 par `Path.rename()` ; il refuse une destination existante **avant** de créer ce dossier temporaire.
 `run`/`resume` partagent `_drive()`, seul point d'appel à `workflow.run`. Aucune commande `worker`,
-`serve`, `implement`, `apply`, `watch`, `repair`. `resume --answer` sur une `QUESTION` née en
-`FINAL_A` est traité comme `REVISION_A`, par symétrie avec `BLOQUE` (§2 ne tranchait que
-`PROPOSAL_A`/`REVISION_A`/`BLOQUE`) — **non testé explicitement, à surveiller à la première mission
-réelle**. `resume --answer` ne touche jamais au compteur `revision`. `collaboration_id` = nom du
-dossier `COLLAB` passé en argument — aucun flag séparé n'est décrit en §7.
+`serve`, `implement`, `apply`, `watch`, `repair`. Depuis le lot 2, **`cli.py` ne lit ni n'écrit plus
+aucun état** : `cmd_resume` valide ses arguments et transmet. `_RESUME_PHASE` est passé dans
+`workflow.py` — `resume --answer` sur une `QUESTION` née en `FINAL_A` y reste traité comme
+`REVISION_A`, par symétrie avec `BLOQUE` (§2 ne tranchait que `PROPOSAL_A`/`REVISION_A`/`BLOQUE`) —
+**non testé explicitement, à surveiller à la première mission réelle**. `resume --answer` ne touche
+jamais au compteur `revision`. `collaboration_id` = nom du dossier `COLLAB` passé en argument — aucun
+flag séparé n'est décrit en §7.
+
+**Tests** — `tests/fakes.py` porte **deux** points d'observation, et ils prouvent deux choses
+différentes : `FakeAdapter.observed_status` y voit `READY` (donc `command()` est résolu avant toute
+mutation), et `status_marker` fait relire `etat.json` **par le processus lancé**, qui y voit `RUNNING`
+(donc `CALLING` précède `Popen`). Ne pas fusionner les deux.
 
 ---
 
-## Budget — augmentation validée le 2026-09-04, condition refermée
+## Budget — **condition rouverte le 2026-09-04 après le lot 2**, décision PO attendue
 
-**Décision du PO.** La taille reflète une surface CLI réellement spécifiée (§7), pas une dérive.
-La condition ouverte le matin (« rouvrir si la croissance se poursuit ») a été **rouverte et
-tranchée** : le plan correctif projette **~2 275 lignes** (+205), et le PO valide. Motif retenu :
-aucun de ces ajouts n'est une accrétion de contrôle — ce sont des garanties déjà annoncées par la
-conception et non tenues par le code. Les cinq interdits restent tenus sans exception.
+La projection validée le matin (**~2 275 brutes**) est **dépassée avant le lot 3** : 2 285. Les deux
+lots mesurés ont coûté 2 à 5 fois leur estimation (lot 1 : 37 → 73 ; lot 2 : 30 → 142). Rien ne dit
+que les huit estimations restantes soient mieux calibrées.
 
-| Module | Visé (§11) | Réel (brut) |
-|---|---:|---:|
-| `cli.py` | 155 | **273** |
-| `models.py` | 130 | 301 *(arbitré 2026-09-03)* |
-| `workflow.py` | 175 | 417 *(arbitré 2026-09-03, +14 pour D-2)* |
-| `contracts.py` | 150 | 200 *(arbitré 2026-09-03)* |
-| `transport.py` | 160 | 265 *(arbitré 2026-09-03)* |
-| paquet `adapters/` | 230 | 178 |
-| **Total production (12/12 modules)** | **~1 430** | **2 070** |
+| Module | Visé (§11) | Brut | Code effectif |
+|---|---:|---:|---:|
+| `cli.py` | 155 | **225** | 178 |
+| `workflow.py` | 175 | **607** | 422 |
+| `models.py` | 130 | 301 | 220 |
+| `transport.py` | 160 | 265 | 191 |
+| `contracts.py` | 150 | 200 | 131 |
+| `lock.py` | — | 181 | 120 |
+| paquet `adapters/` | 230 | 178 | 99 |
+| **Total production (12/12)** | **~1 430** | **2 285** | **1 601** |
 
-*Mesuré le 2026-09-04, `wc -l`, brut. Pas de recomptage complet en « code effectif » cette session —
-au taux mesuré la session précédente (~71 %), la bande 1 350–1 550 serait aussi dépassée, ce qui
-n'était pas le cas avant ce palier.*
+*Mesuré le 2026-09-04 après le lot 2. « Code effectif » = hors blanches, commentaires et docstrings
+(script jetable, `ast` + `tokenize`). Ratio 70 %, conforme au taux annoncé.*
+
+**Ce qu'il faut dire au PO :** contre les ~1 500 de `POURQUOI.md`, la mesure comparable est **1 601**,
+pas 2 285 — l'écart brut est à 65 % de la documentation, et ce projet documente le motif de chaque
+garantie par choix. Projection à terminaison : ~1 900 effectives. La question n'est pas « accepte-t-on
+le chiffre ? » mais **« qu'est-ce qu'on retire en échange ? »** — marge en lots 7, 9 et 10.
 
 **Jamais sacrifiés pour tenir un chiffre** (§11) : état strict · absence de rejeu automatique · délai
 dur et terminaison d'arbre · `fsync` et publication atomique · artefact avant transition · les quatre
@@ -108,7 +136,8 @@ permutations · registre de constats · porte `QUESTION` · terminal non ambigu.
 - **Étape 2 : les quatre paliers sont écrits, testés, verts, committés (`61622a0`).** L'étape **n'est
   pas close** : audit Codex du 2026-09-04, onze constats, dont deux bloquants — plan correctif en
   onze lots, **tous les arbitrages tranchés**, dans
-  `project/correctifs/2026-09-04-plan-correctif-audit-v2.md`.
+  `project/correctifs/2026-09-04-plan-correctif-audit-v2.md`. **Lots 1 et 2 faits** ; C-01, C-02,
+  N-01 et N-02 fermés. Suite : 222 tests verts, `ruff` et `mypy --strict` verts.
 - **Codes de sortie (D-5, tranché le 2026-09-04)** : `0` AWAITING_APPROVAL · `1` refus avant mutation ·
   `2` réservé à argparse · `3` INTERRUPTED · `4` ERROR · `5` WAITING_HUMAN. Décision du PO **contre
   l'avis de Codex**, qui recommandait `0` pour WAITING_HUMAN.

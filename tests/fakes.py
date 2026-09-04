@@ -39,6 +39,7 @@ def command(
     sleep_seconds: float = 0.0,
     child_marker: str | None = None,
     child_delay_seconds: float = 2.0,
+    status_marker: str | None = None,
 ) -> list[str]:
     """Commande d'un faux agent.
 
@@ -48,9 +49,20 @@ def command(
     après `child_delay_seconds` (la preuve qu'un arbre a survécu, s'il
     apparaît), dort, puis sort avec `exit_code`.
 
+    `status_marker` fait relire `etat.json` **par le processus lancé** — le
+    transport le lance avec `cwd` = dossier de collaboration — et y déposer le
+    statut lu : c'est la seule preuve que `CALLING` a été publié avant `Popen`
+    qui ne dépende pas d'un point d'observation situé dans le programme.
+
     `stdout_bytes` et `stderr_bytes` doivent être divisibles par `rounds`.
     """
     lines = ["import sys, time"]
+    if status_marker is not None:
+        lines.append(
+            f"import json, pathlib; pathlib.Path({status_marker!r}).write_text("
+            "json.loads(pathlib.Path('etat.json').read_text(encoding='utf-8'))['status'],"
+            " encoding='utf-8')"
+        )
     if child_marker is not None:
         child = _CHILD.format(delay=child_delay_seconds, marker=child_marker)
         lines.append(f"import subprocess; subprocess.Popen([sys.executable, '-c', {child!r}])")
@@ -85,12 +97,14 @@ class FakeAdapter:
         version: str = "fake 0.1.0",
         sleep_seconds: float = 0.0,
         exit_codes: tuple[int, ...] = (),
+        status_marker: str | None = None,
     ) -> None:
         self.adapter_id = adapter_id
         self.capabilities = Capabilities(supports_context_only, supports_model_override)
         self.present = present
         self.version = version
         self.sleep_seconds = sleep_seconds
+        self.status_marker = status_marker
         self.responses = list(responses)
         self.exit_codes = list(exit_codes)
         self.calls = 0
@@ -106,14 +120,19 @@ class FakeAdapter:
     def command(self, call: CallSpec) -> list[str]:
         self.calls += 1
         self.prompts.append(call.prompt)
-        # `command` est invoqué juste avant `Popen` : relire l'état ici prouve
-        # que `CALLING` a bien été publié AVANT le lancement (§5, étape 4).
+        # `command` est résolu AVANT la publication de `CALLING` : relire l'état
+        # ici prouve qu'un exécutable disparu serait refusé sans mutation, et
+        # non déclaré « possiblement payé ». Que `CALLING` précède bien `Popen`
+        # se prouve dans le processus lancé, par `status_marker`.
         etat = call.work_root / "etat.json"
         if etat.exists():
             self.observed_status.append(json.loads(etat.read_text(encoding="utf-8"))["status"])
         reply = self.responses.pop(0) if self.responses else "IABINOME:DOCUMENT\nvide"
         exit_code = self.exit_codes.pop(0) if self.exit_codes else 0
-        return command(stdout=reply, exit_code=exit_code, sleep_seconds=self.sleep_seconds)
+        return command(
+            stdout=reply, exit_code=exit_code, sleep_seconds=self.sleep_seconds,
+            status_marker=self.status_marker,
+        )
 
     def extract(self, stdout: bytes, stderr: bytes) -> str:
         return stdout.decode("utf-8")

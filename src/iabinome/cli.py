@@ -2,9 +2,12 @@
 
 `new` fait tous ses prévols dans un répertoire temporaire frère puis publie
 par renommage ; `run` est l'unique moteur synchrone ; `resume` n'en contient
-pas un second — il enregistre l'intervention humaine, remet l'état dans une
-phase admissible, puis appelle le même moteur ; `status` est strictement en
-lecture seule.
+pas un second — il **transmet** l'intervention humaine au moteur, qui
+l'applique sous le verrou, remet l'état dans une phase admissible, puis
+enchaîne le cycle ; `status` est strictement en lecture seule.
+
+Aucune commande ne mute la collaboration hors du verrou : `resume` ne garde
+que la validation de ses arguments (D-4).
 """
 
 from __future__ import annotations
@@ -14,7 +17,6 @@ import json
 import shutil
 import sys
 import uuid
-from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -39,10 +41,6 @@ ADAPTERS: dict[str, AgentAdapter] = {"claude": ClaudeAdapter(), "codex": CodexAd
 
 _KIND = {"conception": MissionKind.CONCEPTION, "recherche": MissionKind.RECHERCHE}
 _ACCESS = {"context-only": ReviewerAccess.CONTEXT_ONLY, "consult": ReviewerAccess.CONSULT}
-# Une QUESTION née en PROPOSAL_A ou REVISION_A y retourne ; une née en
-# FINAL_A ou un BLOQUE (né en REVIEW_B) reprennent en REVISION_A, avec le
-# document courant et les constats déjà ouverts (§2).
-_RESUME_PHASE = {Phase.REVIEW_B: Phase.REVISION_A, Phase.FINAL_A: Phase.REVISION_A}
 
 
 def cmd_new(args: argparse.Namespace) -> int:
@@ -105,79 +103,33 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_resume(args: argparse.Namespace) -> int:
-    collab = Path(args.collab)
+    """Valide les arguments, construit l'intervention, la transmet. Aucune
+    lecture d'état, aucune écriture : tout cela appartient au verrou."""
     if args.answer and (args.retry_call or args.reason_file):
         return _fail("--answer est incompatible avec --retry-call/--reason-file")
     if bool(args.retry_call) != bool(args.reason_file):
         return _fail("--retry-call et --reason-file vont ensemble")
-    retry_of: str | None = None
-    retry_reason: str | None = None
-    try:
-        if args.answer:
-            _apply_answer(collab, Path(args.answer))
-        elif args.retry_call:
-            retry_of, retry_reason = _prepare_retry(
-                collab, args.retry_call, Path(args.reason_file)
-            )
-    except (OSError, ValueError) as exc:
-        return _fail(str(exc))
+    intervention: workflow.Intervention | None = None
+    if args.answer:
+        intervention = workflow.Answer(Path(args.answer))
+    elif args.retry_call:
+        intervention = workflow.RetryCall(args.retry_call, Path(args.reason_file))
     return _drive(
-        collab, timeout_seconds=args.timeout, command_label="resume",
-        retry_of=retry_of, retry_reason=retry_reason,
+        Path(args.collab), timeout_seconds=args.timeout, command_label="resume",
+        intervention=intervention,
     )
-
-
-def _apply_answer(collab: Path, answer_path: Path) -> None:
-    state = State.from_dict(_read_json(collab / "etat.json"))
-    if state.status is not Status.WAITING_HUMAN:
-        raise ValueError("la collaboration n'attend pas l'humain")
-    text, _ = storage.read_text(answer_path)
-    normalized = contracts.normalize(text)
-    _archive(collab / "demande.md")
-    storage.write_atomic_text(collab / "demande.md", normalized.text)
-    new_state = replace(
-        state, status=Status.READY, phase=_RESUME_PHASE.get(state.phase, state.phase),
-        demande_sha256=normalized.sha256, updated_at=_now(),
-    )
-    _write_json(collab / "etat.json", new_state.to_dict())
-
-
-def _archive(path: Path) -> None:
-    """L'ancienne demande est archivée en `demande.md.NNN`, jamais écrasée :
-    une réponse partielle ne doit pas créer une seconde autorité (§2)."""
-    existing = [
-        int(suffix) for p in path.parent.glob(f"{path.name}.*")
-        if (suffix := p.name.rsplit(".", 1)[-1]).isdigit()
-    ]
-    n = max(existing, default=0) + 1
-    path.rename(path.with_name(f"{path.name}.{n:03d}"))
-
-
-def _prepare_retry(collab: Path, retry_call: str, reason_path: Path) -> tuple[str, str]:
-    state = State.from_dict(_read_json(collab / "etat.json"))
-    if state.status is not Status.INTERRUPTED or state.current_call is None:
-        raise ValueError("aucun appel interrompu a relancer")
-    if state.current_call.call_id != retry_call:
-        raise ValueError(f"aucun appel interrompu {retry_call!r}")
-    reason, _ = storage.read_text(reason_path)
-    reason = reason.strip()
-    if not reason:
-        raise ValueError("le motif de relance ne peut pas etre vide")
-    new_state = replace(state, status=Status.READY, current_call=None, updated_at=_now())
-    _write_json(collab / "etat.json", new_state.to_dict())
-    return retry_call, reason
 
 
 def _drive(
     collab: Path, *, timeout_seconds: float, command_label: str,
-    retry_of: str | None = None, retry_reason: str | None = None,
+    intervention: workflow.Intervention | None = None,
 ) -> int:
     try:
         state = workflow.run(
             collab, adapters=ADAPTERS, timeout_seconds=timeout_seconds,
-            command_label=command_label, retry_of=retry_of, retry_reason=retry_reason,
+            command_label=command_label, intervention=intervention,
         )
-    except (workflow.WorkflowError, lock.LockError) as exc:
+    except (workflow.WorkflowError, lock.LockError, OSError) as exc:
         return _fail(str(exc))
     print(f"statut : {state.status.value} · phase : {state.phase.value}")
     return 0
