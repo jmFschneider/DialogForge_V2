@@ -12,6 +12,7 @@ qui permet de prouver qu'une reprise **n'a repayé aucun appel**.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -189,6 +190,24 @@ def collaboration(
         "last_incident": None, "updated_at": "2026-09-03T00:00:00Z",
     })
     return collab
+
+
+def call_result(call_dir: Path, *, return_code: int = 0) -> None:
+    """Écrit un `resultat.json` **cohérent avec les flux réellement présents**.
+
+    Les empreintes ne sont plus fabriquées : depuis le lot 4, un `resultat.json`
+    valide mais contredit par les fichiers est une divergence. Des empreintes de
+    zéros transformeraient chaque test de reprise **nominale** en scénario de
+    corruption — et la suite mesurerait alors le contraire de ce qu'elle dit.
+    """
+    stdout = (call_dir / "stdout.txt").read_bytes()
+    stderr = (call_dir / "stderr.txt").read_bytes()
+    write_json(call_dir / "resultat.json", {
+        "schema_version": SCHEMA_VERSION, "return_code": return_code,
+        "stdout_bytes": len(stdout), "stdout_sha256": hashlib.sha256(stdout).hexdigest(),
+        "stderr_bytes": len(stderr), "stderr_sha256": hashlib.sha256(stderr).hexdigest(),
+        "duration_seconds": 1.0,
+    })
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:

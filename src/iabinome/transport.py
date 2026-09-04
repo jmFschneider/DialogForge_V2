@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import IO, Any
 
 from . import storage
+from .models import IntegrityError
 
 SCHEMA_VERSION = 1
 OUTPUT_LIMIT_BYTES = 8 * 1024 * 1024
@@ -157,8 +158,14 @@ def run(
 
 
 def read_result(call_dir: Path) -> CallResult | None:
-    """Relit `resultat.json`. `None` s'il est absent, illisible ou invalide : la
-    reprise ne conclut « flux complets » que sur un fichier valide (§5)."""
+    """Relit `resultat.json` **et le confronte aux flux**.
+
+    `None` s'il est absent, illisible ou invalide : il n'y a alors *pas de
+    preuve*, et l'appel est possiblement payé. S'il est valide mais que les flux
+    le contredisent — taille ou empreinte différente, fichier disparu —, c'est
+    une *preuve contredite* : `IntegrityError`. Les deux rendent la main à
+    l'humain, jamais avec le même diagnostic (§5).
+    """
     try:
         text, _ = storage.read_text(call_dir / "resultat.json")
         raw = json.loads(text)
@@ -173,7 +180,24 @@ def read_result(call_dir: Path) -> CallResult | None:
         return None
     fields = {k: raw[k] for k in _RESULT_TYPES if k != "schema_version"}
     fields["duration_seconds"] = float(fields["duration_seconds"])
-    return CallResult(outcome=Outcome.COMPLETED, **fields)
+    result = CallResult(outcome=Outcome.COMPLETED, **fields)
+    _check_stream(call_dir / "stdout.txt", result.stdout_bytes, result.stdout_sha256)
+    _check_stream(call_dir / "stderr.txt", result.stderr_bytes, result.stderr_sha256)
+    return result
+
+
+def _check_stream(path: Path, size: int, digest: str) -> None:
+    """Un flux absent alors que `resultat.json` existe est une **divergence**,
+    pas une erreur d'entrée-sortie : le fichier affirmait que ce flux était
+    complet."""
+    try:
+        data = path.read_bytes()
+    except OSError as exc:
+        raise IntegrityError(
+            f"{path.name} absent alors que resultat.json affirme {size} octets"
+        ) from exc
+    if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
+        raise IntegrityError(f"{path.name} ne correspond plus a resultat.json")
 
 
 def _wait(

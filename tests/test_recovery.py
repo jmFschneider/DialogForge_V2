@@ -11,11 +11,12 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from iabinome import transport, workflow
+from iabinome import contracts, transport, workflow
 from iabinome.models import Status
 from tests import fakes
 
 _DOC = "IABINOME:DOCUMENT\n# Proposition\nCorps du document."
+_PROMPT = "Voici la demande, et le format attendu."
 
 
 class RecoveryCase(unittest.TestCase):
@@ -39,14 +40,9 @@ class RecoveryCase(unittest.TestCase):
         call_dir.mkdir(parents=True)
         (call_dir / "stdout.txt").write_bytes(_DOC.encode("utf-8"))
         (call_dir / "stderr.txt").write_bytes(b"")
-        (call_dir / "prompt.txt").write_text("prompt", encoding="utf-8")
+        (call_dir / "prompt.txt").write_text(_PROMPT, encoding="utf-8")
         if result:
-            fakes.write_json(call_dir / "resultat.json", {
-                "schema_version": 1, "return_code": 0,
-                "stdout_bytes": len(_DOC.encode("utf-8")),
-                "stdout_sha256": "0" * 64, "stderr_bytes": 0, "stderr_sha256": "0" * 64,
-                "duration_seconds": 1.0,
-            })
+            fakes.call_result(call_dir)
         if response is not None:
             (call_dir / "reponse_brute.txt").write_text(response, encoding="utf-8")
         etat = fakes.read_json(self.collab / "etat.json")
@@ -54,8 +50,10 @@ class RecoveryCase(unittest.TestCase):
         etat["current_call"] = {
             "call_id": "abcdef", "sequence": 1, "role": "A", "phase": "PROPOSAL_A",
             "status": "RESPONSE_STORED" if response is not None else "CALLING",
-            "call_dir": rel, "prompt_sha256": "0" * 64,
-            "response_sha256": "0" * 64 if response is not None else None,
+            "call_dir": rel, "prompt_sha256": contracts.normalize(_PROMPT).sha256,
+            "response_sha256": (
+                contracts.normalize(response).sha256 if response is not None else None
+            ),
             "started_at": "2026-09-03T00:00:00Z",
             "completed_at": "2026-09-03T00:00:01Z" if response is not None else None,
         }
@@ -117,6 +115,49 @@ class TestRecoveryTable(RecoveryCase):
         self.assertIsNone(transport.read_result(call_dir))
         self.assertIs(self.resume(), Status.INTERRUPTED)
         self.assertEqual(self.a.calls, 0)
+
+
+class TestIntegrity(RecoveryCase):
+    """C-05 : une preuve **contredite** n'est pas une preuve **absente**.
+
+    Le dossier d'appel est confronté aux empreintes de l'état avant toute
+    branche de reprise. Dans les quatre cas, l'incident est nommé et **aucun
+    appel n'est relancé** : une divergence ne se rattrape pas en repayant.
+    """
+
+    def assert_mismatch(self) -> None:
+        self.assertIs(self.resume(), Status.INTERRUPTED)
+        self.assertEqual(self.a.calls, 0, "une divergence a declenche un appel")
+        etat = fakes.read_json(self.collab / "etat.json")
+        incident = fakes.read_json(self.collab / str(etat["last_incident"]))
+        self.assertEqual(incident["kind"], "INTEGRITY_MISMATCH")
+
+    def test_an_altered_stdout_contradicts_the_result(self) -> None:
+        call_dir = self.crash_mid_call(response=None, result=True)
+        (call_dir / "stdout.txt").write_bytes(b"une autre reponse, de meme longueur ")
+        self.assert_mismatch()
+
+    def test_a_missing_stream_is_a_divergence_not_an_io_error(self) -> None:
+        """`resultat.json` affirmait ce flux complet : son absence le contredit,
+        elle n'est pas une erreur d'entrée-sortie générique."""
+        call_dir = self.crash_mid_call(response=None, result=True)
+        (call_dir / "stderr.txt").unlink()
+        self.assert_mismatch()
+
+    def test_an_altered_stored_response_is_not_applied(self) -> None:
+        call_dir = self.crash_mid_call(response=_DOC, result=True)
+        (call_dir / "reponse_brute.txt").write_text(
+            "IABINOME:DOCUMENT\n# Autre\nSubstitue.", encoding="utf-8"
+        )
+        self.assert_mismatch()
+        self.assertFalse((self.collab / "echanges").exists(), "un artefact a ete ecrit")
+
+    def test_an_altered_prompt_is_checked_before_any_branch(self) -> None:
+        """Vérifié **avant** la branche `RESPONSE_STORED`, qui autrement
+        reprenait sur une réponse que plus rien ne rattachait à son prompt."""
+        call_dir = self.crash_mid_call(response=_DOC, result=True)
+        (call_dir / "prompt.txt").write_text("un autre prompt", encoding="utf-8")
+        self.assert_mismatch()
 
 
 class TestRetry(RecoveryCase):

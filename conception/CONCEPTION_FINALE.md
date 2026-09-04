@@ -309,6 +309,22 @@ protocole existe pour empêcher.*
 *Deux statuts suffisent : `PREPARED`, `LAUNCHING` et `STARTED` avaient la même conséquence après
 crash, et `APPLIED` dupliquait la phase déjà persistée.*
 
+### Intégrité de reprise
+
+**Pas de preuve ≠ preuve contredite.** L'absence de `resultat.json` dit « appel possiblement payé » ;
+un `resultat.json` valide que les fichiers **contredisent** dit autre chose, et les deux ne se
+diagnostiquent pas pareil. À la reprise, avant **toute** branche :
+
+- `prompt.txt` est confronté à `prompt_sha256` — y compris sur la branche `RESPONSE_STORED`, qui
+  autrement reprenait sur une réponse que plus rien ne rattachait à son prompt ;
+- `reponse_brute.txt` est confronté à `response_sha256` ;
+- `resultat.json` est confronté aux **tailles et empreintes** des deux flux. **Un flux absent alors que
+  `resultat.json` existe est une divergence**, pas une erreur d'entrée-sortie générique : le fichier
+  affirmait ce flux complet.
+
+Une divergence est consignée en `INTEGRITY_MISMATCH` / `INTERRUPTED`, **sans appel automatique** : on ne
+rattrape pas une preuve contredite en repayant.
+
 **Écritures de contrôle** : temporaire unique dans le même dossier, `flush`, `fsync`, `os.replace` ;
 `fsync` du dossier sous POSIX ; nouvelle tentative brève sous Windows.
 *L'atomicité de publication n'est pas la durabilité — DialogForge ne faisait pas la seconde. **Aucune

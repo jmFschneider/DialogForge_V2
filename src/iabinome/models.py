@@ -21,6 +21,16 @@ class SchemaError(ValueError):
     """Schéma invalide : refus avant toute mutation."""
 
 
+class IntegrityError(RuntimeError):
+    """Un artefact du disque **contredit** l'empreinte que l'état lui associe.
+
+    À distinguer de l'absence de preuve : « pas de `resultat.json` » veut dire
+    « appel possiblement payé », tandis qu'une divergence dit « la preuve est
+    contredite ». Les deux mènent à l'humain, jamais au même diagnostic
+    (CONCEPTION_FINALE.md §5).
+    """
+
+
 class MissionKind(Enum):
     CONCEPTION = "CONCEPTION"
     RECHERCHE = "RECHERCHE"

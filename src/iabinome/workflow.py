@@ -38,6 +38,7 @@ from .models import (
     CallStatus,
     Configuration,
     Decision,
+    IntegrityError,
     MissionKind,
     Phase,
     ReviewerAccess,
@@ -395,12 +396,32 @@ class _Engine:
         return self.apply(state, normalized.text)
 
     def resume_call(self, state: State) -> State:
-        """Table de reprise §5 — le dossier d'appel fait foi, pas le seul statut."""
+        """Table de reprise §5 — le dossier d'appel fait foi, pas le seul statut.
+
+        Le dossier est **confronté aux empreintes de l'état avant toute
+        branche**, `RESPONSE_STORED` comprise : sans cela, le moteur reprenait
+        sur des fichiers que rien ne rattachait à l'appel qu'il croyait
+        reprendre. Une preuve **contredite** n'est pas une preuve **absente**,
+        et elle ne se rattrape pas par un appel (C-05).
+        """
         call = _current(state)
         call_dir = self.collab / call.call_dir
+        try:
+            return self.resume_verified(state, call, call_dir)
+        except IntegrityError as exc:
+            return self.incident(
+                state, call.call_dir, "INTEGRITY_MISMATCH", Status.INTERRUPTED, str(exc)
+            )
+
+    def resume_verified(self, state: State, call: CallState, call_dir: Path) -> State:
+        self.check_digest(
+            call_dir / "prompt.txt", call.prompt_sha256, "l'empreinte de l'appel"
+        )
         if call.status is CallStatus.RESPONSE_STORED:
-            raw, _ = storage.read_text(call_dir / "reponse_brute.txt")
-            return self.apply(state, contracts.normalize(raw).text)
+            raw = self.check_digest(
+                call_dir / "reponse_brute.txt", call.response_sha256, "la reponse enregistree"
+            )
+            return self.apply(state, raw)
         result = transport.read_result(call_dir)
         if result is None:
             return self.incident(
@@ -415,6 +436,22 @@ class _Engine:
         # `resultat.json` valide : les flux sont complets. Retraitement local,
         # sans appel — sans quoi on repaierait une réponse qu'on a déjà.
         return self.store_response(state)
+
+    def check_digest(self, path: Path, expected: str | None, what: str) -> str:
+        """Relit un artefact d'appel et le confronte à l'empreinte de l'état.
+
+        L'empreinte porte sur le texte **normalisé**, comme au moment de
+        l'écriture : c'est la copie normalisée qui est empreinte, jamais la
+        preuve brute (§6). Rend ce texte normalisé, prêt à l'emploi.
+        """
+        try:
+            text, _ = storage.read_text(path)
+        except OSError as exc:
+            raise IntegrityError(f"{path.name} absent du dossier d'appel") from exc
+        normalized = contracts.normalize(text)
+        if normalized.sha256 != expected:
+            raise IntegrityError(f"{path.name} ne correspond plus a {what}")
+        return normalized.text
 
     # -- Étape 8 : artefact de phase, puis transition --
 
