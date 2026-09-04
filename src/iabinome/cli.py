@@ -21,7 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import contracts, corpus, lock, storage, workflow
+from . import contracts, corpus, lock, storage, transport, workflow
 from .adapters.base import AgentAdapter
 from .adapters.claude import ClaudeAdapter
 from .adapters.codex import CodexAdapter
@@ -33,6 +33,7 @@ from .models import (
     Phase,
     ReviewerAccess,
     Role,
+    SchemaError,
     State,
     Status,
     positive_seconds,
@@ -141,8 +142,8 @@ def _drive(
             collab, adapters=ADAPTERS, timeout_seconds=timeout_seconds,
             command_label=command_label, intervention=intervention,
         )
-    except (workflow.WorkflowError, lock.LockError, OSError) as exc:
-        return _fail(str(exc))
+    except _BORDER_ERRORS as exc:
+        return _fail(_describe(exc))
     print(f"statut : {state.status.value} · phase : {state.phase.value}")
     # Indexation directe, sans défaut : `run` ne rend jamais `READY` ni
     # `RUNNING`, et masquer un statut inattendu derrière un code plausible
@@ -151,7 +152,13 @@ def _drive(
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    collab = Path(args.collab)
+    try:
+        return _status(Path(args.collab), json_output=args.json)
+    except _BORDER_ERRORS as exc:
+        return _fail(_describe(exc))
+
+
+def _status(collab: Path, *, json_output: bool) -> int:
     config = Configuration.from_dict(_read_json(collab / "configuration.json"))
     state = State.from_dict(_read_json(collab / "etat.json"))
     corpus_age_days: int | None = None
@@ -168,12 +175,34 @@ def cmd_status(args: argparse.Namespace) -> int:
         "open_findings": len(state.open_finding_ids), "corpus_age_days": corpus_age_days,
         "last_incident": state.last_incident,
     }
-    if args.json:
+    if json_output:
         print(json.dumps(payload, ensure_ascii=False))
     else:
         for key, value in payload.items():
             print(f"{key} : {value}")
     return 0
+
+
+# Types de **frontière**, nommés un par un. Pas de capture globale de
+# `ValueError` : un `ValueError` accidentel du moteur doit rester bruyant, sans
+# quoi un défaut du programme se déguiserait en refus ordinaire (C-10).
+_BORDER_ERRORS = (
+    SchemaError,
+    workflow.WorkflowError,
+    lock.LockError,
+    transport.TransportError,
+    corpus.CorpusError,
+    OSError,
+    json.JSONDecodeError,
+    UnicodeDecodeError,
+)
+
+
+def _describe(exc: BaseException) -> str:
+    """Un refus lisible, jamais une traceback — mais jamais muet non plus :
+    certaines `OSError` ont un message vide, et « erreur : » seul n'aide
+    personne."""
+    return str(exc) or type(exc).__name__
 
 
 def _fail(message: str) -> int:

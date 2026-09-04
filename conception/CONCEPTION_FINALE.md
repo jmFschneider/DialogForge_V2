@@ -367,6 +367,25 @@ d'erreur pour laquelle elle n'a aucun sens. Toute famille nouvelle s'y ajoute ex
 *Un arrêt avant cette publication laisse l'`INTERRUPTED` d'origine intact : la même commande est
 rejouable à l'identique, et le lien vers l'appel relancé n'est jamais perdable.*
 
+### Classification des erreurs
+
+À la frontière, `run`, `resume` et `status` rendent un **refus lisible, jamais une traceback**, en
+attrapant des types **nommés un par un**. *Pas de capture globale de `ValueError` : un `ValueError`
+accidentel du moteur doit rester bruyant, sans quoi un défaut du programme se déguiserait en refus
+ordinaire.*
+
+Les erreurs qui surviennent **après** la publication de `CALLING` sont classées durablement, sans quoi
+l'enveloppe supprimerait la traceback et laisserait au lancement suivant un faux « possiblement payé » :
+
+| Situation | Incident | Statut |
+|---|---|---|
+| `Popen` échoue | `LAUNCH_FAILED` — **l'appel n'est pas parti** | `INTERRUPTED` |
+| extraction impossible alors que les flux sont complets | `DECODE_FAILED`, flux préservés | `ERROR` |
+| l'exécutable a disparu depuis le prévol | — la résolution précède `CALLING` | — |
+
+`DECODE_FAILED` appartient à la table fermée des incidents relançables : la reprise ne retente que
+l'extraction, aucun appel supplémentaire n'étant nécessaire.
+
 ### Porte d'état
 
 **Sous le verrou et après l'intervention humaine**, le moteur lit `status` avant de décider : seuls

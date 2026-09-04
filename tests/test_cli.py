@@ -327,6 +327,82 @@ class TestLoadedConfiguration(CliCase):
             State.from_dict(etat)
 
 
+class TestErrorClassification(CliCase):
+    """C-10 : aucune traceback à la frontière, et l'état reste interprétable.
+
+    L'enveloppe attrape des types **nommés un par un**. Pas de capture globale
+    de `ValueError` : un `ValueError` accidentel du moteur doit rester bruyant,
+    sans quoi un défaut du programme se déguiserait en refus ordinaire.
+    """
+
+    def build(self) -> None:
+        self.assertEqual(cli.main(["new", *self.new_args()]), 0)
+
+    def refused(self, argv: list[str]) -> str:
+        with redirect_stderr(io.StringIO()) as err:
+            code = cli.main(argv)
+        self.assertEqual(code, 1)
+        return err.getvalue()
+
+    def test_an_unreadable_state_is_a_refusal_not_a_traceback(self) -> None:
+        self.build()
+        (self.collab / "etat.json").write_text("{ ceci n'est pas du json", encoding="utf-8")
+        for argv in (["run", str(self.collab)], ["status", str(self.collab)]):
+            with self.subTest(commande=argv[0]):
+                self.assertIn("erreur :", self.refused(argv))
+
+    def test_an_invalid_state_schema_is_a_refusal(self) -> None:
+        self.build()
+        etat = fakes.read_json(self.collab / "etat.json")
+        etat["status"] = "UN_STATUT_INCONNU"
+        fakes.write_json(self.collab / "etat.json", etat)
+        self.assertIn("valeur inconnue", self.refused(["run", str(self.collab)]))
+
+    def test_an_absent_collaboration_is_a_refusal(self) -> None:
+        self.assertIn("erreur :", self.refused(["status", str(self.root / "nulle-part")]))
+
+    def test_a_failed_popen_is_launch_failed_never_possibly_paid(self) -> None:
+        """L'appel **n'est pas parti** : le déclarer « possiblement payé » ferait
+        payer au lancement suivant une prudence que rien ne justifie."""
+        self.build()
+        self.a.responses = []
+        with mock.patch.object(
+            self.a, "command", return_value=["un-executable-qui-n-existe-pas-du-tout"]
+        ):
+            code = cli.main(["run", str(self.collab)])
+        self.assertEqual(code, 3)
+        etat = fakes.read_json(self.collab / "etat.json")
+        self.assertEqual(etat["status"], "INTERRUPTED")
+        incident = fakes.read_json(self.collab / str(etat["last_incident"]))
+        self.assertEqual(incident["kind"], "LAUNCH_FAILED")
+
+    def test_a_non_utf8_response_is_decode_failed_with_the_streams_kept(self) -> None:
+        """Les flux sont complets mais illisibles : incident nommé, flux
+        préservés, et relance locale possible sans nouvel appel (N-01)."""
+        self.build()
+
+        def undecodable(stdout: bytes, stderr: bytes) -> str:
+            return b"\xff\xfe invalide".decode("utf-8")
+
+        with mock.patch.object(self.a, "extract", side_effect=undecodable):
+            code = cli.main(["run", str(self.collab)])
+        self.assertEqual(code, 4)
+        etat = fakes.read_json(self.collab / "etat.json")
+        self.assertEqual(etat["status"], "ERROR")
+        incident = fakes.read_json(self.collab / str(etat["last_incident"]))
+        self.assertEqual(incident["kind"], "DECODE_FAILED")
+        call_dir = next((self.collab / "appels").iterdir())
+        self.assertTrue((call_dir / "stdout.txt").exists(), "les flux doivent rester")
+        self.assertTrue((call_dir / "resultat.json").exists())
+
+    def test_an_accidental_value_error_stays_loud(self) -> None:
+        """Contre-épreuve de l'enveloppe : elle ne doit pas tout avaler."""
+        self.build()
+        with mock.patch.object(self.a, "probe", side_effect=ValueError("defaut du moteur")):
+            with self.assertRaises(ValueError):
+                cli.main(["run", str(self.collab)])
+
+
 class TestStatus(CliCase):
     def test_status_json_reports_the_current_phase(self) -> None:
         self.assertEqual(cli.main(["new", *self.new_args()]), 0)

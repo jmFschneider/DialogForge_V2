@@ -390,10 +390,18 @@ class _Engine:
         # 2026-09-03, argv plafonne à 32 767 caractères sous Windows, et une CLI
         # qui voit `DEVNULL` sur son entrée la lit comme un flux vide et dégrade
         # sa réponse (`conception/CARACTERISATION_CLI.md`, point 1).
-        result = transport.run(
-            argv, cwd=self.collab, call_dir=self.collab / rel_dir,
-            timeout_seconds=self.timeout_seconds, stdin_text=prompt,
-        )
+        try:
+            result = transport.run(
+                argv, cwd=self.collab, call_dir=self.collab / rel_dir,
+                timeout_seconds=self.timeout_seconds, stdin_text=prompt,
+            )
+        except transport.TransportError as exc:
+            # `Popen` a échoué : l'appel **n'est pas parti**. Le déclarer
+            # « possiblement payé » ferait payer au lancement suivant une
+            # prudence que rien ne justifie.
+            return self.incident(
+                state, rel_dir, "LAUNCH_FAILED", Status.INTERRUPTED, str(exc)
+            )
         if result.outcome is not Outcome.COMPLETED:
             return self.incident(state, rel_dir, result.outcome.value, Status.INTERRUPTED)
         if result.return_code != 0:
@@ -412,9 +420,18 @@ class _Engine:
         call = _current(state)
         agent = self.config.agent_a if call.role is Role.A else self.config.agent_b
         call_dir = self.collab / call.call_dir
-        raw = self.adapters[agent.adapter_id].extract(
-            (call_dir / "stdout.txt").read_bytes(), (call_dir / "stderr.txt").read_bytes()
-        )
+        try:
+            raw = self.adapters[agent.adapter_id].extract(
+                (call_dir / "stdout.txt").read_bytes(), (call_dir / "stderr.txt").read_bytes()
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            # Les flux sont complets mais illisibles : les préserver et nommer
+            # l'incident, plutôt qu'une traceback qui laisserait au lancement
+            # suivant un faux « possiblement payé ». Aucun appel n'est
+            # nécessaire pour retenter l'extraction (N-01).
+            return self.incident(
+                state, call.call_dir, "DECODE_FAILED", Status.ERROR, str(exc)
+            )
         storage.write_atomic_text(call_dir / "reponse_brute.txt", raw)
         normalized = contracts.normalize(raw)
         state = self.publish(replace(state, current_call=replace(
