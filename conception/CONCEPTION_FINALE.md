@@ -447,6 +447,15 @@ aucun sens si A est Codex : le défaut est une propriété de l'adaptateur, jama
 noyau. Il est résolu au `new` puis persisté. *Cela garde les noms de fournisseurs dans `adapters/` —
 `C15b` — et corrige `CLAUDE.md` §6, qui les énonçait comme des défauts globaux.*
 
+**Le corpus est vérifié contre son manifeste avant chaque appel**, sous le verrou et juste avant la
+construction de l'appel : pour chaque entrée, présence, **taille** et **SHA-256** ; refus d'un fichier
+absent, altéré, **surnuméraire**, ou devenu **lien symbolique** — par symétrie avec la copie, qui
+refuse déjà les fichiers non réguliers.
+
+*La promesse est bien « vérifié avant chaque appel », **pas** une immutabilité physique : un éditeur
+qui ignore `verrou.json` pendant que l'agent lit reste hors de portée du programme. Comparer la seule
+empreinte du texte du manifeste, comme au départ, ne disait rien du contenu qu'il décrit.*
+
 **En recherche, `--source-root` et `--source-list` sont obligatoires et le corpus doit être non vide.**
 *V0.1 n'a aucun accès externe : sans corpus, une mission de recherche n'a rien à chercher.*
 

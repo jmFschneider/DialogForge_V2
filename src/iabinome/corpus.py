@@ -49,6 +49,54 @@ class Manifest:
         }
 
 
+_MANIFEST_KEYS = {"schema_version", "captured_at", "origin_label", "files"}
+_ENTRY_KEYS = {"chemin", "taille", "sha256"}
+
+
+def read_manifest(path: Path) -> Manifest:
+    """Lecture **stricte**, symétrique de `Manifest.to_dict`.
+
+    Clés exactes, types exacts, version connue, chemins logiques soumis aux
+    mêmes refus qu'à la copie. Un manifeste au schéma cassé est un refus, jamais
+    une lecture partielle : c'est lui qui sert de référence pour dire si le
+    corpus a bougé, et une référence à moitié lue ne prouve rien.
+    """
+    text, _ = storage.read_text(path)
+    try:
+        raw = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise CorpusError(f"manifeste illisible : {exc}") from exc
+    if not isinstance(raw, dict) or set(raw) != _MANIFEST_KEYS:
+        raise CorpusError("manifeste : schéma inattendu")
+    if raw["schema_version"] != SCHEMA_VERSION:
+        raise CorpusError(f"manifeste : version {raw['schema_version']!r} inconnue")
+    for key in ("captured_at", "origin_label"):
+        if not isinstance(raw[key], str):
+            raise CorpusError(f"manifeste : {key} chaîne attendue")
+    if not isinstance(raw["files"], list):
+        raise CorpusError("manifeste : files liste attendue")
+    return Manifest(
+        schema_version=SCHEMA_VERSION,
+        captured_at=raw["captured_at"],
+        origin_label=raw["origin_label"],
+        entries=tuple(_read_entry(item) for item in raw["files"]),
+    )
+
+
+def _read_entry(raw: Any) -> ManifestEntry:
+    if not isinstance(raw, dict) or set(raw) != _ENTRY_KEYS:
+        raise CorpusError("manifeste : entrée au schéma inattendu")
+    logical_path, size, digest = raw["chemin"], raw["taille"], raw["sha256"]
+    if not isinstance(logical_path, str) or not isinstance(digest, str):
+        raise CorpusError("manifeste : chemin et sha256 chaînes attendues")
+    if not isinstance(size, int) or isinstance(size, bool) or size < 0:
+        raise CorpusError("manifeste : taille entier positif attendu")
+    # Mêmes refus qu'à la copie : un manifeste fabriqué ne doit pas pouvoir
+    # faire lire un fichier hors du dossier de corpus.
+    _check_logical_path(logical_path)
+    return ManifestEntry(logical_path=logical_path, size=size, sha256=digest)
+
+
 def build(
     source_root: Path, source_list: Path, destination: Path, origin_label: str
 ) -> Manifest:

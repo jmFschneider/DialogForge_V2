@@ -21,6 +21,7 @@ douze signatures. C'est le seul module du programme qui en ait autant.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from collections.abc import Mapping
@@ -29,7 +30,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import contracts, lock, prompts, storage, transport
+from . import contracts, corpus, lock, prompts, storage, transport
 from .adapters.base import AgentAdapter, CallSpec, ObservedCli
 from .contracts import ContractError, Finding
 from .models import (
@@ -154,8 +155,9 @@ def _preflight(
     intervention: Intervention | None = None,
 ) -> tuple[_Engine, State]:
     """Étape 1, **sans aucune mutation** : demande, schémas, état, empreintes,
-    corpus, adaptateurs, versions observées, modèles, profil de revue. Un
-    adaptateur incapable du profil demandé est refusé **avant l'appel** (§1, §8)."""
+    adaptateurs, versions observées, modèles, profil de revue. Un adaptateur
+    incapable du profil demandé est refusé **avant l'appel** (§1, §8). Le corpus,
+    lui, se vérifie sous verrou, immédiatement avant l'appel (§3)."""
     config = Configuration.from_dict(_read_json(collab / "configuration.json"))
     state = State.from_dict(_read_json(collab / "etat.json"))
     answer = _read_answer(intervention)
@@ -177,9 +179,7 @@ def _preflight(
         not adapters[config.agent_b.adapter_id].capabilities.supports_context_only
     ):
         raise WorkflowError(f"{config.agent_b.adapter_id} : profil CONTEXT_ONLY non supporté")
-    engine = _Engine(collab, config, adapters, observed, demande, timeout_seconds, answer)
-    engine.check_corpus()
-    return engine, state
+    return _Engine(collab, config, adapters, observed, demande, timeout_seconds, answer), state
 
 
 def _read_answer(intervention: Intervention | None) -> contracts.Normalized | None:
@@ -221,14 +221,35 @@ class _Engine:
 
     def check_corpus(self) -> None:
         """Le corpus est figé : il n'existe pas de rafraîchissement. Le changer
-        en cours de cycle détruirait la référence commune de A et B (§3)."""
+        en cours de cycle détruirait la référence commune de A et B (§3).
+
+        Contrôle **complet et unique**, sous verrou, immédiatement avant la
+        construction de l'appel : le manifeste contre la configuration, puis
+        chaque entrée — présence, taille, empreinte —, puis l'absence de fichier
+        surnuméraire. Comparer la seule empreinte du **texte** du manifeste ne
+        disait rien du contenu qu'il décrit.
+
+        La promesse exacte est « contenu vérifié contre le manifeste **avant
+        chaque appel** », et non une immutabilité physique : un éditeur qui
+        ignore `verrou.json` pendant que l'agent lit reste hors de portée du
+        programme.
+        """
         if self.config.corpus_manifest_sha256 is None:
             if self.config.mission_kind is MissionKind.RECHERCHE:
                 raise WorkflowError("mission de recherche sans corpus")
             return
-        text, _ = storage.read_text(self.collab / "corpus" / "manifeste.json")
+        root = self.collab / "corpus"
+        text, _ = storage.read_text(root / "manifeste.json")
         if contracts.normalize(text).sha256 != self.config.corpus_manifest_sha256:
             raise WorkflowError("le manifeste de corpus ne correspond plus à la configuration")
+        try:
+            manifest = corpus.read_manifest(root / "manifeste.json")
+        except corpus.CorpusError as exc:
+            raise WorkflowError(f"corpus : {exc}") from exc
+        files_dir = root / "fichiers"
+        for entry in manifest.entries:
+            _check_corpus_file(files_dir / entry.logical_path, entry)
+        _refuse_extra_files(files_dir, {e.logical_path for e in manifest.entries})
 
     def recheck(self, state: State) -> None:
         """Étape 3 : toute différence depuis le prévol est un refus. Ferme la
@@ -326,6 +347,9 @@ class _Engine:
         role = _ROLE_OF_PHASE.get(state.phase)
         if role is None:
             raise WorkflowError(f"phase {state.phase.value} : aucun appel n'y est prévu")
+        # Sous verrou, immédiatement avant la construction de l'appel : c'est le
+        # seul endroit où « vérifié avant chaque appel » est littéralement vrai.
+        self.check_corpus()
         agent = self.config.agent_a if role is Role.A else self.config.agent_b
         sequence, call_id = self.next_sequence(), uuid.uuid4().hex
         rel_dir = f"appels/{sequence:04d}-{role.value}-{call_id}"
@@ -602,6 +626,33 @@ class _Engine:
         state = replace(state, updated_at=_now())
         _write_json(self.collab / "etat.json", state.to_dict())
         return state
+
+
+def _check_corpus_file(path: Path, entry: corpus.ManifestEntry) -> None:
+    """Le lien symbolique est refusé **par symétrie avec la copie**, qui refuse
+    déjà les fichiers non réguliers : ce qui n'a pas pu entrer dans le corpus ne
+    doit pas pouvoir y apparaître après coup."""
+    if path.is_symlink():
+        raise WorkflowError(f"corpus : {entry.logical_path} est devenu un lien symbolique")
+    try:
+        data = path.read_bytes()
+    except OSError as exc:
+        raise WorkflowError(f"corpus : {entry.logical_path} absent ou illisible") from exc
+    if len(data) != entry.size or hashlib.sha256(data).hexdigest() != entry.sha256:
+        raise WorkflowError(f"corpus : {entry.logical_path} ne correspond plus au manifeste")
+
+
+def _refuse_extra_files(files_dir: Path, expected: set[str]) -> None:
+    """Un fichier surnuméraire est un corpus qui a bougé : A et B ne liraient
+    plus la même chose, et le manifeste ne le dirait pas."""
+    if not files_dir.is_dir():
+        return
+    for path in files_dir.rglob("*"):
+        if path.is_dir() and not path.is_symlink():
+            continue
+        relative = path.relative_to(files_dir).as_posix()
+        if relative not in expected:
+            raise WorkflowError(f"corpus : fichier surnuméraire — {relative}")
 
 
 def _archive(path: Path, text: str) -> None:

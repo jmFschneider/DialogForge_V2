@@ -151,10 +151,13 @@ def collaboration(
     model_a: str = "fake-a-modele-a",
     model_b: str = "fake-b-modele-b",
     corpus_captured_at: str | None = None,
+    corpus_files: dict[str, str] | None = None,
 ) -> Path:
     """Écrit une collaboration prête à `run` : configuration, demande, état.
 
-    `corpus_captured_at` non nul ajoute un manifeste de corpus figé à cette date.
+    `corpus_captured_at` non nul ajoute un manifeste de corpus figé à cette
+    date ; `corpus_files` y dépose de vrais fichiers, avec leurs vraies tailles
+    et empreintes — depuis le lot 5, le manifeste est confronté au contenu.
     """
     collab = root / "collaboration"
     collab.mkdir(parents=True, exist_ok=True)
@@ -163,12 +166,22 @@ def collaboration(
     manifest_sha: str | None = None
     if corpus_captured_at is not None:
         (collab / "corpus").mkdir(exist_ok=True)
+        entries = []
+        for name, content in (corpus_files or {}).items():
+            data = content.encode("utf-8")
+            destination = collab / "corpus" / "fichiers" / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            storage.write_atomic_bytes(destination, data)
+            entries.append({
+                "chemin": name, "taille": len(data),
+                "sha256": hashlib.sha256(data).hexdigest(),
+            })
         payload = json.dumps(
             {
                 "schema_version": SCHEMA_VERSION,
                 "captured_at": f"{corpus_captured_at}T00:00:00Z",
                 "origin_label": "FloraPi",
-                "files": [],
+                "files": entries,
             },
             ensure_ascii=False,
             indent=2,

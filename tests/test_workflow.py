@@ -3,11 +3,12 @@
 Tous les appels passent par `FakeAdapter` — aucun fournisseur, aucun réseau,
 aucun coût (CONCEPTION_FINALE.md §10)."""
 
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from iabinome import workflow
+from iabinome import contracts, workflow
 from iabinome.adapters.base import Capabilities
 from iabinome.models import Phase, Status
 from iabinome.workflow import WorkflowError
@@ -239,6 +240,97 @@ class TestPreflight(WorkflowCase):
         (collab / "corpus" / "manifeste.json").write_text("{}", encoding="utf-8")
         with self.assertRaises(WorkflowError):
             self.run_engine(collab)
+
+
+class TestCorpusUnderLock(WorkflowCase):
+    """C-04 : le contenu du corpus est confronté au manifeste avant chaque appel.
+
+    Comparer la seule empreinte du **texte** du manifeste ne disait rien des
+    fichiers qu'il décrit. Dans tous les cas ci-dessous, le refus tombe **avant**
+    l'appel — `calls == 0` — parce qu'un corpus qui a bougé fait lire à A et B
+    deux références différentes.
+    """
+
+    def corpus_collab(self) -> Path:
+        return self.build(
+            a=(_DOC,), b=(), mission_kind="RECHERCHE", corpus_captured_at="2026-09-01",
+            corpus_files={"note.md": "Contenu de reference.", "sous/autre.md": "Second."},
+        )
+
+    def refused(self, collab: Path) -> str:
+        """Compteur vérifié **hors** du `assertRaises` : sinon un contrôle
+        absent ferait échouer sur « exception non levée » et masquerait l'appel
+        parti sur un corpus qui a bougé (`RULES.md`)."""
+        message = ""
+        try:
+            self.run_engine(collab)
+        except WorkflowError as exc:
+            message = str(exc)
+        self.assertEqual(self.a.calls, 0, "un appel est parti sur un corpus qui a bouge")
+        self.assertNotEqual(message, "", "aucun refus : le corpus n'a pas ete verifie")
+        return message
+
+    def test_a_nominal_corpus_passes(self) -> None:
+        """Contrôle de sens : sans lui, tous les refus ci-dessous pourraient
+        venir d'une fabrique cassée plutôt que du correctif."""
+        collab = self.corpus_collab()
+        self.run_engine(collab)
+        self.assertEqual(self.a.calls, 1)
+
+    def test_an_altered_file_is_refused(self) -> None:
+        collab = self.corpus_collab()
+        (collab / "corpus" / "fichiers" / "note.md").write_text(
+            "Contenu substitue...", encoding="utf-8"
+        )
+        self.assertIn("note.md", self.refused(collab))
+
+    def test_a_missing_file_is_refused(self) -> None:
+        collab = self.corpus_collab()
+        (collab / "corpus" / "fichiers" / "sous" / "autre.md").unlink()
+        self.assertIn("autre.md", self.refused(collab))
+
+    def test_a_supernumerary_file_is_refused(self) -> None:
+        collab = self.corpus_collab()
+        (collab / "corpus" / "fichiers" / "glisse.md").write_text("Ajoute.", encoding="utf-8")
+        self.assertIn("surnuméraire", self.refused(collab))
+
+    def test_a_symlink_is_refused(self) -> None:
+        """Symétrie avec la copie, qui refuse déjà les fichiers non réguliers."""
+        collab = self.corpus_collab()
+        target = collab / "cible.md"
+        target.write_text("Contenu de reference.", encoding="utf-8")
+        link = collab / "corpus" / "fichiers" / "note.md"
+        link.unlink()
+        try:
+            link.symlink_to(target)
+        except (OSError, NotImplementedError) as exc:  # privilège absent sous Windows
+            self.skipTest(f"lien symbolique impossible sur cette machine : {exc}")
+        self.assertIn("lien symbolique", self.refused(collab))
+
+    def test_a_manifest_inconsistent_with_the_configuration_is_refused(self) -> None:
+        collab = self.corpus_collab()
+        manifest = fakes.read_json(collab / "corpus" / "manifeste.json")
+        manifest["origin_label"] = "AutreProjet"
+        fakes.write_json(collab / "corpus" / "manifeste.json", manifest)
+        self.assertIn("ne correspond plus à la configuration", self.refused(collab))
+
+    def test_a_manifest_with_a_broken_schema_is_refused(self) -> None:
+        """Le manifeste est la référence : à moitié lu, il ne prouve rien."""
+        collab = self.build(
+            a=(_DOC,), b=(), corpus_captured_at="2026-09-01",
+            corpus_files={"note.md": "Contenu."},
+        )
+        path = collab / "corpus" / "manifeste.json"
+        manifest = fakes.read_json(path)
+        manifest["files"][0].pop("taille")
+        payload = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+        path.write_text(payload, encoding="utf-8")
+        # La configuration est réalignée sur le nouveau texte : sans cela, c'est
+        # l'empreinte qui refuserait, et le schéma ne serait jamais atteint.
+        config = fakes.read_json(collab / "configuration.json")
+        config["corpus_manifest_sha256"] = contracts.normalize(payload).sha256
+        fakes.write_json(collab / "configuration.json", config)
+        self.assertIn("schéma inattendu", self.refused(collab))
 
 
 class TestCliFailed(WorkflowCase):
