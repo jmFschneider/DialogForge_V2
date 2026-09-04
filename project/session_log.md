@@ -599,3 +599,63 @@ le fichier avait dérivé en historique au fil des trois paliers.
 
 **État à la reprise :** 1 651 lignes de production, 1 797 de tests, **163 tests verts**, `ruff` et
 `mypy --strict` verts, arbre git propre. Palier 4 non commencé, non bloqué.
+
+---
+
+## 2026-09-04 (Claude) — Palier 4 : adaptateurs, CLI, D-1/D-2/D-3 tranchées
+
+Scope déclaré : reprendre au point 4 du protocole de démarrage (`RULES.md`, après `NOTES.md` et
+`POURQUOI.md`).
+
+### Ce qui a été fait
+
+Les trois décisions reportées de la session précédente ont été soumises au PO avec la recommandation
+de chacune ; les trois recommandations ont été retenues. Tranchées **dans**
+`conception/CONCEPTION_FINALE.md` (§1, §5, §12.3), pas seulement en notes de session — conformément à
+la règle qui l'exige.
+
+- **D-1** — `CONSULT` reste le défaut de `--reviewer-access`. `CONTEXT_ONLY` n'est plus bloqué
+  mécaniquement pour Codex, réserve non essayée conservée et rendue visible.
+- **D-2** — `workflow.py` : `resultat.json.return_code != 0` devient l'incident nommé `CLI_FAILED`
+  (`INTERRUPTED`), testé avant toute tentative de contrat, dans `new_call` et dans `resume_call`.
+  ~15 lignes, deux tests neufs.
+- **D-3** — une phrase sur la base `memories` de Codex ajoutée à §1.
+
+**Palier 4 écrit et testé** : `adapters/claude.py`, `adapters/codex.py` (formes de
+`conception/CARACTERISATION_CLI.md` : prompt par `stdin`, `shutil.which()` à chaque appel, `--tools
+""` / `-c features.shell_tool=false` pour `CONTEXT_ONLY`, `extract()` lit `stdout` seul), `cli.py`
+(quatre commandes, `new` publie par renommage depuis un dossier temporaire frère), `__main__.py`.
+`base.py` gagne `probe_version()`, utilitaire partagé, best-effort par construction.
+
+**34 tests neufs** (`test_adapters.py`, `test_cli.py`, plus extensions de `test_workflow.py` et
+`test_recovery.py`) — aucun n'invoque un vrai fournisseur : `cli.ADAPTERS` est systématiquement
+substitué par des `FakeAdapter`, parce que Claude Code et Codex CLI sont tous deux réellement sur le
+PATH de cette machine. `ruff check .`, `mypy --strict`, `pytest` : tout vert (196 passés, 1 skip
+préexistant). Smoke-test manuel de `new`/`status` avec les vrais `adapter_id` (sans appel : ces deux
+commandes ne sondent ni n'invoquent jamais un adaptateur).
+
+### Choix pris sans spécification explicite
+
+`resume --answer` sur une `QUESTION` née en `FINAL_A` traité comme `REVISION_A`, par symétrie avec le
+cas `BLOQUE` (§2 ne tranchait que `PROPOSAL_A`/`REVISION_A`/`BLOQUE`) — non testé explicitement.
+`collaboration_id` = nom du dossier passé en argument. Modèle Codex par défaut identique pour A et B.
+Détails et justification complète dans `NOTES.md`.
+
+### Le budget, porté au PO et tranché
+
+`cli.py` : 273 lignes contre 155 visées (+118). Total production : 2 070 lignes brutes contre ~1 430
+visées, au-delà même de la projection ~2 150 déjà actée le 2026-09-03. Rien n'est hors spécification :
+`cli.py` implémente exactement la surface de §7. Porté au PO plutôt que tranché seul — une coupe
+aurait changé un comportement spécifié. **Décision : « on continue », même arbitrage que le
+2026-09-03, à condition de rouvrir la question si la croissance se poursuit sur un prochain palier.**
+
+### Commits
+
+`feat: ecrire le palier 4 (adaptateurs, cli) et trancher D-1, D-2, D-3`
+
+### À retenir
+
+Les trois décisions D-1/D-2/D-3 ont pris moins de contexte à trancher que redouté : chacune arrivait
+déjà avec une recommandation motivée et une réserve honnête, écrites la session précédente pour
+exactement cet usage. **Écrire la décision en attente avec sa recommandation, au moment où elle
+apparaît, économise la reconstruction du contexte à la reprise.**

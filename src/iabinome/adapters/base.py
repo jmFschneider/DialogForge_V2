@@ -11,11 +11,14 @@ typée — est un bonus, jamais un prérequis (CONCEPTION_FINALE.md §8).
 
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
 from ..models import ReviewerAccess, Role
+
+_VERSION_TIMEOUT_SECONDS = 5.0
 
 
 @dataclass(frozen=True)
@@ -55,3 +58,18 @@ class AgentAdapter(Protocol):
     def command(self, call: CallSpec) -> list[str]: ...
 
     def extract(self, stdout: bytes, stderr: bytes) -> str: ...
+
+
+def probe_version(executable: str) -> str:
+    """`<executable> --version`, au mieux : un exécutable trouvé par
+    `shutil.which()` reste `present`, même si son bandeau de version échoue."""
+    try:
+        result = subprocess.run(
+            [executable, "--version"],
+            capture_output=True,
+            timeout=_VERSION_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return result.stdout.decode("utf-8", errors="replace").strip()

@@ -84,6 +84,7 @@ class FakeAdapter:
         present: bool = True,
         version: str = "fake 0.1.0",
         sleep_seconds: float = 0.0,
+        exit_codes: tuple[int, ...] = (),
     ) -> None:
         self.adapter_id = adapter_id
         self.capabilities = Capabilities(supports_context_only, supports_model_override)
@@ -91,6 +92,7 @@ class FakeAdapter:
         self.version = version
         self.sleep_seconds = sleep_seconds
         self.responses = list(responses)
+        self.exit_codes = list(exit_codes)
         self.calls = 0
         self.prompts: list[str] = []
         self.observed_status: list[str] = []
@@ -110,7 +112,8 @@ class FakeAdapter:
         if etat.exists():
             self.observed_status.append(json.loads(etat.read_text(encoding="utf-8"))["status"])
         reply = self.responses.pop(0) if self.responses else "IABINOME:DOCUMENT\nvide"
-        return command(stdout=reply, sleep_seconds=self.sleep_seconds)
+        exit_code = self.exit_codes.pop(0) if self.exit_codes else 0
+        return command(stdout=reply, exit_code=exit_code, sleep_seconds=self.sleep_seconds)
 
     def extract(self, stdout: bytes, stderr: bytes) -> str:
         return stdout.decode("utf-8")

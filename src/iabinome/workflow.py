@@ -198,6 +198,15 @@ class _Engine:
         )
         if result.outcome is not Outcome.COMPLETED:
             return self.incident(state, rel_dir, result.outcome.value, Status.INTERRUPTED)
+        if result.return_code != 0:
+            # D-2 : capacité commune aux deux outils — quota épuisé et modèle
+            # invalide rendent tous deux 1. Sans ce test, un message de quota
+            # sorti sur stdout serait pris pour une réponse et finirait en
+            # CONTRACT_ERROR (CONCEPTION_FINALE.md §5).
+            return self.incident(
+                state, rel_dir, "CLI_FAILED", Status.INTERRUPTED,
+                f"code de retour {result.return_code}",
+            )
         return self.store_response(state)
 
     def store_response(self, state: State) -> State:
@@ -223,10 +232,16 @@ class _Engine:
         if call.status is CallStatus.RESPONSE_STORED:
             raw, _ = storage.read_text(call_dir / "reponse_brute.txt")
             return self.apply(state, contracts.normalize(raw).text)
-        if transport.read_result(call_dir) is None:
+        result = transport.read_result(call_dir)
+        if result is None:
             return self.incident(
                 state, call.call_dir, "CALL_POSSIBLY_PAID", Status.INTERRUPTED,
                 "appel possiblement parti, possiblement paye - aucun rejeu automatique",
+            )
+        if result.return_code != 0:
+            return self.incident(
+                state, call.call_dir, "CLI_FAILED", Status.INTERRUPTED,
+                f"code de retour {result.return_code}",
             )
         # `resultat.json` valide : les flux sont complets. Retraitement local,
         # sans appel — sans quoi on repaierait une réponse qu'on a déjà.

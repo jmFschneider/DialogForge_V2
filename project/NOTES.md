@@ -2,72 +2,57 @@
 
 > Tableau de bord court pour démarrer une session.
 > État courant uniquement. Historique → `session_log.md`. Règles → `RULES.md`.
-> Dernière mise à jour : 2026-09-03
+> Dernière mise à jour : 2026-09-04
 
 ---
 
 ## Prochaine action — une seule
 
-**Trancher les trois décisions ci-dessous, puis ouvrir le palier 4.**
+**Committer le palier 4**, puis rouvrir la question du budget de production *avant le palier 5 s'il
+y en a un* — pas la refermer. Voir « Budget » ci-dessous.
 
-Elles sont toutes issues de la caractérisation des CLI du 2026-09-03
-(`conception/CARACTERISATION_CLI.md`). Aucune n'est urgente au sens technique — le code tourne —
-mais les trois mordent sur `adapters/` et `cli.py`, c'est-à-dire sur le palier 4 lui-même.
-
-### D-1 · B-2 : `CONTEXT_ONLY` ou `CONSULT` ?
-
-**La prémisse de `CONCEPTION_FINALE.md` §12.3 est démentie par la mesure.** Elle affirmait « le shell
-de l'outil 2 n'est pas retirable » et en déduisait que `CONTEXT_ONLY` contredirait les quatre
-permutations obligatoires. **`--disable shell_tool` existe** : `codex features list --disable
-shell_tool` rend `shell_tool stable false`. Côté outil 1, `--tools ""` est documenté.
-
-*Recommandation : `CONSULT` reste le défaut raisonnable — c'est le profil qui laisse B lire le corpus,
-et le corpus est la seule matière d'une mission de recherche. Mais `CONTEXT_ONLY` n'est plus un mode
-indisponible, donc `--reviewer-access` garde ses deux valeurs et reste obligatoire.*
-
-**Réserve non mesurée** : un `CONTEXT_ONLY` complet demanderait de retirer plus que `shell_tool`
-(`browser_use`, `unified_exec`, `computer_use`, `view_image`, `apps`, `plugins`…). Non essayé.
-
-### D-2 · Le code de retour non nul doit-il devenir un incident nommé ?
-
-Quota épuisé **et** modèle invalide rendent `1` chez **les deux** outils : c'est une capacité
-*commune*, donc utilisable par le noyau — contrairement à l'erreur typée, qui reste hors noyau.
-Et chez l'outil 1, le message de quota sort **sur `stdout`**. Aujourd'hui, `extract()` le prendrait
-pour une réponse d'agent et le cycle finirait en `ERROR / CONTRACT_ERROR` — **une cause de quota
-rapportée à l'humain comme une rupture de contrat**.
-
-*Recommandation : oui. Dans `workflow.new_call`, tester `result.return_code != 0` avant `apply()` et
-écrire un incident `CLI_FAILED` avec `INTERRUPTED`, pas `ERROR` — c'est ce que la table de reprise §5
-sait déjà traiter, et `resume --retry-call` est exactement la sortie prévue. Coût : environ 4 lignes.*
-
-### D-3 · La base `memories` de l'outil 2 doit-elle être dite dans la spécification ?
-
-L'outil 2 tient `~/.codex/memories_1.sqlite`. **L'appel est éphémère au sens de la session, pas des
-effets** : un état peut se transporter d'un appel au suivant, hors de la collaboration et hors de
-notre vue. Rien de ce que §1 promet n'est cassé — §1 ne promet que le confinement de *nos* artefacts
-et l'absence de droit d'écriture sur le projet étudié.
-
-*Recommandation : ajouter une phrase à §1, dans le paragraphe « ce que ça ne prouve pas ». Zéro ligne
-de code. Motif : `R15` — honnête plutôt que rassurant.*
+**Aucun commit n'a encore été fait cette session** — le travail est sur disque, vert (`ruff`, `mypy
+--strict`, `pytest`), en attente de la commande de commit.
 
 ---
 
-## Palier 4 — ce qu'il reste à écrire
+## Palier 4 — clos
 
-`adapters/claude.py` · `adapters/codex.py` · `cli.py` · `__main__.py`.
+`adapters/claude.py`, `adapters/codex.py`, `cli.py`, `__main__.py` écrits et testés. Les trois
+décisions D-1/D-2/D-3 de la session précédente sont tranchées **dans** `CONCEPTION_FINALE.md` (§1,
+§5, §12.3 — pas seulement ici, conformément à `RULES.md`) :
 
-**Tout ce dont les adaptateurs ont besoin est dans `conception/CARACTERISATION_CLI.md`** : formes
-d'invocation, drapeaux de modèle et d'outils, identifiants de modèles, ce qui va sur `stdout` contre
-`stderr`. Le harnais de mesure était jetable et n'a pas été conservé — le relevé, si.
+- **D-1** — `CONSULT` reste le défaut. `CONTEXT_ONLY` n'est plus mécaniquement bloqué pour Codex
+  (`-c features.shell_tool=false`, équivalent mesuré à `--disable shell_tool`), mais reste partiel
+  (réserve non essayée : les huit autres capacités listées en §12.3). Les deux adaptateurs déclarent
+  `supports_context_only=True`.
+- **D-2** — `workflow.py` teste `resultat.json.return_code != 0` **avant** `store_response()`, dans
+  `new_call` et dans `resume_call` : incident `CLI_FAILED`, état `INTERRUPTED`, jamais de tentative de
+  contrat. Testé en appel direct (`test_workflow.TestCliFailed`) et en reprise
+  (`test_recovery.TestRecoveryTable.test_non_zero_return_code_found_on_resume_is_cli_failed`).
+- **D-3** — une phrase ajoutée à `CONCEPTION_FINALE.md` §1 : la base `memories` de Codex
+  (`~/.codex/memories_1.sqlite`) peut transporter un état d'un appel au suivant, hors de la
+  collaboration. Ne casse aucune des cinq garanties de §1.
 
-Points d'attention déjà connus :
+**Suite verte** : `ruff check .`, `mypy --strict`, `pytest` — 196 tests passent, 1 skip (préexistant,
+non lié à ce palier), 10 sous-tests. Smoke-test manuel de `cli.py new`/`status` avec les vrais
+`adapter_id` `claude`/`codex` (aucun appel fournisseur : `new`/`status` ne sondent ni n'invoquent
+jamais un adaptateur — seul `run`/`resume` le font).
 
-- `command()` ne met **pas** le prompt dans l'argv : le moteur le passe par `stdin_text`.
-- `probe()` doit résoudre l'exécutable par `shutil.which()` — c'est aussi ce qui donne `present`.
-- `extract()` lit **`stdout` seul** : l'outil 2 écrit 8 Ko de bannière sur `stderr` en sortant 0.
-- Le modèle par défaut est une propriété de l'adaptateur **pour un rôle** (§7). `CLAUDE.md` §6 propose
-  Fable 5 pour B — **ce compte n'a pas les crédits**, donc le défaut doit rester surchargeable.
-- `cli.py` : `--reviewer-access`, `--agent-a`, `--agent-b` sont **obligatoires et sans défaut** (§7).
+**Choix pris pendant l'écriture, non couverts explicitement par la spécification :**
+
+- `resume --answer` sur une `QUESTION` née en `FINAL_A` : traité comme `REVISION_A` (même besoin
+  d'artefacts que `REVISION_A` — document courant + critique), par symétrie avec le cas `BLOQUE`.
+  §2 ne tranchait que `PROPOSAL_A`, `REVISION_A` et `BLOQUE`. **Non testé explicitement, à vérifier
+  si une vraie mission déclenche ce chemin.**
+- `resume --answer` ne touche jamais au compteur `revision` — seule la phase change. Motif : la
+  spécification ne mentionne aucun ajustement de compteur à la reprise.
+- `collaboration_id` = nom du dossier `COLLAB` passé en argument. Aucun flag séparé n'est décrit en
+  §7 ; le plus simple qui n'invente rien.
+- `status` sans `--json` : une ligne `clé : valeur` par champ. Non spécifié en détail, coupable en
+  premier si le budget l'exige (§11, point 1).
+- Modèle par défaut de Codex : identique pour A et B (`gpt-5.6-sol`, mesuré). `CLAUDE.md` §6 ne fixe
+  un rôle que pour Claude.
 
 ---
 
@@ -85,60 +70,90 @@ Le brut reste intact sur le disque ; seule la copie est normalisée.
 
 **`transport.py`** — `taskkill /F /T` sous Windows, `os.kill(-pid, 9)` sous POSIX (`SIGKILL` n'est pas
 nommé : absent de Windows, il ferait échouer `mypy`). La **branche POSIX est écrite et non testée**
-(§0.1). Le prompt passe par `stdin_text`, écrit dans un fil. Une branche n'est couverte par aucun
-test : la terminaison d'arbre supplémentaire quand un descendant tient encore les tubes après la
-sortie de l'enfant — la déclencher demanderait de rendre le délai de grâce configurable.
+(§0.1). Le prompt passe par `stdin_text`, écrit dans un fil.
 
 **`workflow.py`** — `_Engine` porte le contexte du cycle plutôt que douze signatures. **Aucun compteur
-de garde sur la boucle** : `max_revisions` la borne, un compteur serait un quota interne. Les trois
-issues non-`COMPLETED` du transport mènent à `INTERRUPTED`, jamais à un rejeu ; `ERROR` est réservé à
-l'échec de contrat. Transition et `current_call = null` sont une **seule** écriture atomique.
+de garde sur la boucle** : `max_revisions` la borne, un compteur serait un quota interne. Les issues
+non-`COMPLETED` du transport, **et un `return_code` non nul** (D-2), mènent à `INTERRUPTED`, jamais à
+un rejeu ; `ERROR` est réservé à l'échec de contrat. Transition et `current_call = null` sont une
+**seule** écriture atomique.
 
-**`prompts.py`** — §9 ne donnait que le bloc de consignes pour la révision et la finalisation ; les
-trois sections de charge sont ajoutées. Le schéma du JSON de revue est dans le prompt de B — sans lui,
-aucune revue ne pouvait être conforme.
+**`prompts.py`** — le schéma du JSON de revue est dans le prompt de B — sans lui, aucune revue ne
+pouvait être conforme.
 
 **`adapters/base.py` est publié.** §13 rendait le protocole réversible « jusqu'à sa publication » : ce
-point est franchi, le modifier coûte désormais une migration.
+point est franchi, le modifier coûte désormais une migration. Porte `probe_version()` — utilitaire
+partagé par `claude.py` et `codex.py`, best-effort : un exécutable trouvé par `shutil.which()` reste
+`present` même si son bandeau `--version` échoue.
+
+**`adapters/claude.py` / `adapters/codex.py`** — `command()` résout l'exécutable par `shutil.which()`
+**à chaque appel**, jamais mis en cache : cohérent avec « aucune attestation persistée » (§8). Les
+deux CLI sont réellement installées sur la machine de développement — voir la règle de test dans
+`RULES.md`.
+
+**`cli.py`** — `new` construit tout dans un dossier temporaire frère (`.new-<nom>-<uuid>`) et publie
+par `Path.rename()` ; il refuse une destination existante **avant** de créer ce dossier temporaire.
+`run`/`resume` partagent `_drive()`, seul point d'appel à `workflow.run`. Aucune commande `worker`,
+`serve`, `implement`, `apply`, `watch`, `repair`.
 
 ---
 
-## Budget — à re-arbitrer à la clôture du palier 4
+## Budget — arbitré le 2026-09-04 : « on continue »
 
-| | brut | code effectif |
-|---|---:|---:|
-| Production écrite, 9 modules sur 12 | **1 651** | **1 171** |
-| Bande §11 | 1 350 – 1 550 | 1 350 – 1 550 |
-| Projection au même rythme | **~2 150** | **~1 540** |
+**Décision du PO, 2026-09-04.** Même arbitrage que le 2026-09-03 : la taille reflète une surface CLI
+réellement spécifiée (§7, quatre commandes), pas une dérive. On committe tel quel. **Condition** :
+rouvrir la question si la croissance se poursuit sur un prochain palier — ne pas la refermer en
+silence (`RULES.md`, conduite de projet).
 
-*« code effectif » = lignes non vides, hors commentaires et hors docstrings.*
-Tests : 1 797 lignes, **163 tests verts**, `ruff` et `mypy --strict` verts.
+| Module | Visé (§11) | Réel (brut) | Écart |
+|---|---:|---:|---:|
+| `__init__` + `__main__` | 15 | 10 | — |
+| `cli.py` | 155 | **273** | **+118** |
+| `models.py` | 130 | 301 | +171 *(déjà arbitré 2026-09-03)* |
+| `storage.py` | 140 | 76 | — |
+| `lock.py` | 90 | 108 | +18 |
+| `contracts.py` | 150 | 200 | +50 *(déjà arbitré 2026-09-03)* |
+| `workflow.py` | 175 | 417 | +242 *(dont +14 pour D-2 ; le reste déjà arbitré)* |
+| `prompts.py` | 95 | 135 | +40 |
+| `transport.py` | 160 | 265 | +105 *(déjà arbitré 2026-09-03)* |
+| `corpus.py` | 90 | 107 | +17 |
+| paquet `adapters/` | 230 | 178 (75+50+53) | — |
+| **Total production (12/12 modules)** | **~1 430** | **2 070** | **+640** |
 
-**Franchie en brut, pas en code effectif.** L'écart est de la documentation de motif, pas de la
-fonctionnalité : rien hors spécification, aucun contrôle ajouté. **Les quatre coupes de §11 ne peuvent
-pas le fermer** — elles pèsent une quarantaine de lignes, pas cinq cents ; le seul levier de cette
-taille serait de retirer les docstrings de motif, c'est-à-dire la méthode du projet. C'est le point 5
-de la règle de coupe : arbitrage. Le PO a arbitré « on continue » le 2026-09-03, sur des chiffres plus
-petits. Repère de fond non franchi : `POURQUOI` règle 1 — ~2 150 lignes contre les 58 894 de FloraPi.
+*Chiffres bruts (lignes non vides comptées à part : `cli.py` 232/273, `workflow.py` 369/417,
+`adapters/` 131/178) — mesurés le 2026-09-04, `wc -l`. Pas de recomptage « code effectif » complet
+cette session : la mesure précédente (1 171 sur 1 651, ~71 %) donnerait, au même taux, environ
+1 470 lignes de code effectif sur 2 070 — au-dessus de la bande 1 350–1 550 même sur ce chiffre-là,
+contrairement à l'étape précédente où seul le brut la dépassait.*
+
+**Tests** : 2 171 lignes sur les fichiers existants avant ce palier, plus `test_adapters.py` (132) et
+`test_cli.py` (211) neufs, plus extensions de `test_workflow.py`/`test_recovery.py`/`fakes.py`.
+
+**Jamais sacrifiés pour tenir un chiffre** (rappel §11, inchangé) : état strict · absence de rejeu
+automatique · délai dur et terminaison d'arbre · `fsync` et publication atomique · artefact avant
+transition · les quatre permutations · registre de constats · porte `QUESTION` · terminal non ambigu.
 
 ---
 
 ## État courant
 
 - **Étapes 0 et 1 closes.** Spécification : `conception/CONCEPTION_FINALE.md`.
-- **Étape 2 : paliers 1, 2 et 3 clos ; caractérisation des CLI faite.** Reste le palier 4.
-- **La relecture Codex palier par palier est suspendue** — décision du PO, 2026-09-03. Elle reste la
-  règle pour la **conception**. Réouverture si un palier révèle un défaut qu'elle aurait attrapé.
+- **Étape 2 : les quatre paliers sont écrits.** `cli.py`/adaptateurs testés, verts. Reste l'arbitrage
+  de budget ci-dessus avant de considérer l'étape close, puis les validations manuelles hors suite de
+  §9 (déjà faites pour la caractérisation ; restent : déplacement réel d'une collaboration en usage,
+  première mission conception et première mission recherche observées).
+- **La relecture Codex palier par palier reste suspendue** — décision du PO, 2026-09-03.
 - Récolte : `conception/INVENTAIRE.md` v3, 156 leçons. Cinq tours de structure conservés séparément.
 - Le dépôt n'a **pas de remote** — décision reportée.
 
 ## Décisions actées
 
 - **Recherche au périmètre, sans accès externe en V0.1.** Condition de réouverture : §12.1.
-- **A et B sont chacun l'un ou l'autre outil** — les quatre permutations sont désormais **mesurées**,
-  plus seulement exigées.
+- **A et B sont chacun l'un ou l'autre outil** — les quatre permutations sont **mesurées** (réelles
+  CLI) et **testées** (via `FakeAdapter`, `TestPermutations`).
 - **Sept accrétions retirées** de la V2 par audit contre les objectifs fondateurs.
 - **Huit remarques techniques de Codex, toutes retenues** (`DISPOSITION_TECHNIQUE_CODEX.md`).
+- **D-1, D-2, D-3 tranchées le 2026-09-04** — voir « Palier 4 » ci-dessus et `CONCEPTION_FINALE.md`.
 - Paramètres fixés : UTF-8 sans BOM · 8 MiB par flux · **Windows testé, POSIX écrit non testé**.
 
 ## Rappels actifs

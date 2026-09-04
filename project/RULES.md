@@ -121,6 +121,12 @@
 **Un test de comportement de l'OS se fait contre un vrai sous-processus, pas contre un objet simulé.** L'objet simulé ne prouve que ce qu'on y a mis.
 *Motif : `transport.py` existe pour tenir deux tubes concurrents, un délai dur et la terminaison d'un arbre. Un `FakeProcess` — que la spécification nommait — n'en démontrerait aucun. Un vrai sous-processus Python scripté n'est ni un appel fournisseur, ni du réseau : la règle est tenue, c'est le moyen qui change.*
 
+**Un test de `cli.py` doit substituer `cli.ADAPTERS` par des `FakeAdapter` avant tout appel à `run`/`resume`.** Claude Code et Codex CLI sont tous deux sur le PATH de la machine de développement : un test qui invoque `cli.main(["run", …])` sans substitution appellerait un vrai fournisseur, silencieusement.
+*Motif : mesuré au palier 4, 2026-09-04. `new`/`status` ne posent pas ce risque — ils ne sondent ni n'invoquent jamais d'adaptateur.*
+
+**`mock.patch.object(module, "nom_importe", …)` échoue sous `mypy --strict`** (`--no-implicit-reexport` refuse l'accès à un attribut simplement importé). Patcher le module d'origine de l'attribut (`shutil.which`, pas `adaptateur.shutil.which`) le contourne sans rien désactiver.
+*Motif : mesuré au palier 4, 2026-09-04, sur `tests/test_adapters.py`.*
+
 ---
 
 ## Conduite de projet

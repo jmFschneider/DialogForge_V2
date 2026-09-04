@@ -96,6 +96,19 @@ class TestRecoveryTable(RecoveryCase):
         incident = fakes.read_json(self.collab / str(etat["last_incident"]))
         self.assertEqual(incident["kind"], "CALL_POSSIBLY_PAID")
 
+    def test_non_zero_return_code_found_on_resume_is_cli_failed(self) -> None:
+        """D-2 : le retraitement local applique aussi le test du code de retour,
+        avant de tenter l'extraction (CONCEPTION_FINALE.md Sec5)."""
+        call_dir = self.crash_mid_call(response=None, result=True)
+        raw = fakes.read_json(call_dir / "resultat.json")
+        raw["return_code"] = 1
+        fakes.write_json(call_dir / "resultat.json", raw)
+        self.assertIs(self.resume(), Status.INTERRUPTED)
+        self.assertEqual(self.a.calls, 0)
+        etat = fakes.read_json(self.collab / "etat.json")
+        incident = fakes.read_json(self.collab / str(etat["last_incident"]))
+        self.assertEqual(incident["kind"], "CLI_FAILED")
+
     def test_an_invalid_result_is_not_a_proof_of_completeness(self) -> None:
         call_dir = self.crash_mid_call(response=None, result=True)
         raw = fakes.read_json(call_dir / "resultat.json")

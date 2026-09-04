@@ -226,6 +226,21 @@ class TestPreflight(WorkflowCase):
             self.run_engine(collab)
 
 
+class TestCliFailed(WorkflowCase):
+    def test_non_zero_return_code_is_an_incident_not_a_contract_attempt(self) -> None:
+        """D-2 : un code de retour non nul est traite avant meme d'essayer le
+        contrat - sinon un message de quota sur stdout finirait en CONTRACT_ERROR
+        (CONCEPTION_FINALE.md Sec5)."""
+        collab = self.build(a=("Vous n'avez plus de credits.",), b=())
+        self.a.exit_codes = [1]
+        state = self.run_engine(collab)
+        self.assertIs(state.status, Status.INTERRUPTED)  # type: ignore[attr-defined]
+        etat = self.etat(collab)
+        incident = fakes.read_json(collab / str(etat["last_incident"]))
+        self.assertEqual(incident["kind"], "CLI_FAILED")
+        self.assertEqual(self.a.calls, 1)
+
+
 class TestPermutations(WorkflowCase):
     def test_the_four_couples_run_the_same_cycle(self) -> None:
         """A et B sont chacun l'un ou l'autre outil : même workflow, même contrat."""

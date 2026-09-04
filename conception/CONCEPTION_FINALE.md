@@ -84,6 +84,13 @@ absolu, sa configuration utilisateur, ou tenir ses propres caches. La promesse e
 *Cette formulation est de Codex (V2 §3), contre ma propre révision qui présentait `cwd` comme un
 invariant testé. `R13` — le prompt ne confine rien — vaut pour `cwd` aussi.*
 
+**Décision (D-3, 2026-09-04).** La caractérisation du 2026-09-03 mesure qu'outil 2 tient une base
+`memories` persistante hors du `cwd` (`~/.codex/memories_1.sqlite`) : un état peut s'y transporter
+d'un appel au suivant, hors de la collaboration et hors de notre vue. L'appel reste éphémère au sens
+de la *session* — aucun identifiant n'est réutilisé — mais pas au sens des *effets*. Cela ne casse
+aucune des cinq garanties ci-dessus, qui ne promettent que le confinement de nos artefacts et
+l'absence de droit d'écriture sur le projet étudié. `R15` : honnête plutôt que rassurant.
+
 **Aucun bac à sable général n'est reconstruit.** Un opérateur qui exige l'isolation de secrets locaux
 lance IAbinome dans un compte dédié ; cette isolation reste extérieure à V0.1.
 
@@ -252,11 +259,21 @@ une collaboration existante.
    et **délai dur**.
 6. Dépassement d'un flux → **terminaison de l'arbre de processus**, fichiers conservés comme preuve
    partielle, incident `OUTPUT_LIMIT`. **Rien n'est jamais présenté comme une réponse complète.**
-7. Sortie propre → `flush`, `fsync`, écriture de `resultat.json` (code retour, tailles, empreintes),
-   extraction de la réponse, publication de `RESPONSE_STORED`.
+7. Sortie propre → `flush`, `fsync`, écriture de `resultat.json` (code retour, tailles, empreintes).
+   **`resultat.json.return_code != 0` : incident nommé `CLI_FAILED`, état `INTERRUPTED`, sans tenter
+   l'extraction ni le contrat.** Sinon, extraction de la réponse, publication de `RESPONSE_STORED`.
 8. Normalisation locale, **écriture de l'artefact de phase**, puis transition d'état, puis
    `current_call = null`.
 9. Libération du verrou.
+
+**Décision (D-2, 2026-09-04) — le code de retour non nul est un incident nommé.** Quota épuisé et
+modèle invalide rendent tous deux `1` chez les deux outils (`conception/CARACTERISATION_CLI.md`,
+point de conclusion) : c'est une **capacité commune**, donc utilisable par le noyau — contrairement à
+l'erreur typée, qui reste hors noyau (§8). Chez outil 1, le message de quota sort **sur `stdout`** ;
+sans ce test, `extract()` le prendrait pour une réponse d'agent, et le cycle finirait en
+`CONTRACT_ERROR` — une cause de quota rapportée à l'humain comme une rupture de contrat. `CLI_FAILED`
+retombe sur `INTERRUPTED`, ce que la table de reprise ci-dessous sait déjà traiter : `resume
+--retry-call` est la sortie prévue, comme pour toute autre interruption du transport.
 
 ### Reprise après crash — le dossier d'appel fait foi, pas le seul statut
 
@@ -424,10 +441,10 @@ après quota sur l'erreur typée de Claude ; côté Codex, elle n'a jamais march
 
 | A | B | `consult` | `context-only` |
 |---|---|---|---|
-| Claude | Codex | possible | **non démontré** — le shell de Codex n'est pas retirable |
+| Claude | Codex | possible | possible, partiel — `shell_tool` seul retiré, mesuré (§12.3) |
 | Codex | Claude | possible | possible (`--tools ""`) |
 | Claude | Claude | possible | possible |
-| Codex | Codex | possible | **non démontré** |
+| Codex | Codex | possible | possible, partiel — `shell_tool` seul retiré, mesuré (§12.3) |
 
 Le prévol **échoue avant verrou et avant mutation** si le profil demandé n'est pas supporté. Il ne
 mémorise **aucune attestation** : sondage de présence et version à chaque `run`, version inscrite dans
@@ -526,7 +543,7 @@ incertitudes, les non-décisions et les constats encore ouverts.
 | Stockage | Temporaires uniques · publication atomique · échec simulé avant et après `os.replace` · **aucun chemin absolu persisté** · **déplacement complet puis reprise** |
 | Verrou | PID/date/commande · détenteur vivant refusé · verrou mort récupéré · **jamais la suppression du verrou d'un autre** |
 | Corpus | Hors racine, `..`, lien sortant, non régulier, empreinte changeante → refus **avant publication** · date et libellé · âge affiché · **aucune actualisation silencieuse** |
-| Appel durable | Crash en `CALLING` **sans** `resultat.json` → `INTERRUPTED` sans appel · **crash en `CALLING` AVEC `resultat.json` valide → retraité localement, sans appel** · crash en `RESPONSE_STORED` → retraitement local · artefact avant transition · UUID sans nom de fournisseur |
+| Appel durable | Crash en `CALLING` **sans** `resultat.json` → `INTERRUPTED` sans appel · **crash en `CALLING` AVEC `resultat.json` valide → retraité localement, sans appel** · crash en `RESPONSE_STORED` → retraitement local · artefact avant transition · UUID sans nom de fournisseur · **code de retour non nul → incident `CLI_FAILED`, `INTERRUPTED`, sans tentative de contrat (D-2)** |
 | Interruption | Ctrl-C → arbre terminé, incident écrit, flux partiels conservés, état `CALLING` · `pid.txt` présent dès le lancement |
 | CLI | `--agent-a`/`--agent-b`/`--reviewer-access` manquants → refus · recherche sans corpus ou corpus vide → refus · `--answer` ne touche pas au corpus |
 | Encodage | Écriture UTF-8 sans BOM, `\n` · lecture d'un BOM tolérée, retirée et **consignée comme transformation** |
@@ -608,16 +625,26 @@ Web n'est pas immuable. Ce jour-là, relire d'abord « le critère de fin est d�
 
 *Ce relevé n'entre pas dans la suite automatisée et ne devient pas une attestation durable.*
 
-### 12.3 — B-2, toujours ouvert
+### 12.3 — B-2, tranché le 2026-09-04
 
-`CONTEXT_ONLY` ou `CONSULT`. **Recommandation : `CONSULT`** — `CONTEXT_ONLY` n'est pas mécaniquement
-disponible pour Codex d'après le code lu, et contredirait donc les quatre permutations obligatoires.
+**Décision (D-1).** `CONSULT` reste le défaut du palier 4. Aucun défaut n'est câblé dans le noyau :
+`--reviewer-access` reste obligatoire et sans défaut (§7), l'arbitrage porte sur la recommandation
+donnée au PO, pas sur une valeur imposée par le code.
 
-Si l'humain choisit `CONTEXT_ONLY`, il faut **soit** démontrer une invocation Codex sans outils,
-**soit** rouvrir la contrainte des quatre permutations. **Aucun wrapper de confinement général n'est
-proposé** pour résoudre artificiellement ce conflit.
+**Ce que la caractérisation du 2026-09-03 change.** La prémisse qui fondait la précédente
+recommandation était fausse : `CONTEXT_ONLY` n'est plus mécaniquement indisponible pour Codex.
+`--disable shell_tool` existe (`conception/CARACTERISATION_CLI.md`, point 2) et rend
+`shell_tool stable false` ; côté outil 1, `--tools ""` est documenté. Les quatre permutations restent
+donc supportées dans les deux profils, mécaniquement.
 
-`--reviewer-access` reste obligatoire et sans défaut tant que ce n'est pas tranché.
+**Motif du choix malgré cela.** `CONSULT` est le profil qui laisse B lire le corpus, et le corpus est
+la seule matière d'une mission de recherche (§1). Rien dans la mesure ne rend `CONTEXT_ONLY`
+préférable ; elle retire seulement l'objection qui l'excluait.
+
+**Réserve non mesurée, non bloquante.** Un `CONTEXT_ONLY` complet demanderait de retirer plus que
+`shell_tool` (`browser_use`, `unified_exec`, `computer_use`, `view_image`, `apps`, `plugins`…) —
+non essayé. Si un opérateur choisit `CONTEXT_ONLY` malgré la recommandation, cette réserve reste
+vraie et doit lui être visible.
 
 ### 12.4 — Reporté, tracé
 

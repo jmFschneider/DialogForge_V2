@@ -1,0 +1,207 @@
+"""Tests de iabinome.cli — surface CLI (CONCEPTION_FINALE.md §7, §10).
+
+`cli.ADAPTERS` est toujours substitué par des `FakeAdapter` : la production
+câble Claude et Codex, mais la suite de tests n'appelle jamais un vrai
+fournisseur (`RULES.md`).
+"""
+
+from __future__ import annotations
+
+import io
+import unittest
+from contextlib import redirect_stderr
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest import mock
+
+from iabinome import cli
+from tests import fakes
+
+_DOC = "IABINOME:DOCUMENT\n# Proposition\nCorps."
+_QUESTION = "IABINOME:QUESTION\nQuel est le critere de fin ?"
+
+
+class CliCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.demande = self.root / "demande-source.md"
+        self.demande.write_text("Concevoir le cache de FloraPi.", encoding="utf-8")
+        self.collab = self.root / "collaboration"
+        self.a = fakes.FakeAdapter("fake-a", ())
+        self.b = fakes.FakeAdapter("fake-b", ())
+        patcher = mock.patch.object(cli, "ADAPTERS", {"fake-a": self.a, "fake-b": self.b})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def new_args(self, **overrides: str) -> list[str]:
+        args = {
+            "collab": str(self.collab), "--demande": str(self.demande),
+            "--kind": "conception", "--reviewer-access": "consult",
+            "--agent-a": "fake-a", "--agent-b": "fake-b",
+        }
+        args.update(overrides)
+        argv = [args.pop("collab")]
+        for key, value in args.items():
+            argv += [key, value]
+        return argv
+
+    def make_source(self, *, files: dict[str, str]) -> tuple[Path, Path]:
+        root = self.root / "source"
+        root.mkdir()
+        for name, content in files.items():
+            (root / name).write_text(content, encoding="utf-8")
+        listing = self.root / "manifeste-source.txt"
+        listing.write_text("\n".join(files) + "\n", encoding="utf-8")
+        return root, listing
+
+
+class TestNewRequiredOptions(CliCase):
+    def test_missing_reviewer_access_is_refused(self) -> None:
+        argv = ["new", *self.new_args()]
+        argv = [a for a in argv if a not in ("--reviewer-access", "consult")]
+        with redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                cli.main(argv)
+        self.assertFalse(self.collab.exists())
+
+    def test_missing_agent_a_is_refused(self) -> None:
+        argv = ["new", *self.new_args()]
+        argv = [a for a in argv if a not in ("--agent-a", "fake-a")]
+        with redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                cli.main(argv)
+
+    def test_unknown_agent_is_refused(self) -> None:
+        with redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                cli.main(["new", *self.new_args(**{"--agent-a": "un-outil-inconnu"})])
+
+
+class TestNewCorpus(CliCase):
+    def test_research_without_corpus_is_refused(self) -> None:
+        code = cli.main(["new", *self.new_args(**{"--kind": "recherche"})])
+        self.assertEqual(code, 1)
+        self.assertFalse(self.collab.exists())
+
+    def test_research_with_empty_corpus_is_refused(self) -> None:
+        root = self.root / "source"
+        root.mkdir()
+        listing = self.root / "vide.txt"
+        listing.write_text("", encoding="utf-8")
+        code = cli.main(["new", *self.new_args(
+            **{"--kind": "recherche", "--source-root": str(root), "--source-list": str(listing)}
+        )])
+        self.assertEqual(code, 1)
+        self.assertFalse(self.collab.exists())
+
+    def test_source_root_without_source_list_is_refused(self) -> None:
+        root = self.root / "source"
+        root.mkdir()
+        code = cli.main(["new", *self.new_args(**{"--source-root": str(root)})])
+        self.assertEqual(code, 1)
+
+
+class TestNewCreatesCollaboration(CliCase):
+    def test_a_conception_collaboration_is_created(self) -> None:
+        code = cli.main(["new", *self.new_args()])
+        self.assertEqual(code, 0)
+        config = fakes.read_json(self.collab / "configuration.json")
+        self.assertEqual(config["mission_kind"], "CONCEPTION")
+        self.assertEqual(config["reviewer_access"], "CONSULT")
+        self.assertEqual(config["agent_a"], {"adapter_id": "fake-a", "model": "fake-a-modele-a"})
+        etat = fakes.read_json(self.collab / "etat.json")
+        self.assertEqual(etat["status"], "READY")
+        self.assertEqual(etat["phase"], "PROPOSAL_A")
+
+    def test_model_override_is_kept_over_the_adapter_default(self) -> None:
+        cli.main(["new", *self.new_args(**{"--model-a": "un-modele-choisi"})])
+        config = fakes.read_json(self.collab / "configuration.json")
+        self.assertEqual(config["agent_a"]["model"], "un-modele-choisi")
+
+    def test_existing_destination_is_refused(self) -> None:
+        self.collab.mkdir()
+        code = cli.main(["new", *self.new_args()])
+        self.assertEqual(code, 1)
+
+    def test_a_research_collaboration_carries_the_corpus(self) -> None:
+        root, listing = self.make_source(files={"a.md": "Contenu A"})
+        code = cli.main(["new", *self.new_args(
+            **{"--kind": "recherche", "--source-root": str(root), "--source-list": str(listing)}
+        )])
+        self.assertEqual(code, 0)
+        self.assertTrue((self.collab / "corpus" / "fichiers" / "a.md").exists())
+        config = fakes.read_json(self.collab / "configuration.json")
+        self.assertIsNotNone(config["corpus_manifest_sha256"])
+
+
+class TestRunAndResume(CliCase):
+    def build(self) -> None:
+        self.assertEqual(cli.main(["new", *self.new_args()]), 0)
+
+    def test_run_drives_the_engine_and_reports_the_status(self) -> None:
+        self.build()
+        self.a.responses = [_QUESTION]
+        code = cli.main(["run", str(self.collab)])
+        self.assertEqual(code, 0)
+        etat = fakes.read_json(self.collab / "etat.json")
+        self.assertEqual(etat["status"], "WAITING_HUMAN")
+
+    def test_absent_cli_is_reported_not_crashed(self) -> None:
+        self.build()
+        self.a.present = False
+        code = cli.main(["run", str(self.collab)])
+        self.assertEqual(code, 1)
+
+    def test_answer_does_not_touch_the_corpus(self) -> None:
+        root, listing = self.make_source(files={"a.md": "Contenu A"})
+        self.assertEqual(cli.main(["new", *self.new_args(
+            **{"--kind": "recherche", "--source-root": str(root), "--source-list": str(listing)}
+        )]), 0)
+        before = fakes.read_json(self.collab / "configuration.json")["corpus_manifest_sha256"]
+        self.a.responses = [_QUESTION]
+        cli.main(["run", str(self.collab)])
+        answer = self.root / "reponse.md"
+        answer.write_text("Le critere de fin est la couverture complete.", encoding="utf-8")
+        code = cli.main(["resume", str(self.collab), "--answer", str(answer)])
+        self.assertEqual(code, 0)
+        after = fakes.read_json(self.collab / "configuration.json")["corpus_manifest_sha256"]
+        self.assertEqual(before, after)
+        self.assertTrue((self.collab / "demande.md.001").exists())
+        self.assertIn(
+            "couverture complete",
+            (self.collab / "demande.md").read_text(encoding="utf-8"),
+        )
+
+    def test_retry_call_needs_a_non_empty_reason(self) -> None:
+        self.build()
+        self.a.responses = []
+        self.a.sleep_seconds = 5.0
+        # Un appel interrompu par delai, sans reponse : table de reprise §5.
+        code = cli.main(["run", str(self.collab), "--timeout", "0.05"])
+        self.assertEqual(code, 0)
+        etat = fakes.read_json(self.collab / "etat.json")
+        self.assertEqual(etat["status"], "INTERRUPTED")
+        call_id = etat["current_call"]["call_id"]
+        empty_reason = self.root / "motif-vide.txt"
+        empty_reason.write_text("   ", encoding="utf-8")
+        code = cli.main([
+            "resume", str(self.collab), "--retry-call", call_id, "--reason-file", str(empty_reason),
+        ])
+        self.assertEqual(code, 1)
+
+
+class TestStatus(CliCase):
+    def test_status_json_reports_the_current_phase(self) -> None:
+        self.assertEqual(cli.main(["new", *self.new_args()]), 0)
+        buf = io.StringIO()
+        with mock.patch("sys.stdout", buf):
+            code = cli.main(["status", str(self.collab), "--json"])
+        self.assertEqual(code, 0)
+        self.assertIn('"phase": "PROPOSAL_A"', buf.getvalue())
+        self.assertIn('"status": "READY"', buf.getvalue())
+
+
+if __name__ == "__main__":
+    unittest.main()
