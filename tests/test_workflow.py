@@ -4,6 +4,7 @@ Tous les appels passent par `FakeAdapter` — aucun fournisseur, aucun réseau,
 aucun coût (CONCEPTION_FINALE.md §10)."""
 
 import json
+import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -122,6 +123,20 @@ class TestFullCycle(WorkflowCase):
         self.assertEqual(intention["adapter_id"], "fake-a")
         self.assertIsNone(intention["retries"])
         self.assertNotIn("fake", call_dir.name.split("-")[-1])
+
+    def test_intention_traces_the_requested_argv_without_argv_zero(self) -> None:
+        """D-6b : trace de l'argv **demandé**, jamais preuve des capacités
+        effectives. `argv[0]` en est retiré — c'est le seul chemin absolu de la
+        liste, et la règle « aucun chemin absolu persisté » n'a pas à être
+        rouverte pour cela."""
+        collab = self.build(a=(_QUESTION,), b=())
+        self.run_engine(collab)
+        call_dir = next((collab / "appels").iterdir())
+        intention = fakes.read_json(call_dir / "intention.json")
+        argv = intention["invocation_args"]
+        self.assertIsInstance(argv, list)
+        self.assertNotIn(sys.executable, argv, "argv[0] ne doit pas etre persiste")
+        self.assertIn("-c", argv)
 
 
 class TestTransitions(WorkflowCase):

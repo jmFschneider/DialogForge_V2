@@ -361,12 +361,29 @@ class _Engine:
         prompt = self.build_prompt(state)
         storage.write_atomic_text(self.collab / rel_dir / "prompt.txt", prompt)
         digest = contracts.normalize(prompt).sha256
+        spec = CallSpec(
+            prompt=prompt, model=agent.model, timeout_seconds=self.timeout_seconds,
+            work_root=self.collab,
+            reviewer_access=self.config.reviewer_access if role is Role.B else None,
+        )
+        # `command()` est résolu AVANT `intention.json`, donc avant la
+        # publication de CALLING : un exécutable disparu entre le prévol et
+        # l'appel devient un refus sans mutation, au lieu d'un faux
+        # « possiblement payé » sur un appel jamais parti.
+        argv = self.adapters[agent.adapter_id].command(spec)
         _write_json(self.collab / rel_dir / "intention.json", {
             "schema_version": SCHEMA_VERSION, "call_id": call_id, "sequence": sequence,
             "role": role.value, "phase": state.phase.value,
             "adapter_id": agent.adapter_id, "model": agent.model,
             "observed_version": self.observed[agent.adapter_id].version,
             "reviewer_access": self.config.reviewer_access.value, "prompt_sha256": digest,
+            # Trace de l'**argv demandé**, `argv[0]` retiré : jamais une preuve
+            # des capacités effectives — la configuration utilisateur, les
+            # hooks et l'évolution de la CLI restent hors de portée. Sans
+            # `argv[0]`, la règle « aucun chemin absolu persisté » n'a pas à
+            # être rouverte, et aucun futur adaptateur ne peut y déposer un
+            # secret (D-6b).
+            "invocation_args": list(argv[1:]),
             "retries": None if retry is None else retry.call_id,
             "retry_reason": None if retry is None else retry.reason, "created_at": _now(),
         })
@@ -375,15 +392,6 @@ class _Engine:
             status=CallStatus.CALLING, call_dir=rel_dir, prompt_sha256=digest,
             response_sha256=None, started_at=_now(), completed_at=None,
         )
-        spec = CallSpec(
-            prompt=prompt, model=agent.model, timeout_seconds=self.timeout_seconds,
-            work_root=self.collab,
-            reviewer_access=self.config.reviewer_access if role is Role.B else None,
-        )
-        # `command()` est résolu AVANT la publication de CALLING : un exécutable
-        # disparu entre le prévol et l'appel devient un refus sans mutation, au
-        # lieu d'un faux « possiblement payé » sur un appel jamais parti.
-        argv = self.adapters[agent.adapter_id].command(spec)
         # Étape 4 : CALLING publié AVANT Popen. Un crash ici est déjà interprétable.
         state = self.publish(replace(state, status=Status.RUNNING, current_call=call))
         # Le prompt passe par stdin, jamais par la ligne de commande : mesuré le

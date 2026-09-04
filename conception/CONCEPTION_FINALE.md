@@ -84,6 +84,21 @@ absolu, sa configuration utilisateur, ou tenir ses propres caches. La promesse e
 *Cette formulation est de Codex (V2 §3), contre ma propre révision qui présentait `cwd` comme un
 invariant testé. `R13` — le prompt ne confine rien — vaut pour `cwd` aussi.*
 
+**La non-écriture du projet par les agents est une limite déclarée, pas une garantie mécanique.**
+Elle est obtenue par des **drapeaux mesurés** — `--tools ""`, `features.shell_tool=false` — et non par
+un confinement du système d'exploitation. Les agents ne sont pas mécaniquement empêchés d'écrire :
+ils sont **lancés avec une demande de ne pas le faire**, et cette demande a été observée effective sur
+des versions précises. Rien n'assure qu'elle le reste.
+
+**Conséquence opérationnelle, tant que ce point est ouvert :** toute mission réelle se fait dans une
+**collaboration jetable, hors de tout dossier de valeur**. C'est le confinement réel — le seul.
+
+`intention.json` porte `invocation_args` : **l'argv demandé, `argv[0]` retiré**. C'est une *trace de ce
+qui a été demandé*, **jamais une preuve des capacités effectives** : la configuration utilisateur, les
+hooks et l'évolution de la CLI restent hors de portée du programme. *`argv[0]` en est retiré parce
+qu'il est le seul chemin absolu de la liste — la règle « aucun chemin absolu persisté » n'a ainsi pas
+à être rouverte, et aucun futur adaptateur ne peut y déposer un secret (D-6b).*
+
 **Décision (D-3, 2026-09-04).** La caractérisation du 2026-09-03 mesure qu'outil 2 tient une base
 `memories` persistante hors du `cwd` (`~/.codex/memories_1.sqlite`) : un état peut s'y transporter
 d'un appel au suivant, hors de la collaboration et hors de notre vue. L'appel reste éphémère au sens
@@ -766,6 +781,17 @@ préférable ; elle retire seulement l'objection qui l'excluait.
 `shell_tool` (`browser_use`, `unified_exec`, `computer_use`, `view_image`, `apps`, `plugins`…) —
 non essayé. Si un opérateur choisit `CONTEXT_ONLY` malgré la recommandation, cette réserve reste
 vraie et doit lui être visible.
+
+**`supports_context_only` n'est ni renommé ni mis à faux** (D-6). `adapters/base.py` est publié (§13),
+et le modifier coûte une migration ; le mettre à faux retirerait du produit un profil que §8 documente
+comme « possible, partiel » et que la caractérisation du 2026-09-03 a mesuré effectif sur `shell_tool`.
+Le booléen garde donc son sens exact — *l'adaptateur sait appliquer ce profil* —, et la **partialité
+devient vérifiable appel par appel** dans `invocation_args`, au lieu d'être promise par un nom.
+
+**C-06 reste « risque accepté — limite déclarée », jamais « résolu ».** Une correction documentaire ne
+ferme pas un risque technique. Il ne se fermera qu'après caractérisation des modes restreints sur les
+versions **installées** (outil 1 `2.1.260`, outil 2 `0.153.2` ; la caractérisation existante porte sur
+`2.1.259` / `0.151.0`) — session séparée, consignée dans `conception/CARACTERISATION_CLI.md`.
 
 ### 12.4 — Reporté, tracé
 
