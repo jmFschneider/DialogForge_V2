@@ -4,8 +4,9 @@
 > amendé après l'avis de Codex (`project/analyse/codex/2026-09-04-analyse-plan-correctif-audit.md`).
 > Remplace `2026-09-04-plan-correctif-audit.md` (v1), conservée pour trace.
 >
-> **Statut : arbitrages tranchés, prêt à exécuter.** Aucune ligne de code n'a encore été modifiée.
-> Dépôt à la rédaction : `master`, HEAD `6eb2bf4`, suite verte (196 tests).
+> **Statut : en cours d'exécution — document vivant.** Le tableau de suivi (§4) porte l'état lot par
+> lot ; un lot écrit autrement que ce qu'il annonçait le dit sur place, avec son motif.
+> Rédigé sur `master`, HEAD `6eb2bf4`, suite verte (196 tests) ; **lot 1 fait** (`373479d`, 202 tests).
 >
 > **Arbitrages PO rendus le 2026-09-04 :** budget de lignes augmenté (§5) · réordonnancement de
 > `NOTES.md` validé (les lots passent devant la première mission réelle) · **D-5 tranché :
@@ -61,7 +62,7 @@ puis enchaîne le cycle. »
 verrou, c'est deux vérités à garder d'accord — le défaut même que la v1 vient de commettre. Le prix de
 ce choix est explicite : un `run` refusé aura payé deux sondages `--version` avant son refus.
 
-### D-5 — Codes de sortie. **Tranché, avec un point laissé au PO.**
+### D-5 — Codes de sortie. **Tranché par le PO : `WAITING_HUMAN` = 5.**
 
 | Code | Situation |
 |---:|---|
@@ -182,8 +183,8 @@ sans condition permet au second récupérateur d'effacer le verrou frais du prem
   `FileNotFoundError`. La **suppression** est ainsi sérialisée, et l'**entrée** reste toujours une
   création exclusive.
 
-**Coût réel.** `lock.py` : 108 → 175 lignes (+67, pour ~37 estimées — le jeton et la validation du
-`lock_id` coûtent plus que le déplacement prévu).
+**Coût réel.** `lock.py` : 108 → **181** lignes (+73, pour ~37 estimées — le jeton et la validation du
+`lock_id` coûtent le double du déplacement prévu). Mesuré, pas estimé.
 
 **Tests écrits** : course entre **deux vrais processus** (`RULES.md`) sur un verrou libre — exactement
 un entre ; **trois processus** sur un verrou mort — exactement un entre ; jeton orphelin → refus qui
@@ -412,7 +413,7 @@ conditionne un éventuel durcissement ultérieur.
 
 | Lot | Constats | Préalable à un appel payant | Coût estimé | État |
 |---|---|---|---:|---|
-| 1 — verrou atomique | C-02b, N-02 | **oui** | +67 *(réel)* | **fait** — suite verte, 202 tests |
+| 1 — verrou atomique | C-02b, N-02 | **oui** | +73 *(mesuré)* | **fait** — suite verte, 202 tests |
 | 2 — porte d'état + intervention | C-01, C-02a, D-4 | **oui** | ~30 | à faire |
 | 3 — codes de sortie | C-03, D-5 | **oui** | ~10 | à faire |
 | 4 — intégrité de reprise | C-05 | **oui** | ~25 | à faire |

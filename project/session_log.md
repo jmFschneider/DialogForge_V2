@@ -659,3 +659,80 @@ Les trois décisions D-1/D-2/D-3 ont pris moins de contexte à trancher que redo
 déjà avec une recommandation motivée et une réserve honnête, écrites la session précédente pour
 exactement cet usage. **Écrire la décision en attente avec sa recommandation, au moment où elle
 apparaît, économise la reconstruction du contexte à la reprise.**
+
+---
+
+## 2026-09-04 (Claude) — Audit Codex du déploiement, plan correctif, lot 1
+
+Scope déclaré par le PO : lire et analyser l'audit de déploiement produit par Codex, puis en tirer un
+plan correctif soumis à Codex pour avis, puis exécuter.
+
+### Ce qui a été fait
+
+**Contre-lecture de l'audit** (`project/analyse/claude/2026-09-04-analyse-audit-deploiement.md`). Les
+six constats les plus graves (C-01 à C-06) ont été confrontés ligne à ligne au code : tous se
+confirment, aucun désaccord de sévérité, références exactes. Point que l'audit ne portait pas : la
+« prochaine action » de `NOTES.md` — lancer une mission réelle payante — était exactement le scénario
+que C-01 et C-02 rendaient dangereux.
+
+**Plan correctif v1** (11 lots, 5 arbitrages D-4 à D-8, 2 constats complémentaires N-01 et N-02),
+soumis à Codex. **Avis de Codex reçu**, filtré avec esprit contradictoire, puis **v2** :
+`project/correctifs/2026-09-04-plan-correctif-audit-v2.md`. Ses trois affirmations vérifiables ont été
+contrôlées avant d'être retenues — les trois exactes : empreintes factices de zéros dans
+`test_recovery.py`, `_schema_version` qui accepte `True`, code 2 déjà pris par `argparse`.
+
+Quatre propositions de Codex écartées avec motif : validation à deux niveaux (duplication de la même
+règle) · ses deux solutions de verrou (voir ci-dessous) · renommer `supports_context_only`
+(`adapters/base.py` est publié, §13 : le modifier coûte une migration) · supprimer
+`transformations`/`had_bom` (toucherait ~15 sites d'appel pour une ambiguïté que le retrait du
+vocabulaire suffit à lever).
+
+**Lot 1 écrit, testé, commité** : `lock.py` 108 → 181 lignes (+73 pour ~37 estimées).
+
+### Décisions
+
+- **D-5 tranché par le PO, contre l'avis de Codex** : `WAITING_HUMAN` = **5**, pas 0. Motif retenu :
+  mettre 0 recrée l'indiscernabilité que C-03 reproche justement à `_drive()` — « il te faut
+  répondre » et « c'est fini » rendraient le même code. Table complète en §7 : `0` AWAITING_APPROVAL ·
+  `1` refus avant mutation · `2` réservé à `argparse` · `3` INTERRUPTED · `4` ERROR · `5`
+  WAITING_HUMAN.
+- **Budget augmenté** : projection ~2 275 lignes (+205). La condition ouverte le matin a été rouverte
+  et refermée par le PO. Motif : aucun de ces ajouts n'est une accrétion de contrôle — ce sont des
+  garanties déjà annoncées par la conception et non tenues par le code.
+- **Première mission réelle repoussée après les lots 1 à 4** (lot 5 en plus pour une recherche).
+- **C-06 est un risque accepté, pas un défaut à corriger** : tant qu'il est ouvert, toute mission
+  réelle se fait dans une collaboration jetable, hors de tout dossier de valeur.
+- **Récupération du verrou mort : design changé en cours d'écriture.** La v2 annonçait un déplacement
+  atomique avec remise en place ; sûr à deux processus, il laissait une fenêtre à trois. Remplacé par
+  un **jeton de récupération** exclusif : qui n'a pas le jeton ne touche jamais au verrou, donc il n'y
+  a plus rien à remettre en place. Limite résiduelle — un jeton orphelin demande une suppression
+  humaine — écrite dans le message d'erreur.
+
+### La contre-épreuve, et ce qu'elle a coûté
+
+Le test de course a été rejoué contre l'ancien verrou avant d'être cru (`RULES.md`). Il a fallu deux
+passes, et **chaque échec était un vrai défaut** :
+
+1. le concurrent écrivait son résultat dans un `except` qui rattrapait aussi l'échec de
+   **libération** — un second entrant se serait déclaré refusé, et le test aurait masqué exactement la
+   double entrée qu'il cherche ;
+2. sous Windows, un PID terminé reste **vivant** pour `OpenProcess` tant qu'un handle du processus est
+   ouvert : l'objet `Popen` gardé en variable locale faisait refuser les trois concurrents pour la
+   mauvaise raison.
+
+Corrigés, la contre-épreuve donne le résultat attendu : **ancien verrou, verrou mort, trois processus,
+trois entrées dans la section critique.** Les deux leçons sont dans `RULES.md`.
+
+### Commits
+
+`c940961` docs: audit Codex et plan correctif en onze lots · `373479d` fix: acquisition du verrou
+atomique et reprise sûre (C-02, N-02) · `f437fb5` docs: NOTES.md pointé sur le lot 2.
+
+### À retenir
+
+**Une contre-épreuve qui échoue deux fois avant de montrer le défaut attendu n'est pas une perte de
+temps : c'est la seule chose qui a prouvé que le test valait quelque chose.** Sans elle, la suite
+serait verte avec un test de course structurellement aveugle.
+
+**État à la reprise :** 2 143 lignes de production, **202 tests verts** + 1 ignoré, `ruff` et
+`mypy --strict` verts, arbre git propre. Lot 2 non commencé, non bloqué — c'est le plus gros du plan.
