@@ -20,8 +20,10 @@ Distingue faits, inférences, recommandations et incertitudes. Nomme tes limites
 preuve. Chaque recommandation dit jusqu'à quand elle est réversible et quel acte
 la referme.
 
-Tu ne modifies aucun fichier et n'exécutes rien. Proposer des modifications DANS le
-document est au contraire ce qu'on attend de toi."""
+Tu ne produis aucun effet hors de ta réponse : tu ne modifies ni ne crées aucun
+fichier. **Lire** ceux du dossier courant t'est en revanche ouvert, et le corpus est
+là pour ça. Proposer des modifications DANS le document est ce qu'on attend de toi,
+pas les appliquer."""
 
 _RESEARCH = """\
 Cite les sources localisables et leur niveau d'accès réellement vérifié. La source
@@ -63,7 +65,10 @@ autonome à partir de la version courante. Intègre les apports utiles sans raco
 dialogue. Garde visibles les incertitudes, les non-décisions et les constats encore
 ouverts."""
 
-_CORPUS = "Le corpus local est un instantané du {date}, sous corpus/fichiers/."
+_CORPUS = (
+    "Le corpus local est un instantané du {date}, à lire sous corpus/fichiers/ : c'est"
+    " ta matière, et la seule."
+)
 _CONTEXT_ONLY = (
     "Tu ne disposes que des éléments ci-dessous ; qualifie ce que tu ne peux pas vérifier."
 )

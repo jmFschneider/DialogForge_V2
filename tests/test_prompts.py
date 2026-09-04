@@ -63,6 +63,39 @@ class TestAgentATagsAreSpelledOut(unittest.TestCase):
             contracts.parse_agent_response("DOCUMENT\nle corps")
 
 
+class TestCorpusIsPresentedAsReadable(unittest.TestCase):
+    """Découvert par la première mission de recherche réelle, le 2026-09-04.
+
+    Le prompt de A disait « Tu ne modifies aucun fichier et n'exécutes rien ».
+    A l'a lu comme une interdiction d'ouvrir son propre corpus, et a rendu une
+    `QUESTION` demandant à l'humain de **coller le contenu** des fichiers.
+
+    La conception promet pourtant l'inverse (§1, §3) : A travaille sur la
+    demande *et* l'instantané local du corpus, et l'adaptateur reçoit le dossier
+    de collaboration comme `cwd` précisément pour qu'il y lise. Le prompt
+    annulait une promesse du produit — la frontière d'effets porte sur
+    l'**écriture**, jamais sur la lecture.
+    """
+
+    def proposal_with_corpus(self) -> str:
+        return prompts.build_proposal("La demande.", MissionKind.RECHERCHE, "2026-09-04")
+
+    def test_the_corpus_location_is_named(self) -> None:
+        self.assertIn("corpus/fichiers/", self.proposal_with_corpus())
+
+    def test_reading_is_presented_as_open(self) -> None:
+        """Nommer l'emplacement ne suffit pas : il faut dire qu'on peut y lire."""
+        self.assertIn("lire", self.proposal_with_corpus().lower())
+
+    def test_the_effect_boundary_is_about_writing_not_reading(self) -> None:
+        """Contre-épreuve de la formulation : la phrase qui borne les effets ne
+        doit plus interdire d'« exécuter » tout court, sans quoi l'agent en
+        déduit qu'il ne peut pas ouvrir un fichier."""
+        prompt = self.proposal_with_corpus()
+        self.assertNotIn("n'exécutes rien", prompt)
+        self.assertIn("ne modifies ni ne crées aucun", prompt)
+
+
 class TestReviewerPromptCarriesItsSchema(unittest.TestCase):
     def test_the_review_schema_is_in_the_prompt_of_b(self) -> None:
         """Même règle, déjà apprise une fois : « retourne le JSON de revue v1 »

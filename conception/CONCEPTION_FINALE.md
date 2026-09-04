@@ -84,6 +84,13 @@ absolu, sa configuration utilisateur, ou tenir ses propres caches. La promesse e
 *Cette formulation est de Codex (V2 §3), contre ma propre révision qui présentait `cwd` comme un
 invariant testé. `R13` — le prompt ne confine rien — vaut pour `cwd` aussi.*
 
+**La frontière d'effets porte sur l'écriture, jamais sur la lecture.** Un agent **doit** pouvoir lire
+son corpus sous `corpus/fichiers/` — c'est la raison même pour laquelle l'adaptateur reçoit le dossier
+de collaboration comme `cwd`. *Mesuré le 2026-09-04, première mission de recherche réelle : le prompt
+de A disait « tu ne modifies aucun fichier et n'exécutes rien », A l'a lu comme une interdiction
+d'ouvrir son propre corpus, et a demandé à l'humain d'en coller le contenu. Le prompt annulait une
+promesse du produit.*
+
 **La non-écriture du projet par les agents est une limite déclarée, pas une garantie mécanique.**
 Elle est obtenue par des **drapeaux mesurés** — `--tools ""`, `features.shell_tool=false` — et non par
 un confinement du système d'exploitation. Les agents ne sont pas mécaniquement empêchés d'écrire :
