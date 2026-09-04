@@ -99,6 +99,7 @@
 
 **Un test qui vérifie une absence doit d'abord être prouvé capable de voir la présence.**
 *Motif : le test de terminaison d'arbre affirme qu'un petit-fils ne dépose jamais sa marque. Sans avoir vérifié — hors suite — que cette marque apparaît quand on ne tue personne, le test passerait tout aussi bien parce que le petit-fils n'a jamais existé.*
+*Second motif, mesuré le 2026-09-04 : le test de course du verrou affirme qu'un seul processus entre. Rejoué contre l'ancien verrou, il en montrait zéro au lieu de trois — chaque concurrent écrivait son résultat dans un `except` qui rattrapait aussi l'échec de **libération**, si bien qu'un entrant se déclarait refusé. La contre-épreuve n'a pas seulement validé le test : elle a corrigé le test.*
 
 **Ne jamais donner à un correctif un motif qu'on n'a pas mesuré.** Écrire « mesuré le … » engage.
 *Motif : la normalisation CRLF a été justifiée par « une CLI d'agent écrit en mode texte, mesuré le 2026-09-03 ». La preuve venait en réalité du faux agent du projet. La caractérisation du même jour a montré que les deux vraies CLI rendent des `\n`. Le correctif reste bon comme tolérance ; c'est son motif qui était faux, et un motif faux se propage plus loin qu'un correctif inutile.*
@@ -108,6 +109,9 @@
 
 **Le prompt d'un agent passe par `stdin`, jamais par la ligne de commande.**
 *Motif mesuré le 2026-09-03 : `CreateProcess` plafonne à 32 767 caractères sous Windows, qu'un corpus réel dépasse ; et une CLI qui voit `DEVNULL` sur son entrée la lit comme un flux canalisé vide — la réponse est tombée de 673 octets conformes à 100 octets hors contrat.*
+
+**Sous Windows, un PID terminé reste « vivant » pour `OpenProcess` tant qu'un handle du processus est ouvert.** Un test qui fabrique un PID mort doit laisser l'objet `Popen` sortir de portée avant de s'en servir.
+*Motif mesuré le 2026-09-04 : dans la contre-épreuve du verrou, l'objet `Popen` gardé en variable locale faisait passer un processus attendu jusqu'à sa sortie pour un détenteur vivant — les trois concurrents refusaient le verrou pour la mauvaise raison, et la preuve semblait acquise alors que rien n'avait été testé.*
 
 **Sous Windows, résoudre l'exécutable avec `shutil.which()` avant `Popen`.**
 *Motif : une entrée de PATH installée par npm est un script sans extension ; `CreateProcess` rend `WinError 2`. `shutil.which` rend le `.CMD` qui, lui, se lance.*

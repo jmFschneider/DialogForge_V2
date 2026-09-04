@@ -169,6 +169,7 @@ collaboration/
 ├── demande.md.001              # versions remplacées, immuables
 ├── etat.json
 ├── verrou.json                 # transitoire, pendant une commande mutante
+├── verrou.json.recuperation    # transitoire, le temps d'effacer un verrou mort
 ├── corpus/
 │   ├── manifeste.json
 │   └── fichiers/<chemins-logiques>
@@ -541,7 +542,7 @@ incertitudes, les non-décisions et les constats encore ouverts.
 | Contrats B | JSON nu ou bloc unique clôturé · version, clé, enum invalides · sévérité manquante → `UNKNOWN` ouvert · constat antérieur omis ou dupliqué refusé · fermeture motivée · **décision jamais déduite** · `ACCEPTER` + `BLOCKING` ouvert refusé |
 | État | Schéma strict · chaque phase · empreinte de demande · terminal `AWAITING_APPROVAL` |
 | Stockage | Temporaires uniques · publication atomique · échec simulé avant et après `os.replace` · **aucun chemin absolu persisté** · **déplacement complet puis reprise** |
-| Verrou | PID/date/commande · détenteur vivant refusé · verrou mort récupéré · **jamais la suppression du verrou d'un autre** |
+| Verrou | identifiant/PID/date/commande · **acquisition par création exclusive** · détenteur vivant refusé · verrou mort récupéré **sous jeton**, jamais par effacement direct · libération vérifiée sur le `lock_id`, jamais sur le seul PID · **jamais la suppression du verrou d'un autre** (corrigé le 2026-09-04, C-02) |
 | Corpus | Hors racine, `..`, lien sortant, non régulier, empreinte changeante → refus **avant publication** · date et libellé · âge affiché · **aucune actualisation silencieuse** |
 | Appel durable | Crash en `CALLING` **sans** `resultat.json` → `INTERRUPTED` sans appel · **crash en `CALLING` AVEC `resultat.json` valide → retraité localement, sans appel** · crash en `RESPONSE_STORED` → retraitement local · artefact avant transition · UUID sans nom de fournisseur · **code de retour non nul → incident `CLI_FAILED`, `INTERRUPTED`, sans tentative de contrat (D-2)** |
 | Interruption | Ctrl-C → arbre terminé, incident écrit, flux partiels conservés, état `CALLING` · `pid.txt` présent dès le lancement |
