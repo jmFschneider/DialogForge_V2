@@ -7,6 +7,7 @@ sont toujours présents, avec `null` au besoin — ils ne disparaissent jamais.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -159,9 +160,25 @@ def _opt_nested(cls: Any) -> Decoder:
 
 def _schema_version(d: dict[str, Any], key: str) -> int:
     v = d[key]
-    if v != SCHEMA_VERSION:
+    # `True != 1` est faux : sans ce refus explicite, `"schema_version": true`
+    # passait pour la version 1, comme `_int` le refuse déjà ailleurs.
+    if isinstance(v, bool) or v != SCHEMA_VERSION:
         raise SchemaError(f"{key}: {v!r} != {SCHEMA_VERSION} (version future ou obsolète)")
     return int(v)
+
+
+def positive_seconds(value: float, label: str = "timeout") -> float:
+    """Un délai doit être un nombre **fini et strictement positif**.
+
+    `nan` mérite d'être nommé : `time.monotonic() >= deadline` reste **faux**
+    pour lui, si bien que le délai dur — la seule borne du cycle — ne se
+    déclencherait jamais. `inf` produirait le même effet, et `0` ou un négatif
+    laisseraient partir un appel condamné d'avance.
+    """
+    number = float(value)
+    if not math.isfinite(number) or number <= 0:
+        raise SchemaError(f"{label} : nombre de secondes fini et strictement positif attendu")
+    return number
 
 
 def _decode(d: Any, fields: tuple[tuple[str, Decoder], ...], where: str) -> dict[str, Any]:
@@ -265,6 +282,14 @@ class Configuration:
     initial_demande_sha256: str
     corpus_manifest_sha256: str | None
     created_at: str
+
+    def __post_init__(self) -> None:
+        """Un plafond de révisions négatif n'a pas de sens : `FINAL_A` serait
+        atteint sans qu'aucune révision soit possible, ce que `0` exprime
+        déjà. Vérifié à la construction, donc aussi bien au `new` qu'au
+        chargement."""
+        if self.max_revisions < 0:
+            raise SchemaError("max_revisions: entier positif ou nul attendu")
 
     @staticmethod
     def from_dict(d: dict[str, Any]) -> Configuration:

@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import IO, Any
 
 from . import storage
-from .models import IntegrityError
+from .models import IntegrityError, positive_seconds
 
 SCHEMA_VERSION = 1
 OUTPUT_LIMIT_BYTES = 8 * 1024 * 1024
@@ -94,6 +94,9 @@ def run(
     passe, et une CLI voyant `DEVNULL` sur son entrée la lit comme un flux
     canalisé vide, ce qui dégrade sa réponse.
     """
+    # Validé avant `Popen` : avec `nan`, `time.monotonic() >= deadline` reste
+    # faux et le délai dur ne se déclencherait jamais (C-08).
+    timeout_seconds = positive_seconds(timeout_seconds)
     started = time.monotonic()
     try:
         proc = subprocess.Popen(

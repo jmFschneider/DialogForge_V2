@@ -14,7 +14,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from iabinome import cli
+from iabinome import cli, transport, workflow
+from iabinome.models import Configuration, SchemaError, State
 from tests import fakes
 
 _DOC = "IABINOME:DOCUMENT\n# Proposition\nCorps."
@@ -259,6 +260,71 @@ class TestExitCodes(CliCase):
         self.assertNotEqual(
             cli.main(["status", str(self.collab)]), 5, "status reste en lecture seule"
         )
+
+
+class TestNumericArguments(CliCase):
+    """C-08 : `--timeout` acceptait `0`, les négatifs, `inf` et `nan`.
+
+    `nan` est le cas grave : `time.monotonic() >= deadline` reste **faux** pour
+    lui, si bien que le délai dur — la seule borne du cycle — ne se déclenchait
+    jamais. Refusé par `argparse`, donc en code **2**, et refusé aussi aux
+    entrées Python, que les tests appellent directement.
+    """
+
+    def refused_timeout(self, value: str) -> None:
+        with redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as caught:
+                cli.main(["run", str(self.collab), "--timeout", value])
+        self.assertEqual(caught.exception.code, 2)
+
+    def test_zero_negative_inf_and_nan_timeouts_are_refused(self) -> None:
+        for value in ("0", "-1", "inf", "nan", "pas-un-nombre"):
+            with self.subTest(timeout=value):
+                self.refused_timeout(value)
+
+    def test_a_negative_max_revisions_is_refused(self) -> None:
+        with redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as caught:
+                cli.main(["new", *self.new_args(**{"--max-revisions": "-1"})])
+        self.assertEqual(caught.exception.code, 2)
+        self.assertFalse(self.collab.exists())
+
+    def test_the_python_entry_points_refuse_them_too(self) -> None:
+        """`workflow.run` et `transport.run` sont des surfaces appelées
+        directement : la validation n'appartient pas qu'à `argparse`."""
+        self.assertEqual(cli.main(["new", *self.new_args()]), 0)
+        for value in (0.0, -1.0, float("inf"), float("nan")):
+            with self.subTest(timeout=value):
+                with self.assertRaises(SchemaError):
+                    workflow.run(
+                        self.collab, adapters={"fake-a": self.a, "fake-b": self.b},
+                        timeout_seconds=value,
+                    )
+                with self.assertRaises(SchemaError):
+                    transport.run(
+                        ["python", "-c", "pass"], cwd=self.collab,
+                        call_dir=self.collab, timeout_seconds=value,
+                    )
+        self.assertEqual(self.a.calls, 0, "un appel est parti avec un delai invalide")
+
+
+class TestLoadedConfiguration(CliCase):
+    def test_a_negative_max_revisions_is_refused_at_load(self) -> None:
+        self.assertEqual(cli.main(["new", *self.new_args()]), 0)
+        config = fakes.read_json(self.collab / "configuration.json")
+        config["max_revisions"] = -1
+        fakes.write_json(self.collab / "configuration.json", config)
+        with self.assertRaises(SchemaError):
+            Configuration.from_dict(fakes.read_json(self.collab / "configuration.json"))
+
+    def test_a_boolean_schema_version_is_refused(self) -> None:
+        """`True != 1` est faux : `schema_version: true` passait pour la
+        version 1, alors que `_int` refuse déjà les booléens ailleurs."""
+        self.assertEqual(cli.main(["new", *self.new_args()]), 0)
+        etat = fakes.read_json(self.collab / "etat.json")
+        etat["schema_version"] = True
+        with self.assertRaises(SchemaError):
+            State.from_dict(etat)
 
 
 class TestStatus(CliCase):

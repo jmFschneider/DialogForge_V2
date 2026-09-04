@@ -47,6 +47,7 @@ from .models import (
     Severity,
     State,
     Status,
+    positive_seconds,
 )
 from .transport import Outcome
 
@@ -133,6 +134,9 @@ def run(
     plafonne les allers-retours et `FINAL_A` est terminal. **Aucun compteur de
     garde n'est ajouté** : ce serait un quota interne.
     """
+    # Surface appelée directement — par les tests, et par quiconque importe le
+    # moteur : le délai y est validé avant toute publication de `CALLING`.
+    timeout_seconds = positive_seconds(timeout_seconds)
     while True:
         engine, state = _preflight(collab, adapters, timeout_seconds, intervention)
         with lock.acquire(collab / "verrou.json", command_label):      # étape 2

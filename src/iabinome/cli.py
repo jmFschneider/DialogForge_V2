@@ -35,6 +35,7 @@ from .models import (
     Role,
     State,
     Status,
+    positive_seconds,
 )
 
 ADAPTERS: dict[str, AgentAdapter] = {"claude": ClaudeAdapter(), "codex": CodexAdapter()}
@@ -193,6 +194,25 @@ def _now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _timeout(text: str) -> float:
+    """Convertisseur `argparse` : une valeur refusée sort en code 2, comme toute
+    erreur d'usage — le programme ne la produit jamais lui-même (D-5)."""
+    try:
+        return positive_seconds(float(text), "--timeout")
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def _revisions(text: str) -> int:
+    try:
+        value = int(text)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"--max-revisions : entier attendu, pas {text!r}") from exc
+    if value < 0:
+        raise argparse.ArgumentTypeError("--max-revisions : entier positif ou nul attendu")
+    return value
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m iabinome")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -209,17 +229,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_new.add_argument("--source-label")
     p_new.add_argument("--model-a")
     p_new.add_argument("--model-b")
-    p_new.add_argument("--max-revisions", type=int, default=2)
+    p_new.add_argument("--max-revisions", type=_revisions, default=2)
     p_new.set_defaults(func=cmd_new)
 
     p_run = sub.add_parser("run")
     p_run.add_argument("collab")
-    p_run.add_argument("--timeout", type=float, default=1800.0)
+    p_run.add_argument("--timeout", type=_timeout, default=1800.0)
     p_run.set_defaults(func=cmd_run)
 
     p_resume = sub.add_parser("resume")
     p_resume.add_argument("collab")
-    p_resume.add_argument("--timeout", type=float, default=1800.0)
+    p_resume.add_argument("--timeout", type=_timeout, default=1800.0)
     p_resume.add_argument("--answer")
     p_resume.add_argument("--retry-call")
     p_resume.add_argument("--reason-file")
