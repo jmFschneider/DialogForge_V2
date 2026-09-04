@@ -8,11 +8,9 @@
 
 ## Prochaine action — une seule
 
-**Committer le palier 4**, puis rouvrir la question du budget de production *avant le palier 5 s'il
-y en a un* — pas la refermer. Voir « Budget » ci-dessous.
-
-**Aucun commit n'a encore été fait cette session** — le travail est sur disque, vert (`ruff`, `mypy
---strict`, `pytest`), en attente de la commande de commit.
+**Palier 4 committé (`61622a0`).** La question du budget de production est arbitrée « on continue »
+mais **pas refermée** : à rouvrir explicitement avant le palier 5, s'il y en a un — voir « Budget »
+ci-dessous. Sinon, rien de bloquant : décider de la suite (palier 5, ou l'étape 2 est close).
 
 ---
 
