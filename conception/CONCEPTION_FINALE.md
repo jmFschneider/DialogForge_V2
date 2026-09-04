@@ -448,6 +448,26 @@ modifier la collaboration d'un cycle en cours, puis annoncer un échec.*
 publié. Un rejeu ne réarchive pas un texte déjà archivé.
 `status` est strictement en lecture seule : âge du corpus, politique de revue, constats ouverts, phase.
 
+### Codes de sortie
+
+| Code | Situation |
+|---:|---|
+| 0 | cycle arrêté au point prévu — `AWAITING_APPROVAL` (et `new`, `status`) |
+| 1 | refus **avant mutation** : prévol, verrou détenu, argument invalide |
+| 2 | **réservé à `argparse`** (erreur d'usage) — le programme ne le produit jamais |
+| 3 | interruption du transport — `INTERRUPTED` |
+| 4 | réponse inexploitable — `ERROR` |
+| 5 | le cycle attend une décision humaine — `WAITING_HUMAN` |
+
+**Le code décrit le résultat de la commande, jamais l'approbation du livrable** : `AWAITING_APPROVAL`
+vaut 0 parce que le cycle s'est arrêté où il devait, pas parce que le document est approuvé.
+
+*`WAITING_HUMAN` porte un code distinct, contre l'avis du contradicteur qui recommandait 0. Motif : le
+défaut corrigé ici est d'avoir rendu **indiscernables au niveau du code de sortie** « le cycle s'est
+arrêté sur un incident » et « le cycle est allé au bout ». Mettre `WAITING_HUMAN` à 0 recrée cette
+indiscernabilité entre « il te faut répondre » et « c'est fini ». Un code distinct, hors de la plage
+`argparse`, coûte zéro ligne.*
+
 **Il n'existe ni `worker`, ni `serve`, ni `implement`, ni `apply`, ni `watch`, ni `repair`.**
 
 ## 8. Adaptateurs et permutations

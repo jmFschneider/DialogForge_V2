@@ -42,6 +42,17 @@ ADAPTERS: dict[str, AgentAdapter] = {"claude": ClaudeAdapter(), "codex": CodexAd
 _KIND = {"conception": MissionKind.CONCEPTION, "recherche": MissionKind.RECHERCHE}
 _ACCESS = {"context-only": ReviewerAccess.CONTEXT_ONLY, "consult": ReviewerAccess.CONSULT}
 
+# D-5 : le code décrit le **résultat de la commande**, jamais l'approbation du
+# livrable. `AWAITING_APPROVAL` vaut 0 parce que le cycle s'est arrêté où il
+# devait, pas parce que le document est approuvé. `1` est le refus avant
+# mutation, `2` reste réservé à `argparse` — le programme ne le produit jamais.
+_EXIT_CODE = {
+    Status.AWAITING_APPROVAL: 0,
+    Status.INTERRUPTED: 3,
+    Status.ERROR: 4,
+    Status.WAITING_HUMAN: 5,
+}
+
 
 def cmd_new(args: argparse.Namespace) -> int:
     dest = Path(args.collab)
@@ -132,7 +143,10 @@ def _drive(
     except (workflow.WorkflowError, lock.LockError, OSError) as exc:
         return _fail(str(exc))
     print(f"statut : {state.status.value} · phase : {state.phase.value}")
-    return 0
+    # Indexation directe, sans défaut : `run` ne rend jamais `READY` ni
+    # `RUNNING`, et masquer un statut inattendu derrière un code plausible
+    # recréerait l'indiscernabilité que D-5 corrige.
+    return _EXIT_CODE[state.status]
 
 
 def cmd_status(args: argparse.Namespace) -> int:

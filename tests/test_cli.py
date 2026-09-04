@@ -144,7 +144,7 @@ class TestRunAndResume(CliCase):
         self.build()
         self.a.responses = [_QUESTION]
         code = cli.main(["run", str(self.collab)])
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 5)
         etat = fakes.read_json(self.collab / "etat.json")
         self.assertEqual(etat["status"], "WAITING_HUMAN")
 
@@ -153,7 +153,7 @@ class TestRunAndResume(CliCase):
         et surtout aucun appel supplémentaire (C-01)."""
         self.build()
         self.a.responses = [_QUESTION]
-        self.assertEqual(cli.main(["run", str(self.collab)]), 0)
+        self.assertEqual(cli.main(["run", str(self.collab)]), 5)
         with redirect_stderr(io.StringIO()) as err:
             code = cli.main(["run", str(self.collab)])
         self.assertEqual(code, 1)
@@ -176,8 +176,10 @@ class TestRunAndResume(CliCase):
         cli.main(["run", str(self.collab)])
         answer = self.root / "reponse.md"
         answer.write_text("Le critere de fin est la couverture complete.", encoding="utf-8")
+        # Les deux agents rendent ensuite leur réponse par défaut, hors contrat
+        # pour B : le cycle finit en ERROR, code 4.
         code = cli.main(["resume", str(self.collab), "--answer", str(answer)])
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 4)
         after = fakes.read_json(self.collab / "configuration.json")["corpus_manifest_sha256"]
         self.assertEqual(before, after)
         self.assertTrue((self.collab / "demande.md.001").exists())
@@ -191,8 +193,9 @@ class TestRunAndResume(CliCase):
         self.a.responses = []
         self.a.sleep_seconds = 5.0
         # Un appel interrompu par delai, sans reponse : table de reprise §5.
+        # Ce test attendait `0` — il figeait le defaut C-03 : INTERRUPTED vaut 3.
         code = cli.main(["run", str(self.collab), "--timeout", "0.05"])
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 3)
         etat = fakes.read_json(self.collab / "etat.json")
         self.assertEqual(etat["status"], "INTERRUPTED")
         call_id = etat["current_call"]["call_id"]
@@ -202,6 +205,60 @@ class TestRunAndResume(CliCase):
             "resume", str(self.collab), "--retry-call", call_id, "--reason-file", str(empty_reason),
         ])
         self.assertEqual(code, 1)
+
+
+class TestExitCodes(CliCase):
+    """Table D-5, un cas par statut observable depuis la CLI.
+
+    Le code décrit le **résultat de la commande**, jamais l'approbation du
+    livrable : `AWAITING_APPROVAL` vaut `0` parce que le cycle s'est arrêté où
+    il devait. `2` reste réservé à `argparse` — le programme ne le produit
+    jamais, et un test le vérifie sur une commande mal formée.
+    """
+
+    def build(self) -> None:
+        self.assertEqual(cli.main(["new", *self.new_args()]), 0)
+
+    def test_awaiting_approval_is_zero(self) -> None:
+        self.build()
+        self.a.responses = [_DOC, "IABINOME:DOCUMENT\n# Final\nCorps."]
+        self.b.responses = [fakes.review("ACCEPTER", findings=())]
+        self.assertEqual(cli.main(["run", str(self.collab)]), 0)
+
+    def test_a_refusal_before_any_mutation_is_one(self) -> None:
+        self.build()
+        self.a.present = False
+        before = (self.collab / "etat.json").read_bytes()
+        with redirect_stderr(io.StringIO()):
+            self.assertEqual(cli.main(["run", str(self.collab)]), 1)
+        self.assertEqual((self.collab / "etat.json").read_bytes(), before)
+
+    def test_two_is_left_to_argparse(self) -> None:
+        with redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as caught:
+                cli.main(["run"])  # argument obligatoire absent
+        self.assertEqual(caught.exception.code, 2)
+
+    def test_interrupted_is_three(self) -> None:
+        self.build()
+        self.a.sleep_seconds = 5.0
+        self.assertEqual(cli.main(["run", str(self.collab), "--timeout", "0.05"]), 3)
+
+    def test_error_is_four(self) -> None:
+        self.build()
+        self.a.responses = ["Bonjour, voici mon document."]
+        self.assertEqual(cli.main(["run", str(self.collab)]), 4)
+
+    def test_waiting_human_is_five(self) -> None:
+        """Contre l'avis de Codex, qui recommandait `0` : mettre `WAITING_HUMAN`
+        à `0` rendrait « il te faut répondre » et « c'est fini » indiscernables
+        au niveau du code de sortie — le défaut même que C-03 reproche."""
+        self.build()
+        self.a.responses = [_QUESTION]
+        self.assertEqual(cli.main(["run", str(self.collab)]), 5)
+        self.assertNotEqual(
+            cli.main(["status", str(self.collab)]), 5, "status reste en lecture seule"
+        )
 
 
 class TestStatus(CliCase):
