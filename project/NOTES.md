@@ -8,15 +8,14 @@
 
 ## Prochaine action — une seule
 
-**Première mission réelle, hors suite de tests.** Les quatre paliers sont écrits, testés, verts ;
-plus rien ne bloque `python -m iabinome new/run` en conditions réelles. Reste de §9 : « première
-mission conception et première mission recherche observées, avec la friction du manifeste notée. »
-Lancer une mission de conception simple (`--agent-a claude --agent-b codex` ou l'inverse), observer
-le cycle de bout en bout, noter toute friction — en particulier sur la liste de fichiers du manifeste
-de corpus (§3 : « premier point d'usage à mesurer »). **Appel payant, autorisation du PO requise
-avant de lancer.**
+**Lot 1 du plan correctif : verrou atomique** (`project/correctifs/2026-09-04-plan-correctif-audit-v2.md`).
+`lock._try_acquire` n'est pas atomique et la récupération d'un verrou mort a une course. Lot autonome,
+aucun autre n'en dépend. Puis lots 2 à 5 dans l'ordre du plan.
 
-Après cette observation : décider si l'étape 2 est close, ou s'il y a un palier 5.
+**La première mission réelle est repoussée après les lots 1 à 4** (lot 5 en plus pour une mission de
+recherche) — arbitré le 2026-09-04. Motif : l'audit Codex montre qu'un second `run` en `WAITING_HUMAN`
+déclenche un **appel payant non demandé** et qu'un `resume` concurrent modifie la collaboration en
+annonçant un échec. Observer maintenant mesurerait ces défauts, pas la friction cherchée.
 
 ---
 
@@ -69,10 +68,13 @@ dossier `COLLAB` passé en argument — aucun flag séparé n'est décrit en §7
 
 ---
 
-## Budget — arbitré le 2026-09-04 : « on continue », condition ouverte
+## Budget — augmentation validée le 2026-09-04, condition refermée
 
 **Décision du PO.** La taille reflète une surface CLI réellement spécifiée (§7), pas une dérive.
-**Condition, non refermée** : rouvrir la question si la croissance se poursuit sur un prochain palier.
+La condition ouverte le matin (« rouvrir si la croissance se poursuit ») a été **rouverte et
+tranchée** : le plan correctif projette **~2 275 lignes** (+205), et le PO valide. Motif retenu :
+aucun de ces ajouts n'est une accrétion de contrôle — ce sont des garanties déjà annoncées par la
+conception et non tenues par le code. Les cinq interdits restent tenus sans exception.
 
 | Module | Visé (§11) | Réel (brut) |
 |---|---:|---:|
@@ -97,8 +99,16 @@ permutations · registre de constats · porte `QUESTION` · terminal non ambigu.
 ## État courant
 
 - **Étapes 0 et 1 closes.** Spécification : `conception/CONCEPTION_FINALE.md`.
-- **Étape 2 : les quatre paliers sont écrits, testés, verts, committés (`61622a0`).** Reste la
-  validation manuelle hors suite de §9 (« Prochaine action » ci-dessus) avant de déclarer l'étape close.
+- **Étape 2 : les quatre paliers sont écrits, testés, verts, committés (`61622a0`).** L'étape **n'est
+  pas close** : audit Codex du 2026-09-04, onze constats, dont deux bloquants — plan correctif en
+  onze lots, **tous les arbitrages tranchés**, dans
+  `project/correctifs/2026-09-04-plan-correctif-audit-v2.md`.
+- **Codes de sortie (D-5, tranché le 2026-09-04)** : `0` AWAITING_APPROVAL · `1` refus avant mutation ·
+  `2` réservé à argparse · `3` INTERRUPTED · `4` ERROR · `5` WAITING_HUMAN. Décision du PO **contre
+  l'avis de Codex**, qui recommandait `0` pour WAITING_HUMAN.
+- **C-06 (frontière d'effets) est un risque accepté, pas un défaut à corriger** : les agents ne sont
+  pas mécaniquement confinés. Tant qu'il est ouvert, toute mission réelle se fait dans une
+  collaboration jetable, hors de tout dossier de valeur.
 - **La relecture Codex palier par palier reste suspendue** — décision du PO, 2026-09-03.
 - Récolte : `conception/INVENTAIRE.md` v3, 156 leçons. Cinq tours de structure conservés séparément.
 - Le dépôt n'a **pas de remote** — décision reportée.
