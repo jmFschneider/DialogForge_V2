@@ -101,11 +101,21 @@
 *Motif : le test de terminaison d'arbre affirme qu'un petit-fils ne dépose jamais sa marque. Sans avoir vérifié — hors suite — que cette marque apparaît quand on ne tue personne, le test passerait tout aussi bien parce que le petit-fils n'a jamais existé.*
 *Second motif, mesuré le 2026-09-04 : le test de course du verrou affirme qu'un seul processus entre. Rejoué contre l'ancien verrou, il en montrait zéro au lieu de trois — chaque concurrent écrivait son résultat dans un `except` qui rattrapait aussi l'échec de **libération**, si bien qu'un entrant se déclarait refusé. La contre-épreuve n'a pas seulement validé le test : elle a corrigé le test.*
 
+**Un outil peut signaler un échec de quota sur `stdout` avec un code de retour `0`.** Ne jamais bâtir un diagnostic sur l'hypothèse inverse.
+*Motif mesuré le 2026-09-04 : la décision D-2 posait que « quota épuisé et modèle invalide rendent tous deux 1 chez les deux outils ». Faux pour outil 1 : sur un modèle sans crédits il rend son message sur `stdout` avec le code `0`. Le test du code de retour ne l'attrape pas, et le cycle finit en `CONTRACT_ERROR` — le diagnostic trompeur que D-2 disait éviter. La décision reste bonne, son motif était faux.*
+
 **Ne jamais donner à un correctif un motif qu'on n'a pas mesuré.** Écrire « mesuré le … » engage.
 *Motif : la normalisation CRLF a été justifiée par « une CLI d'agent écrit en mode texte, mesuré le 2026-09-03 ». La preuve venait en réalité du faux agent du projet. La caractérisation du même jour a montré que les deux vraies CLI rendent des `\n`. Le correctif reste bon comme tolérance ; c'est son motif qui était faux, et un motif faux se propage plus loin qu'un correctif inutile.*
 
-**Un prompt qui exige un format doit porter le format.**
-*Motif : §9 disait à B « retourne le JSON de revue v1 » sans jamais montrer le schéma — un nom interne au projet, indevinable. Chaque revue aurait échoué au contrat. Ajouter le schéma n'est pas durcir le prompt : on n'allège pas ce qui n'a jamais été dit.*
+**Un prompt qui exige un format doit porter le format — et la règle vaut pour *chaque* prompt, pas pour le premier.**
+*Motif : §9 disait à B « retourne le JSON de revue v1 » sans jamais montrer le schéma — un nom interne au projet, indevinable. Chaque revue aurait échoué au contrat.*
+*Second motif, mesuré le 2026-09-04 à la première mission réelle : la règle avait été appliquée au prompt de proposition, qui nommait `IABINOME:DOCUMENT` en toutes lettres, mais **pas** à ceux de révision et de finalisation, qui disaient « rends DOCUMENT ». L'agent a obéi littéralement. **Aucune mission ne pouvait aller au bout** — l'échec tombait au dernier appel, après avoir payé tous les autres. Corriger une règle à un endroit ne la corrige pas partout : il faut passer les autres au même crible.*
+
+**Un prompt à faux agent ne teste pas un prompt.** Ce que le gabarit demande ne se vérifie qu'en lisant le gabarit.
+*Motif mesuré le 2026-09-04 : 259 tests verts, dont plusieurs cycles complets, et pourtant deux prompts de A étaient inutilisables. `FakeAdapter` émet la bonne balise quoi qu'on lui demande — il ne lit pas le prompt. `tests/test_prompts.py` lit désormais les gabarits eux-mêmes.*
+
+**La frontière d'effets d'un prompt porte sur l'écriture, jamais sur la lecture.**
+*Motif mesuré le 2026-09-04 : « tu ne modifies aucun fichier et n'exécutes rien » a été lu par A comme une interdiction d'ouvrir son propre corpus — il a demandé à l'humain d'en coller le contenu. Le prompt annulait une promesse du produit, puisque l'adaptateur reçoit le dossier de collaboration comme `cwd` précisément pour qu'il y lise.*
 
 **Le prompt d'un agent passe par `stdin`, jamais par la ligne de commande.**
 *Motif mesuré le 2026-09-03 : `CreateProcess` plafonne à 32 767 caractères sous Windows, qu'un corpus réel dépasse ; et une CLI qui voit `DEVNULL` sur son entrée la lit comme un flux canalisé vide — la réponse est tombée de 673 octets conformes à 100 octets hors contrat.*

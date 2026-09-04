@@ -306,6 +306,20 @@ sans ce test, `extract()` le prendrait pour une réponse d'agent, et le cycle fi
 retombe sur `INTERRUPTED`, ce que la table de reprise ci-dessous sait déjà traiter : `resume
 --retry-call` est la sortie prévue, comme pour toute autre interruption du transport.
 
+> **La prémisse de D-2 est fausse pour outil 1 — mesuré le 2026-09-04.** Sur un modèle sans crédits,
+> outil 1 rend son message de quota **sur `stdout` avec un code de retour `0`**, pas `1` :
+> `« You're out of usage credits. Switch to another model… »`. Le test du code de retour **ne l'attrape
+> donc pas**, et le cycle finit exactement en `CONTRACT_ERROR` — le diagnostic trompeur que cette
+> décision disait éviter.
+>
+> **La décision reste bonne, c'est son motif qui était faux**, et un motif faux se propage plus loin
+> qu'un correctif inutile : le test du code de retour garde toute sa valeur pour les autres échecs.
+> Rien n'est dangereux — la réponse brute est préservée, aucun rejeu n'est automatique, l'humain garde
+> la main —, mais l'incident nomme la mauvaise cause. **Détecter un quota supposerait de lire le texte
+> du fournisseur, ce que §8 interdit** (aucune erreur typée dans le noyau) : la reconnaissance de
+> quota reste donc hors du programme, et c'est l'humain qui lit le message. À rouvrir seulement si les
+> deux outils exposent un jour un code distinct commun.
+
 ### Reprise après crash — le dossier d'appel fait foi, pas le seul statut
 
 > **La reprise inspecte le dossier d'appel avant de conclure.** `resultat.json` n'est écrit qu'à la
