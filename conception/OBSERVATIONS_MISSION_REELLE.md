@@ -177,16 +177,52 @@ cas exact de la mission et une revue citant du markdown dans `analysis` · **280
 d'appel payant avaient produite et que la forme avait jetée. *Rejeu hors suite, à la main : la suite
 de tests ne lit pas `conception/`.*
 
-## 7. Un motif écrit qui s'est révélé faux — D-2
+## 7. ~~Un motif écrit qui s'est révélé faux — D-2~~ · Rétracté le 2026-09-05
 
-**Mesuré.** Sur un modèle sans crédits, outil 1 rend son message de quota **sur `stdout` avec un code
-de retour `0`**. D-2 posait que « quota épuisé et modèle invalide rendent tous deux `1` chez les deux
-outils ». Le test du code de retour ne l'attrape donc pas, et le cycle finit en `CONTRACT_ERROR` — le
-diagnostic trompeur que D-2 disait éviter.
+> **Cette section était fausse.** Elle affirmait, « mesuré », que sur un modèle sans crédits outil 1
+> rend son message de quota **sur `stdout` avec un code de retour `0`**, et en concluait que le motif
+> de D-2 (« quota épuisé et modèle invalide rendent tous deux `1` ») était faux.
+>
+> **D-2 disait vrai.** Remesuré le 2026-09-05, par redirection vers un fichier :
 
-**La décision reste bonne, son motif était faux.** Le test du code de retour garde sa valeur pour les
-autres échecs. Détecter un quota supposerait de lire le texte du fournisseur, ce que §8 interdit : la
-reconnaissance de quota reste hors du programme, et c'est l'humain qui lit le message. Consigné en §5.
+| Outil | Version | Code | `stdout` | `stderr` |
+|---|---|---:|---:|---:|
+| 1, modèle `fable` | `2.1.261` | **1** | 146 o — le message de quota | 0 o |
+| 2, `gpt-5.6-sol` | `0.153.2` | **1** | 0 o | 4 115 o — le message de quota |
+
+> `CARACTERISATION_CLI.md:162` portait déjà le bon chiffre depuis le 2026-09-03 : « Quota épuisé
+> comme modèle invalide : **code 1**. Et chez outil-1, le message de quota sort **sur `stdout`** ».
+> Un `0` observé une fois a suffi à le déclarer faux, sans remesure, **contre une source du projet
+> qui disait le contraire**.
+>
+> **Origine probable : un code de retour lu à travers un tube.** Après `cmd | head`, `$?` est celui
+> de `head`. Reproduit le 2026-09-05 — une sonde écrite ainsi a affiché `rc=0` pour un outil dont
+> `resultat.json` enregistrait `return_code: 1` au même instant. Non prouvé pour le 2026-09-04 ;
+> suffisant pour expliquer exactement ce chiffre.
+
+**Ce qui reste vrai, et qui était le vrai contenu de D-2.** Ce qui diffère entre les deux outils est
+le **flux**, jamais le code : outil 1 écrit son quota sur `stdout`, outil 2 sur `stderr`. C'est
+pourquoi `extract()` ne lit que `stdout` — sans ce choix, le message d'outil 1 serait pris pour une
+réponse d'agent et le cycle finirait en `CONTRACT_ERROR`, le diagnostic trompeur que D-2 évite.
+
+Détecter un quota supposerait de lire le texte du fournisseur, ce que §8 interdit : la reconnaissance
+de quota reste hors du programme, et c'est l'humain qui lit le message. **La décision D-2 n'a jamais
+eu besoin d'être corrigée — c'est sa correction qu'il fallait retirer.**
+
+### Ce que la relance fait, mesuré de bout en bout
+
+Vérifié le 2026-09-05 sur outil 1, gratuitement (`fable` sans crédits) :
+
+| | |
+|---|---|
+| `run` | `CLI_FAILED` → `INTERRUPTED`, 2,4 s, **sans tentative de contrat** |
+| `resume --retry-call` | accepté ; appel `0002-A` créé, **`prompt_sha256` identique** |
+| `intention.json` du nouvel appel | `retries` pointe l'appel d'origine, `retry_reason` porte le motif humain, `observed_version` est consignée |
+| Second échec | `INTERRUPTED` de nouveau — **une tentative par commande humaine, jamais de boucle** |
+
+**La relance après quota marche des deux côtés, par le même chemin.** `INTERRUPTED` se relance
+toujours ; il ne dépend même pas de la table fermée N-01. *C'était l'inverse chez le prédécesseur, où
+la reprise après quota était bâtie sur l'erreur typée d'un seul fournisseur — `CLAUDE.md` §6.*
 
 ## 8. Coût et friction
 

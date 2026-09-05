@@ -1084,15 +1084,64 @@ permutation `1→1` — qui aurait exercé la voie B tout aussi bien (B est le m
 cas) mais n'aurait plus été le rejeu de la mission. Relance préparée : `resume --retry-call
 181ed4745ba046c48e1c536c7153b2df --reason-file <motif>`.
 
-### Ce que cet échec a mesuré — D-2, l'autre moitié
+### ~~Ce que cet échec a mesuré — D-2, l'autre moitié~~ · rétracté deux heures plus tard
 
-Le motif de D-2 (« quota épuisé rend `1` **chez les deux outils** ») avait été démenti le 2026-09-04
-côté outil 1 : code `0`, message sur `stdout`, cycle fini en `CONTRACT_ERROR`. **Côté outil 2, il est
-vrai** : code `1`, message sur `stderr`, `stdout` vide — et la chaîne D-2 fait exactement ce qu'elle
-promet, `CLI_FAILED` → `INTERRUPTED`, sans tentative de contrat, sans rejeu automatique, relançable.
+*Écrit d'abord : « D-2 avait été démenti côté outil 1 (code `0`), il est vrai côté outil 2 (code `1`) ;
+le test attrape donc la moitié des cas. » **Faux, et je propageais l'erreur d'hier.** Voir ci-dessous.*
 
-Le test du code de retour attrape donc **la moitié** des cas, pas aucun. C'est une raison de le
-garder, et la formulation de la règle est corrigée dans ce sens.
+### La question du PO qui a déterré l'erreur
+
+Avant de relancer, le PO a demandé : *« est-ce qu'IAbinome pourra relancer après une interruption de
+ce type aussi pour toi que pour codex ? »* Question de vérification, pas de conception. Elle a une
+réponse mesurable **gratuitement** : `fable` n'a pas de crédits sur ce compte, donc outil 1 sait
+produire un quota à volonté sans rien coûter.
+
+**Réponse : oui, par le même chemin, et c'est mesuré de bout en bout.**
+
+| | |
+|---|---|
+| `run`, A = outil 1 modèle `fable` | `return_code` **1**, 146 o sur `stdout`, `stderr` vide, 2,4 s → `CLI_FAILED` → `INTERRUPTED` |
+| `resume --retry-call` | accepté ; appel `0002-A` créé, **`prompt_sha256` identique** |
+| `intention.json` du nouvel appel | `retries` pointe l'appel d'origine · `retry_reason` porte le motif humain · `observed_version` consignée |
+| Second échec | `INTERRUPTED` de nouveau — **une tentative par commande humaine, jamais de boucle** |
+
+`INTERRUPTED` se relance toujours, sans même passer par la table fermée N-01. Et le chemin dégradé se
+relance aussi : `CONTRACT_ERROR` est dans `_RELAUNCHABLE`, ce que la mission du 2026-09-04 avait déjà
+prouvé en réel. *C'est l'inverse du prédécesseur, dont la reprise après quota tenait à l'erreur typée
+d'un seul fournisseur.*
+
+### L'erreur trouvée en chemin — trois mesures, un intrus
+
+| Date | Version | Code de retour sur quota, outil 1 |
+|---|---|---|
+| 2026-09-03, `CARACTERISATION_CLI.md:162` | — | **1**, message sur `stdout` |
+| 2026-09-04, `OBSERVATIONS §7` | `2.1.260` | **0** ← l'intrus |
+| 2026-09-05, mesure directe par redirection | `2.1.261` | **1**, `stdout` 146 o, `stderr` vide |
+
+**Le « motif faux » du 2026-09-04 était lui-même faux. D-2 disait vrai depuis le début.** Un `0`
+observé une fois a suffi à déclarer fausse une prémisse que `CARACTERISATION_CLI.md` portait juste
+depuis la veille. **Personne n'a remesuré**, et la contradiction entre deux documents du projet a été
+tranchée en silence en faveur du plus récent — exactement ce que `RULES.md` interdit au relecteur
+externe, appliqué ici à nous-mêmes.
+
+**Origine probable : un code de retour lu à travers un tube.** Après `cmd | head`, `$?` est celui de
+`head`. Reproduit aujourd'hui sans le vouloir : ma propre sonde de disponibilité, écrite
+`cmd 2>&1 | tail -c 300; echo "[rc=$?]"`, a affiché `rc=0` pour outil 2 à l'instant même où
+`resultat.json` enregistrait `return_code: 1`. Non prouvé pour le 2026-09-04 ; suffisant pour
+expliquer exactement ce chiffre.
+
+**Portée de la fausse ligne : quatre fichiers, un jour.** `OBSERVATIONS §7`, `CONCEPTION_FINALE`
+(encadré de D-2), `RULES.md`, `NOTES.md` — plus ma propre « contre-mesure » de ce matin, qui la
+renforçait au lieu de la contredire. Tous corrigés ou rétractés. Le commentaire de `workflow.py:418`,
+lui, n'avait jamais été modifié : il disait juste.
+
+**Ce qui reste, et qui était le vrai contenu de D-2 :** ce qui diffère entre les deux outils est le
+**flux** — `stdout` chez l'un, `stderr` chez l'autre — jamais le code. C'est pourquoi `extract()` ne
+lit que `stdout`.
+
+**Trois règles nouvelles** dans `RULES.md` : le flux diffère mais pas le code · un code de retour lu à
+travers un tube n'est pas celui de la commande · quand une mesure nouvelle contredit une mesure
+ancienne, c'est la troisième qui tranche, pas la plus récente.
 
 **Ce que la prochaine session trouve :** la relance de la mission de recherche, préparée et en
 attente de quota. Si le scratchpad n'a pas survécu, la collaboration se reconstruit avec la commande

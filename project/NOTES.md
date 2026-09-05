@@ -91,11 +91,12 @@ Codes de sortie : `0` AWAITING_APPROVAL · `1` refus avant mutation · `2` argpa
 **Un fait de plateforme** — `Path.glob` est **insensible à la casse sous Windows** : ne jamais s'en
 servir pour sélectionner par un champ.
 
-**D-2 a un motif faux, mais à moitié seulement** — sur quota, **outil 1 rend `0`, message sur
-`stdout`** (le test du code de retour ne l'attrape pas, on finit en `CONTRACT_ERROR`) ; **outil 2 rend
-`1`, message sur `stderr`, `stdout` vide** (attrapé proprement : `CLI_FAILED` → `INTERRUPTED`,
-relançable, rien de payé — mesuré le 2026-09-05). Le test garde donc sa valeur ; c'est le « tous deux »
-de D-2 qui était faux.
+**D-2 dit vrai, et le « motif faux » du 2026-09-04 était l'erreur** — remesuré des deux côtés le
+2026-09-05 : sur quota, **les deux outils rendent `1`**. Outil 1 met son message sur `stdout`
+(146 o, `stderr` vide), outil 2 sur `stderr` (4 115 o, `stdout` vide). Dans les deux cas
+`CLI_FAILED` → `INTERRUPTED`, relançable, **rien de payé**. Ce qui diffère est le flux, jamais le
+code. *Ne pas rouvrir sans une mesure par redirection vers un fichier — un `$?` après un tube rend
+celui du tube.*
 
 ---
 
