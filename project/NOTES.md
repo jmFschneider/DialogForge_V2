@@ -8,13 +8,15 @@
 
 ## Prochaine action — une seule
 
-**`GUIDE.md`** — la page d'usage du projet. La matière existe : le brouillon de la mission du
-2026-09-04 (`conception/essais/2026-09-04-livrable-guide-brouillon.md`, 125 lignes) et **les six
-constats que B avait laissés ouverts dessus**, qui sont à lire avant d'en faire le guide du projet.
-Quatre missions réelles menées à terme fournissent maintenant les chiffres et les commandes exactes
-qui manquaient au brouillon.
+**`CONTEXT_ONLY` en mission réelle.** C'est le seul mode que `README.md` documente sans qu'aucune
+mission ne l'ait exercé — les deux adaptateurs le déclarent, la suite de tests le couvre, et rien
+d'autre. Le README le dit explicitement ; ce serait bien qu'il n'ait plus à le dire.
 
-**Ensuite** : `CONTEXT_ONLY`, jamais essayé · un crash provoqué en cours d'appel.
+**Ensuite** : un crash provoqué en cours d'appel — la reprise après arrêt brutal reste prouvée par
+la seule suite de tests.
+
+*`GUIDE.md` est **remplacé par `README.md`**, écrit le 2026-09-05 à la racine. Les six constats que
+B avait laissés sur le brouillon du 2026-09-04 y sont traités un par un — voir `session_log.md`.*
 
 *Les permutations `1→1` et `2→2` **ne sont plus au programme** — décision du PO, 2026-09-05, voir
 « Décisions actées ».*
@@ -83,7 +85,15 @@ par `shutil.which()` **à chaque appel**. `AdapterError` est le type nommé attr
 **Les deux vraies CLI sont sur le PATH** : tout test doit substituer `cli.ADAPTERS`, sans quoi il
 appelle un vrai fournisseur.
 
+**`settings.py`** — le fichier de configuration ne fournit que des **défauts au `new`** (plus
+`timeout` à `run`/`resume`). Il ne relit rien ensuite : `configuration.json` est la seule vérité
+d'une collaboration créée. **Aucun chemin ne s'y règle** (reproductibilité), **clé inconnue =
+refus** en code 1, et la commande annonce le fichier retenu sur `stderr`. `SEARCH_PATHS` est un
+attribut de module **que tout test de la CLI doit vider**, comme `cli.ADAPTERS`.
+
 **`cli.py`** — ne lit ni n'écrit **aucun état** : `cmd_resume` valide ses arguments et transmet.
+**Depuis le fichier de configuration**, `--agent-a/-b`, `--kind` et `--reviewer-access` ne sont plus
+`required=True` : leur absence est constatée par `cmd_new`, donc en **code 1**, plus en code 2.
 Codes de sortie : `0` AWAITING_APPROVAL · `1` refus avant mutation · `2` argparse · `3` INTERRUPTED ·
 `4` ERROR · `5` WAITING_HUMAN.
 
@@ -116,9 +126,12 @@ celui du tube.*
 - **Relecture externe du 2026-09-05 : huit observations, huit exactes, toutes disposées**
   (`project/analyse/codex/2026-09-05-dispositions-relecture.md`). Six correctifs, deux corrections
   documentaires, **un correctif refusé** — le verrou tronqué, ci-dessus.
-- **Suite : 280 tests verts** + 2 ignorés (liens symboliques, privilège absent), `ruff` et
-  `mypy --strict` verts. **2 746 lignes brutes / 1 816 en code effectif** — à remesurer.
-  *Le « 275 » d'avant était faux : 277 avant cette session, 280 après.*
+- **Suite : 304 tests verts** + 2 ignorés (liens symboliques, privilège absent), `ruff` et
+  `mypy --strict` verts. **2 968 lignes brutes / 1 927 en code effectif**, remesuré le 2026-09-05
+  après le fichier de configuration (+222 brutes, **+111 effectives**). *Chiffre donné, question
+  non rouverte — voir « Taille » ci-dessous.*
+  *Remesuré à chaque fois : 277 au début du 2026-09-05, 280 après la voie B, 304 après le fichier
+  de configuration.*
 - **Taille : tranchée, question close.** « Rien tout simplement » — décision du PO, 2026-09-04. Ne pas
   rouvrir sans un fait nouveau.
 - **C-06 reste un risque accepté, pas un défaut à corriger.** Toute mission réelle se fait dans une

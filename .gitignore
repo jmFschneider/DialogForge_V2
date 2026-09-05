@@ -4,3 +4,7 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .obsidian/
+
+# Reglages locaux : le modele versionne est iabinome.toml.exemple.
+# Un iabinome.toml commite changerait le comportement du `new` de chacun.
+iabinome.toml

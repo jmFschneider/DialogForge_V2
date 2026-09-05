@@ -3,6 +3,11 @@
 `cli.ADAPTERS` est toujours substitué par des `FakeAdapter` : la production
 câble Claude et Codex, mais la suite de tests n'appelle jamais un vrai
 fournisseur (`RULES.md`).
+
+`settings.SEARCH_PATHS` est **vidé** pour la même raison : un `iabinome.toml`
+posé à la racine du dépôt ou dans le dossier personnel du développeur ferait
+dépendre la suite de la machine. Les tests qui veulent un fichier le désignent
+par `--config`.
 """
 
 from __future__ import annotations
@@ -14,7 +19,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from iabinome import cli, transport, workflow
+from iabinome import cli, settings, transport, workflow
 from iabinome.models import Configuration, SchemaError, State
 from tests import fakes
 
@@ -35,6 +40,9 @@ class CliCase(unittest.TestCase):
         patcher = mock.patch.object(cli, "ADAPTERS", {"fake-a": self.a, "fake-b": self.b})
         patcher.start()
         self.addCleanup(patcher.stop)
+        blank = mock.patch.object(settings, "SEARCH_PATHS", ())
+        blank.start()
+        self.addCleanup(blank.stop)
 
     def new_args(self, **overrides: str) -> list[str]:
         args = {
@@ -59,22 +67,27 @@ class CliCase(unittest.TestCase):
 
 
 class TestNewRequiredOptions(CliCase):
-    def test_missing_reviewer_access_is_refused(self) -> None:
+    """Depuis le fichier de configuration, ces valeurs ne sont plus
+    `required=True` : elles peuvent venir du fichier. Le manque est donc
+    constaté par `cmd_new` — **code 1, refus avant mutation** — et non plus par
+    `argparse` en code 2. Ce qui ne change pas : rien n'est créé."""
+
+    def missing(self, *flag_and_value: str) -> None:
         argv = ["new", *self.new_args()]
-        argv = [a for a in argv if a not in ("--reviewer-access", "consult")]
-        with redirect_stderr(io.StringIO()):
-            with self.assertRaises(SystemExit):
-                cli.main(argv)
+        argv = [a for a in argv if a not in flag_and_value]
+        with redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(cli.main(argv), 1)
+        self.assertIn(flag_and_value[0], err.getvalue())
         self.assertFalse(self.collab.exists())
 
+    def test_missing_reviewer_access_is_refused(self) -> None:
+        self.missing("--reviewer-access", "consult")
+
     def test_missing_agent_a_is_refused(self) -> None:
-        argv = ["new", *self.new_args()]
-        argv = [a for a in argv if a not in ("--agent-a", "fake-a")]
-        with redirect_stderr(io.StringIO()):
-            with self.assertRaises(SystemExit):
-                cli.main(argv)
+        self.missing("--agent-a", "fake-a")
 
     def test_unknown_agent_is_refused(self) -> None:
+        """Sur la ligne de commande, le domaine reste à `argparse` : code 2."""
         with redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit):
                 cli.main(["new", *self.new_args(**{"--agent-a": "un-outil-inconnu"})])

@@ -1248,10 +1248,76 @@ permutations sont supportées et testées » : corrigé en « couvertes de bout 
 `fake` ; deux seulement mesurées en réel, délibérément ». **Une case vide par choix n'est pas une
 lacune** — encore faut-il que le document le dise, sinon la prochaine session la rouvre.
 
-**Ce que la prochaine session trouve :** `GUIDE.md`. La matière existe — le brouillon de la mission du
-2026-09-04 et les **six constats que B avait laissés ouverts dessus**, à lire avant d'en faire le
-guide du projet. Quatre missions réelles menées à terme fournissent maintenant les chiffres et les
-commandes exactes qui manquaient. Puis `CONTEXT_ONLY` et un crash provoqué.
+### Fichier de configuration — `settings.py`
+
+Demandé par le PO : sept drapeaux sur chaque `new`, c'est six de trop. Opposé au tableau des cinq
+interdits — ce n'est ni exécution autonome, ni base, ni worker, ni budget, ni GUI. Passe.
+
+`iabinome.toml`, cherché dans l'ordre `--config` → `./iabinome.toml` → `~/.iabinome.toml`. TOML
+parce que `tomllib` est dans la stdlib (la lecture suffit, rien n'écrit ce fichier) et qu'un fichier
+édité à la main mérite des commentaires. **Le premier trouvé gagne, jamais de fusion** : deux
+fichiers fusionnés rendraient indevinable d'où vient une valeur.
+
+**Trois limites posées d'emblée, et c'est ce qui fait la valeur de l'ajout :**
+
+1. **Des défauts au `new`, jamais un état.** La tentation inverse était immédiate — relire le
+   fichier à chaque `run` « pour ajuster en cours de route ». Ce serait l'état caché que `etat.json`
+   existe pour rendre visible : une édition globale déplacerait en silence un cycle en cours.
+2. **Aucun chemin ne s'y règle.** Un corpus figé dans un fichier global rendrait la collaboration
+   non reproductible d'une machine à l'autre.
+3. **Clé inconnue = refus, pas silence.** `C2b` appliqué à l'entrée humaine. Et la commande annonce
+   sur `stderr` quel fichier a servi et ce qu'elle y a pris : un réglage qui agit sans se montrer
+   est la moitié d'un état caché.
+
+**Un effet de bord assumé sur les codes de sortie.** `--agent-a/-b`, `--kind` et
+`--reviewer-access` ne peuvent plus être `required=True` — sinon le fichier ne pourrait pas les
+fournir. Leur absence est donc constatée par `cmd_new`, en **code 1** (refus avant mutation) au lieu
+du code 2 d'`argparse`. C'est le bon code : ce n'est plus une erreur d'usage, puisque la valeur
+pouvait légitimement venir d'ailleurs. Deux tests basculés en conséquence. Le domaine d'une valeur
+donnée *en ligne de commande* reste chez `argparse`, en code 2 — un test le garde.
+
+**Un piège désamorcé avant qu'il morde.** `settings.SEARCH_PATHS` est un attribut de module que tout
+test de la CLI doit vider : sans cela, un `iabinome.toml` à la racine du dépôt — ou dans le dossier
+personnel du développeur — rendrait la suite dépendante de la machine. Même famille que la
+substitution de `cli.ADAPTERS`, même conséquence. Règle ajoutée. Le dépôt ne versionne d'ailleurs
+que `iabinome.toml.exemple` ; `iabinome.toml` est dans `.gitignore`.
+
+**24 tests neufs**, dont la précédence (`--max-revisions 0` depuis la ligne de commande **n'est pas**
+confondu avec « absent » — une résolution écrite avec `or` aurait cassé là, silencieusement), le
+refus de `nan` sur `timeout` venu du fichier (C-08 : `monotonic() >= deadline` reste faux pour
+`nan`), et le fait qu'éditer le fichier ne déplace pas une collaboration existante.
+
+### `README.md` — l'aide utilisateur
+
+Écrit à la racine, il **remplace le `GUIDE.md` prévu**. La matière venait du brouillon de la mission
+du 2026-09-04, et surtout des **six constats que B avait laissés ouverts dessus**. Tous traités :
+
+| Constat de B | Ce que le README en fait |
+|---|---|
+| `B-format-001` — 110 lignes pour « une page » | resserré : pas de récit, pas de mesures |
+| `B-perimetre-002` — annexe de production, preuves | rien de tout cela : c'est une aide d'usage, pas un dossier |
+| `B-exemple-003` — exemples à `ADAPTATEUR_1` | **valeurs réelles, exécutables telles quelles** |
+| `B-sources-004` — « aucune source externe » trop absolu | distingué : le *programme* n'en consulte aucune, les *agents* gardent les capacités de leur outil, `--reviewer-access` n'agit que sur B |
+| `B-corpus-005` — « ce que vous avez déposé » | « exactement ce que le manifeste énumère » |
+| `B-reprise-006` — « rien n'est perdu » | remplacé par ce qui est vrai : rien n'est rejoué seul, la preuve reste sur le disque, **et un `INTERRUPTED` ne repart pas seul** |
+
+*`B-exemple-003` demandait des valeurs concrètes ; `CLAUDE.md` §6 dit de ne jamais nommer un
+fournisseur hors de son adaptateur. Lecture retenue : la règle vise les artefacts internes — reprises,
+noms d'archives —, pas la documentation d'une CLI dont `--help` imprime déjà ses choix. Un README
+qui documente des placeholders est inutilisable, ce que B avait justement relevé.*
+
+Le README dit aussi ce qui n'est **pas** exercé : `context-only` n'a jamais tourné en mission réelle.
+C'est écrit noir sur blanc plutôt que sous-entendu.
+
+### État final de la session
+
+**304 tests verts** + 2 ignorés, `ruff` et `mypy --strict` verts. Taille remesurée :
+**2 968 lignes brutes / 1 927 en code effectif** (+222 / +111 pour le fichier de configuration).
+*Chiffre donné pour mémoire ; la question de la taille reste close depuis le 2026-09-04.*
+
+**Ce que la prochaine session trouve :** `CONTEXT_ONLY` en mission réelle — le seul mode que le
+README documente sans qu'aucune mission ne l'ait exercé. Puis un crash provoqué en cours d'appel, la
+reprise après arrêt brutal restant prouvée par la seule suite de tests.
 
 **Ce que la prochaine session trouve :** la relance de la mission de recherche, préparée et en
 attente de quota. Si le scratchpad n'a pas survécu, la collaboration se reconstruit avec la commande

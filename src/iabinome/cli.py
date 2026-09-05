@@ -21,7 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import contracts, corpus, lock, storage, transport, workflow
+from . import contracts, corpus, lock, settings, storage, transport, workflow
 from .adapters.base import AdapterError, AgentAdapter
 from .adapters.claude import ClaudeAdapter
 from .adapters.codex import CodexAdapter
@@ -55,9 +55,90 @@ _EXIT_CODE = {
     Status.WAITING_HUMAN: 5,
 }
 
+# Réglages que le fichier de configuration peut fournir, par commande. Une clé
+# absente d'ici reste hors de sa portée, même si `settings` sait la lire.
+_SETTABLE = {
+    "new": ("agent_a", "agent_b", "model_a", "model_b", "kind", "reviewer_access",
+            "max_revisions"),
+    "run": ("timeout",),
+    "resume": ("timeout",),
+}
+
+# Défauts du programme, dernier maillon : drapeau CLI > fichier > ceci >
+# `default_model()` de l'adaptateur pour les modèles. Ils ne sont plus déclarés
+# à `argparse`, qui doit rendre `None` pour qu'on sache si l'humain a tranché.
+_FALLBACK: dict[str, object] = {"max_revisions": 2, "timeout": 1800.0}
+
+# Sans valeur, la commande `new` n'a pas de sens : ni drapeau, ni fichier, ni
+# défaut du programme ne peut la deviner.
+_REQUIRED_NEW = ("agent_a", "agent_b", "kind", "reviewer_access")
+
+# Domaines vérifiés pour une valeur **venue du fichier** : `argparse` fait déjà
+# ce travail pour la ligne de commande, en code 2. Une mauvaise valeur dans le
+# fichier n'est pas une erreur d'usage — c'est un refus avant mutation, code 1.
+_DOMAINS: dict[str, dict[str, Any]] = {"kind": _KIND, "reviewer_access": _ACCESS}
+
+
+def _merge_settings(args: argparse.Namespace) -> str | None:
+    """Complète ce que l'humain n'a pas tranché sur la ligne de commande.
+
+    Ordre : **drapeau CLI > fichier de configuration > `_FALLBACK` > défaut de
+    l'adaptateur** (ce dernier pour les modèles seuls, plus bas). Un drapeau
+    donné vaut toujours plus que le fichier, et le fichier ne complète que ce
+    qui vaut `None`.
+
+    Rend la ligne à afficher sur `stderr`, ou `None`. **Le programme dit
+    toujours quel fichier a servi et ce qu'il en a pris** : un réglage qui agit
+    sans se montrer est la moitié d'un état caché.
+    """
+    settable = _SETTABLE.get(args.command, ())
+    if not settable:
+        return None
+    found = settings.load(args.config)
+    applied: list[str] = []
+    for key in settable:
+        if getattr(args, key) is not None:
+            continue
+        if key in found.values:
+            setattr(args, key, _from_settings(found.path, key, found.values[key]))
+            applied.append(key)
+        elif key in _FALLBACK:
+            setattr(args, key, _FALLBACK[key])
+    if found.path is None:
+        return None
+    retenu = ", ".join(applied) if applied else "rien de neuf"
+    return f"configuration : {found.path} ({retenu})"
+
+
+def _from_settings(path: Path | None, key: str, value: Any) -> Any:
+    """Le domaine d'une valeur venue du fichier, que `argparse` n'a pas vue."""
+    if key in ("agent_a", "agent_b") and value not in ADAPTERS:
+        raise settings.SettingsError(
+            f"{path} : {key} = {value!r} — attendu : {sorted(ADAPTERS)}"
+        )
+    domain = _DOMAINS.get(key)
+    if domain is not None and value not in domain:
+        raise settings.SettingsError(
+            f"{path} : {key} = {value!r} — attendu : {sorted(domain)}"
+        )
+    try:
+        if key == "timeout":
+            return positive_seconds(float(value), "timeout")
+        if key == "max_revisions" and int(value) < 0:
+            raise ValueError("max_revisions : entier positif ou nul attendu")
+    except ValueError as exc:
+        raise settings.SettingsError(f"{path} : {exc}") from exc
+    return value
+
 
 def cmd_new(args: argparse.Namespace) -> int:
     dest = Path(args.collab)
+    missing = [f"--{key.replace('_', '-')}" for key in _REQUIRED_NEW if getattr(args, key) is None]
+    if missing:
+        return _fail(
+            f"valeur(s) absente(s) : {' '.join(missing)} — sur la ligne de commande"
+            " ou dans le fichier de configuration"
+        )
     if dest.exists():
         return _fail(f"{dest} existe deja")
     if bool(args.source_root) != bool(args.source_list):
@@ -247,34 +328,42 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m iabinome")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    # Ni `required=True` ni `default=` sur ce que le fichier peut fournir : la
+    # valeur doit rester `None` pour que `_merge_settings` sache que l'humain
+    # n'a rien tranché. Le manque est constaté dans `cmd_new`, donc en code 1 —
+    # un refus avant mutation, pas une erreur d'usage.
     p_new = sub.add_parser("new")
     p_new.add_argument("collab")
     p_new.add_argument("--demande", required=True)
-    p_new.add_argument("--kind", choices=sorted(_KIND), required=True)
-    p_new.add_argument("--reviewer-access", choices=sorted(_ACCESS), required=True)
-    p_new.add_argument("--agent-a", choices=sorted(ADAPTERS), required=True)
-    p_new.add_argument("--agent-b", choices=sorted(ADAPTERS), required=True)
+    p_new.add_argument("--config")
+    p_new.add_argument("--kind", choices=sorted(_KIND))
+    p_new.add_argument("--reviewer-access", choices=sorted(_ACCESS))
+    p_new.add_argument("--agent-a", choices=sorted(ADAPTERS))
+    p_new.add_argument("--agent-b", choices=sorted(ADAPTERS))
     p_new.add_argument("--source-root")
     p_new.add_argument("--source-list")
     p_new.add_argument("--source-label")
     p_new.add_argument("--model-a")
     p_new.add_argument("--model-b")
-    p_new.add_argument("--max-revisions", type=_revisions, default=2)
+    p_new.add_argument("--max-revisions", type=_revisions)
     p_new.set_defaults(func=cmd_new)
 
     p_run = sub.add_parser("run")
     p_run.add_argument("collab")
-    p_run.add_argument("--timeout", type=_timeout, default=1800.0)
+    p_run.add_argument("--config")
+    p_run.add_argument("--timeout", type=_timeout)
     p_run.set_defaults(func=cmd_run)
 
     p_resume = sub.add_parser("resume")
     p_resume.add_argument("collab")
-    p_resume.add_argument("--timeout", type=_timeout, default=1800.0)
+    p_resume.add_argument("--config")
+    p_resume.add_argument("--timeout", type=_timeout)
     p_resume.add_argument("--answer")
     p_resume.add_argument("--retry-call")
     p_resume.add_argument("--reason-file")
     p_resume.set_defaults(func=cmd_resume)
 
+    # `status` est en lecture seule et n'a rien à régler : pas de `--config`.
     p_status = sub.add_parser("status")
     p_status.add_argument("collab")
     p_status.add_argument("--json", action="store_true")
@@ -285,5 +374,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    try:
+        note = _merge_settings(args)
+    except settings.SettingsError as exc:
+        return _fail(str(exc))
+    if note is not None:
+        print(note, file=sys.stderr)
     result: int = args.func(args)
     return result

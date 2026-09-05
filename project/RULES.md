@@ -20,6 +20,12 @@
 **Toute demande qui commence par « et si on ajoutait un petit contrôle pour… » est opposée au tableau des cinq interdits de `CLAUDE.md` avant d'être implémentée.**
 *Motif : chaque contrôle de DialogForge était justifié isolément ; aucun n'a été mis en regard du total, qui a atteint 87 382 lignes.*
 
+**Un réglage n'est pas un état : le fichier de configuration fournit des défauts au `new`, et rien d'autre.** Une fois la collaboration créée, `configuration.json` est la seule vérité.
+*Motif : la tentation inverse est immédiate — faire relire le fichier à chaque `run` pour « pouvoir ajuster en cours de route ». Ce serait exactement l'état caché que `etat.json` existe pour rendre visible : une édition globale déplacerait en silence un cycle en cours, et la trace du dossier d'appel ne dirait plus pourquoi. Corollaire tenu : **aucun chemin ne s'y règle**, sinon la collaboration cesse d'être reproductible d'une machine à l'autre.*
+
+**Un réglage inconnu est refusé, jamais ignoré.** Et la commande annonce quel fichier a servi et ce qu'elle y a pris.
+*Motif : un réglage silencieusement perdu est pire qu'un réglage absent — on croit l'avoir posé, et on cherche la cause ailleurs. C'est `C2b` appliqué à l'entrée humaine ; et un réglage qui agit sans se montrer est la moitié d'un état caché.*
+
 **Le livrable de la boucle est un document, jamais une exécution.**
 *Motif : l'exécution autonome n'a jamais mené une implémentation au bout — 1 tâche sur 7 sur FloraPi, 1 sur 10 sur DialogForge.*
 
@@ -181,6 +187,9 @@
 
 **Un test de `cli.py` doit substituer `cli.ADAPTERS` par des `FakeAdapter` avant tout appel à `run`/`resume`.** Claude Code et Codex CLI sont tous deux sur le PATH de la machine de développement : un test qui invoque `cli.main(["run", …])` sans substitution appellerait un vrai fournisseur, silencieusement.
 *Motif : mesuré au palier 4, 2026-09-04. `new`/`status` ne posent pas ce risque — ils ne sondent ni n'invoquent jamais d'adaptateur.*
+
+**Un test de `cli.py` doit aussi vider `settings.SEARCH_PATHS`.** Un `iabinome.toml` posé à la racine du dépôt ou dans le dossier personnel du développeur rendrait la suite dépendante de la machine.
+*Motif : même famille que la substitution de `cli.ADAPTERS`, et même conséquence — un test qui passe chez l'un et échoue chez l'autre, pour une raison invisible dans le code. Les tests qui veulent un fichier le désignent par `--config`.*
 
 **`mock.patch.object(module, "nom_importe", …)` échoue sous `mypy --strict`** (`--no-implicit-reexport` refuse l'accès à un attribut simplement importé). Patcher le module d'origine de l'attribut (`shutil.which`, pas `adaptateur.shutil.which`) le contourne sans rien désactiver.
 *Motif : mesuré au palier 4, 2026-09-04, sur `tests/test_adapters.py`.*
