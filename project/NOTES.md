@@ -9,17 +9,22 @@
 ## Prochaine action — une seule
 
 **Rejouer la mission de recherche, jusqu'à la revue de B incluse.** C'est le seul appel qui n'a jamais
-abouti, et la voie B vient de retirer sa cause de refus.
+abouti, et la voie B vient de retirer sa cause de refus. **Lancé le 2026-09-05, arrêté au premier
+appel : quota d'outil 2 épuisé.** Attente du réarmement, puis relance à l'identique — décision du PO.
 
-La collaboration d'origine était dans le dossier temporaire d'une session morte : elle **se
-reconstruit**, elle ne se reprend pas. Tout est dans `conception/essais/` — `2026-09-04-demande-
-recherche.md`, `2026-09-04-corpus-liste.txt` (`POURQUOI.md`, `CLAUDE.md`, `project/RULES.md`), et
-`2026-09-04-reponse-corpus.md` pour la `QUESTION` du premier appel. Enveloppe d'alors :
-`--max-revisions 0`, `--timeout 600`, A = outil 2 (`gpt-5.6-sol`), B = outil 1 — **`--model-b sonnet`
-obligatoire**, `fable` n'a pas de crédits sur ce compte.
+**Si la collaboration du 2026-09-05 existe encore** (scratchpad de session, elle ne survit pas à la
+session) : `resume --retry-call 181ed4745ba046c48e1c536c7153b2df --reason-file <motif>`. `INTERRUPTED`
+se relance toujours, la configuration et le corpus sont intacts, rien n'a été payé.
 
-**Autorisation de dépense à demander au PO avant de lancer.** Coût d'alors pour ce parcours : ~390 s
-de temps fournisseur sur trois appels.
+**Sinon, elle se reconstruit** — tout est dans `conception/essais/` : `2026-09-04-demande-recherche.md`,
+`2026-09-04-corpus-liste.txt` (`POURQUOI.md`, `CLAUDE.md`, `project/RULES.md`), et
+`2026-09-04-reponse-corpus.md` si A repose la `QUESTION`. Enveloppe : `--kind recherche`
+`--reviewer-access consult` `--max-revisions 0` `--timeout 600`, **A = outil 2, B = outil 1** avec
+**`--model-b sonnet` obligatoire** (`fable` n'a pas de crédits sur ce compte). Commande complète dans
+`session_log.md`.
+
+**Autorisation de dépense donnée le 2026-09-05, non consommée** — le quota a refusé avant tout coût.
+Coût attendu : ~390 s de temps fournisseur sur trois appels.
 
 **Ensuite**, dans l'ordre : les permutations `1→1` et `2→2` · une boucle de révision réelle ·
 `GUIDE.md`.
@@ -86,8 +91,11 @@ Codes de sortie : `0` AWAITING_APPROVAL · `1` refus avant mutation · `2` argpa
 **Un fait de plateforme** — `Path.glob` est **insensible à la casse sous Windows** : ne jamais s'en
 servir pour sélectionner par un champ.
 
-**D-2 a un motif faux** — outil 1 rend son message de quota **sur `stdout` avec le code `0`**. Le test
-du code de retour ne l'attrape pas ; la décision reste bonne, sa justification était fausse.
+**D-2 a un motif faux, mais à moitié seulement** — sur quota, **outil 1 rend `0`, message sur
+`stdout`** (le test du code de retour ne l'attrape pas, on finit en `CONTRACT_ERROR`) ; **outil 2 rend
+`1`, message sur `stderr`, `stdout` vide** (attrapé proprement : `CLI_FAILED` → `INTERRUPTED`,
+relançable, rien de payé — mesuré le 2026-09-05). Le test garde donc sa valeur ; c'est le « tous deux »
+de D-2 qui était faux.
 
 ---
 

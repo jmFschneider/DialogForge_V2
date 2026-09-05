@@ -118,6 +118,7 @@
 
 **Un outil peut signaler un échec de quota sur `stdout` avec un code de retour `0`.** Ne jamais bâtir un diagnostic sur l'hypothèse inverse.
 *Motif mesuré le 2026-09-04 : la décision D-2 posait que « quota épuisé et modèle invalide rendent tous deux 1 chez les deux outils ». Faux pour outil 1 : sur un modèle sans crédits il rend son message sur `stdout` avec le code `0`. Le test du code de retour ne l'attrape pas, et le cycle finit en `CONTRACT_ERROR` — le diagnostic trompeur que D-2 disait éviter. La décision reste bonne, son motif était faux.*
+*Contre-mesure mesurée le 2026-09-05 : **outil 2 rend `1`, message sur `stderr`, `stdout` vide** — le test du code de retour l'attrape, `CLI_FAILED` → `INTERRUPTED`, relançable, 3,3 s, rien de payé. Les deux outils diffèrent sur ce point, et c'est bien ce que D-2 aurait dû dire : le test du code de retour attrape **la moitié** des cas, pas aucun. Le garder.*
 
 **Ne jamais donner à un correctif un motif qu'on n'a pas mesuré.** Écrire « mesuré le … » engage.
 *Motif : la normalisation CRLF a été justifiée par « une CLI d'agent écrit en mode texte, mesuré le 2026-09-03 ». La preuve venait en réalité du faux agent du projet. La caractérisation du même jour a montré que les deux vraies CLI rendent des `\n`. Le correctif reste bon comme tolérance ; c'est son motif qui était faux, et un motif faux se propage plus loin qu'un correctif inutile.*

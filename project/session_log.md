@@ -1056,6 +1056,44 @@ l'autre se remesurent.
 `mypy --strict` verts. Décision tracée en §6, dans `CONCEPTION_FINALE.md` (contrat B et table des
 tests), `RULES.md` (deux règles) et `NOTES.md`.
 
-**Ce que la prochaine session trouve :** rejouer la mission de recherche jusqu'à la revue de B — le
-seul appel qui n'a jamais abouti, dont la cause de refus vient d'être levée. **Demander
-l'autorisation de dépense au PO avant de lancer.** Tout le nécessaire est dans `conception/essais/`.
+### Rejeu de la mission de recherche — arrêté au premier appel
+
+Autorisation de dépense donnée par le PO. Collaboration reconstruite depuis `conception/essais/`,
+dans le scratchpad de session, hors de tout dépôt (C-06) :
+
+```
+python -m iabinome new <scratchpad>/essai/recherche \
+  --demande <scratchpad>/essai/demande.md --kind recherche --reviewer-access consult \
+  --agent-a codex --agent-b claude --model-b sonnet \
+  --source-root . --source-list <scratchpad>/essai/corpus-liste.txt \
+  --source-label "regles fondatrices IAbinome, 2026-09-05" --max-revisions 0
+python -m iabinome run <scratchpad>/essai/recherche --timeout 600
+```
+
+Corpus figé sans incident : `POURQUOI.md` 3 856 o · `CLAUDE.md` 5 203 o · `project/RULES.md`
+20 628 o. *Le corpus capture `RULES.md` dans sa version du jour — deux règles de plus qu'au
+2026-09-04. Assumé : la question porte sur ce corpus-là.*
+
+**Issue : `INTERRUPTED`, phase `PROPOSAL_A`, code de sortie `3`, en 3,3 s.** Quota épuisé côté
+outil 2, réarmement annoncé à 14:56 locales. `resultat.json` : `return_code` 1, `stdout_bytes` 0,
+`stderr_bytes` 4 115. **Rien n'a été payé.** Caractérisation gratuite dans la foulée : outil 1 répond
+en `opus` **et** en `sonnet` ; outil 2 est fermé.
+
+**Décision du PO : attendre le réarmement et relancer à l'identique**, plutôt que basculer sur la
+permutation `1→1` — qui aurait exercé la voie B tout aussi bien (B est le même outil dans les deux
+cas) mais n'aurait plus été le rejeu de la mission. Relance préparée : `resume --retry-call
+181ed4745ba046c48e1c536c7153b2df --reason-file <motif>`.
+
+### Ce que cet échec a mesuré — D-2, l'autre moitié
+
+Le motif de D-2 (« quota épuisé rend `1` **chez les deux outils** ») avait été démenti le 2026-09-04
+côté outil 1 : code `0`, message sur `stdout`, cycle fini en `CONTRACT_ERROR`. **Côté outil 2, il est
+vrai** : code `1`, message sur `stderr`, `stdout` vide — et la chaîne D-2 fait exactement ce qu'elle
+promet, `CLI_FAILED` → `INTERRUPTED`, sans tentative de contrat, sans rejeu automatique, relançable.
+
+Le test du code de retour attrape donc **la moitié** des cas, pas aucun. C'est une raison de le
+garder, et la formulation de la règle est corrigée dans ce sens.
+
+**Ce que la prochaine session trouve :** la relance de la mission de recherche, préparée et en
+attente de quota. Si le scratchpad n'a pas survécu, la collaboration se reconstruit avec la commande
+ci-dessus — tout le nécessaire est dans `conception/essais/`.
