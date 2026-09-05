@@ -32,7 +32,19 @@
 
 **Claude produit, Codex relit palier par palier — et réciproquement.**
 *Motif : économie de tokens côté Claude, et la revue croisée rattrape ce que l'auteur ne voit pas.*
-**Suspendue en étape 2 le 2026-09-03, décision du PO** : la conception a déjà été contredite cinq tours, et sa précision rend la relecture de code palier par palier peu rentable. **La règle reste valable pour la conception**, où elle a produit les huit remarques techniques toutes retenues. Réouverture si un palier révèle un défaut que la relecture aurait attrapé.
+**Suspendue en étape 2 le 2026-09-03, décision du PO** : la conception a déjà été contredite cinq tours, et sa précision rend la relecture de code palier par palier peu rentable. **La règle reste valable pour la conception**, où elle a produit les huit remarques techniques toutes retenues. Réouverture si un palier révèle un défaut que la relecture aurait attrapé. **Rouverte le 2026-09-05** : la condition s'est réalisée — deux défauts de gabarit trouvés en mission réelle, invisibles pour la suite de tests. La relecture rendue a produit **huit observations, huit exactes, dont trois inatteignables par un cycle nominal**.
+
+**Une relecture externe et une suite de tests ne couvrent pas le même espace : la verdeur de l'une ne justifie pas de suspendre l'autre.**
+*Motif mesuré le 2026-09-05 : 262 tests verts, et une lecture statique a trouvé six défauts réels — une lecture rompue prise pour une fin de flux, une branche de reprise contournant l'intégrité, un séparateur de chemin rendant toute collaboration inutilisable dès sa création. Tous vivaient dans des fenêtres qu'un cycle nominal ne traverse jamais.*
+
+**Une consigne de relecture se fait relire avant d'être envoyée.**
+*Motif mesuré le 2026-09-05 : cinq corrections sur la mienne, toutes justes. Deux étaient graves — « n'exécute rien » aurait privé le relecteur de ses outils de recherche, et rien n'empêchait qu'une documentation périmée soit présentée comme un défaut du code. Le coût est un appel ; le bénéfice, une passe qui porte.*
+
+**Un relecteur à qui on demande des écarts en trouve : lui imposer une hiérarchie des sources et l'obligation de signaler une contradiction plutôt que de la trancher.**
+*Motif : sans hiérarchie, il choisit naturellement la source qui permet de construire un manquement, et une documentation périmée devient un défaut certain du code. Formulation retenue : « si deux sources se contredisent, signale cette contradiction ; ne choisis pas en silence celle qui permet de construire un manquement. »*
+
+**Ne jamais réparer une course par une course de même fenêtre.**
+*Motif mesuré le 2026-09-05 : un `verrou.json` tronqué par un arrêt entre sa création exclusive et son écriture bloque définitivement. Le récupérer automatiquement effacerait le verrou d'un détenteur **vivant** surpris dans cette même fenêtre — même probabilité, conséquence pire : deux détenteurs au lieu d'un blocage visible. Un blocage franc et un message actionnable valent mieux qu'une corruption silencieuse.*
 
 **Le contradicteur reçoit une consigne d'omission, pas une consigne de qualité :** « qu'est-ce qui a été écarté en silence ? »
 *Motif : c'est la seule vérification sérieuse qu'une récolte n'a rien perdu ; relire son propre travail ne la remplace pas.*

@@ -9,20 +9,37 @@
 ## Prochaine action — une seule
 
 **Trancher §6 de `conception/OBSERVATIONS_MISSION_REELLE.md` : le bloc JSON clôturé précédé d'une
-phrase.** En mission réelle, B a rendu une revue substantiellement excellente précédée d'une phrase
-expliquant son choix de format ; `_strip_sole_fence` n'extrait un bloc que s'il couvre **toute** la
-réponse, donc refus — **conforme à la conception** (§6, « jamais de défaut permissif »), et une revue
-de 231 s jetée. Trois voies exclusives y sont écrites : statu quo · accepter un bloc `json` **unique**
-même entouré de prose · durcir le prompt de B. **Arbitrage coût contre principe, pas sûreté** : rien
-n'est dangereux, la réponse brute est préservée et `--retry-call` refait le seul appel perdu.
+phrase.** Toujours ouvert. Trois voies exclusives y sont écrites ; ma recommandation est **B —
+accepter un bloc clôturé même entouré de prose**, parce que la ligne actuelle (« un bloc, mais
+seulement s'il n'a rien autour ») n'est pas un principe mais une position sur une pente : le contrat
+tolère déjà la clôture, et extraire ce qui est explicitement balisé ne demande aucune interprétation.
+Condition d'implémentation à ne pas rater : garder l'ancrage **première clôture → dernière clôture**,
+sinon un bloc de code imbriqué dans `analysis` casse le découpage.
 
-Ensuite seulement : relancer la revue de la mission de recherche (`ERROR`, relançable ; la
-collaboration a **déjà été déplacée**, dans le dossier temporaire de session), puis `GUIDE.md`.
+**Fait signalant :** la relecture externe du 2026-09-05 **n'a pas remonté ce point** alors que son
+axe 6 l'y menait. Une lecture neuve ne trouve donc rien de choquant à la ligne actuelle — c'est une
+information, pas une validation.
 
-**`GUIDE.md` n'est toujours pas écrit, et c'est voulu.** La mission de conception en a produit un
-brouillon de 125 lignes — `conception/essais/2026-09-04-livrable-guide-brouillon.md` — mais B lui
-oppose **six constats ouverts** (dépasse une page, annexe non demandée, exemple à marques
-substitutives). `AWAITING_APPROVAL` veut dire exactement cela : à arbitrer avant adoption.
+Ensuite : relancer la revue de la mission de recherche (`ERROR`, relançable ; collaboration déjà
+déplacée dans le dossier temporaire de session), puis `GUIDE.md`.
+
+---
+
+## Relecture externe du 2026-09-05 — faite, huit observations disposées
+
+`project/analyse/codex/` : la consigne, la relecture, les dispositions. **Huit observations, huit
+exactes.** Six correctifs de code, deux corrections documentaires, **un correctif refusé**.
+
+**Le refus, à connaître avant d'y revenir :** un `verrou.json` tronqué par un arrêt entre sa création
+exclusive et l'écriture de son contenu bloque définitivement la collaboration. **Ne pas « réparer »
+cela par une récupération automatique** — elle effacerait le verrou d'un détenteur vivant surpris dans
+la même fenêtre, échangeant un blocage visible contre deux détenteurs simultanés. Le message nomme le
+fichier à supprimer ; c'est la réponse retenue.
+
+**Seconde passe prévue, ciblée** : les écarts retenus sont-ils détectés par un test, et quelles
+garanties annoncées restent sans couverture — pas une revue générale des tests.
+
+---
 
 ---
 
