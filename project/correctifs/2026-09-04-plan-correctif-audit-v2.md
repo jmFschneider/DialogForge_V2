@@ -461,7 +461,15 @@ conditionne un éventuel durcissement ultérieur.
 | 8 — classification des erreurs | C-10 | non | ~18 | **fait** |
 | 9 — revue canonique | C-09, D-8 | non | ~16 | **fait** |
 | 10 — frontière d'effets | C-06, D-6 | décision, pas correctif | ~4 + doc | **fait** |
-| 11 — validations réelles et guide | C-11 | — | doc | **partiel** — deux missions réelles faites le 2026-09-04, `GUIDE.md` non écrit |
+| 11 — validations réelles et guide | C-11 | — | doc | **fait le 2026-09-05** — quatre missions réelles menées à terme (dont la boucle de révision), versions re-caractérisées `2.1.261` / `0.153.2`, consignation en `conception/OBSERVATIONS_MISSION_REELLE.md`, et l'item 5 rendu par **`README.md`** plutôt que `GUIDE.md` |
+
+**Plan correctif clos : lots 1 à 10 fermés le 2026-09-04, lot 11 le 2026-09-05.** État à la clôture
+du lot 11 : **304 tests verts** + 2 ignorés (liens symboliques, privilège absent sur cette machine),
+`ruff` et `mypy --strict` verts, **2 968 lignes brutes / 1 927 en code effectif**. *Les chiffres
+ci-dessous sont ceux du 2026-09-04, conservés tels quels : ils datent les mesures de neutralisation.*
+
+*Reste hors de ce plan, et suivi dans `NOTES.md` :* `CONTEXT_ONLY` en mission réelle, un crash
+provoqué en cours d'appel, et la seconde passe de relecture ciblée.
 
 **Lots 1 à 10 fermés le 2026-09-04.** Suite : **255 tests verts** + 2 ignorés (liens symboliques,
 privilège absent sur cette machine), `ruff` et `mypy --strict` verts. Production : **2 659 lignes

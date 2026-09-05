@@ -1315,9 +1315,47 @@ C'est écrit noir sur blanc plutôt que sous-entendu.
 **2 968 lignes brutes / 1 927 en code effectif** (+222 / +111 pour le fichier de configuration).
 *Chiffre donné pour mémoire ; la question de la taille reste close depuis le 2026-09-04.*
 
+### Clôture — 2026-09-05
+
+**Le plan correctif est clos.** Lot 11 fermé : quatre missions réelles menées à terme, versions
+re-caractérisées (`2.1.261` / `0.153.2`), consignation faite, et l'item 5 rendu par `README.md`
+plutôt que par le `GUIDE.md` prévu. Tableau de suivi mis à jour dans
+`project/correctifs/2026-09-04-plan-correctif-audit-v2.md`.
+
+**Sept commits.**
+
+| | |
+|---|---|
+| `c5b254f` | voie B — bloc clôturé accepté même entouré de prose |
+| `0ceecaf` | quota d'outil 2 mesuré, rejeu en attente |
+| `6bf1e03` | rétractation du « motif faux » de D-2, qui était lui-même faux |
+| `0375b78` | première mission de recherche menée à terme |
+| `f314951` | boucle de révision exercée en réel |
+| `0e5d84c` | `A == B` autorisé dans le code, écarté en usage |
+| `2d512af` | `iabinome.toml` et `README.md` |
+
+**Quatre décisions du PO**, toutes tracées avec leur motif : la voie B · attendre le quota plutôt que
+basculer de permutation · aucun contrôle `A != B`, et les missions `1→1` / `2→2` écartées · un fichier
+de configuration qui donne des défauts, jamais un état.
+
+**Trois garanties sont sorties de la suite de tests pour entrer dans le mesuré** : la relance après
+quota, des deux côtés ; le report du registre de constats d'une revue à la suivante ; et
+`_RELAUNCHABLE`, exercé pour de vrai.
+
+**Ce que je retiens du fil de la journée.** Le correctif du matin — accepter un bloc clôturé entouré
+de prose — reposait sur **une** occurrence, et je notais moi-même à midi que sa fréquence était
+inconnue. Sept heures plus tard, il évitait de perdre l'appel le plus cher de la mission montée pour
+prouver la boucle de révision, et la cause s'est révélée systématique : une collision entre le rôle
+demandé et un outil du harnais de B. Dans l'autre sens, une ligne écrite « mesuré le 2026-09-04 » a
+tenu un jour dans quatre fichiers avant qu'une question du PO ne la fasse remesurer — et elle était
+fausse. **Une mesure vaut mieux qu'un raisonnement, mais une mesure non reproduite ne vaut pas
+grand-chose.**
+
 **Ce que la prochaine session trouve :** `CONTEXT_ONLY` en mission réelle — le seul mode que le
-README documente sans qu'aucune mission ne l'ait exercé. Puis un crash provoqué en cours d'appel, la
-reprise après arrêt brutal restant prouvée par la seule suite de tests.
+README documente sans qu'aucune mission ne l'ait exercé, et qui alimente aussi C-06. La recette est
+dans `NOTES.md`, avec l'avertissement qui compte : **le mode n'est pas symétrique** entre les deux
+outils, et B doit être tenu par outil 1 pour que la mesure porte sur autre chose qu'un mode à moitié
+appliqué. Puis un crash provoqué en cours d'appel.
 
 **Ce que la prochaine session trouve :** la relance de la mission de recherche, préparée et en
 attente de quota. Si le scratchpad n'a pas survécu, la collaboration se reconstruit avec la commande
