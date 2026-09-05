@@ -73,6 +73,9 @@
 **Un agent qui commente son choix de format n'est pas un agent qui désobéit.** Un contrat de forme accepte ce qui est **explicitement balisé**, et ne devine jamais ce qui ne l'est pas.
 *Motif mesuré le 2026-09-04 : B a fait précéder une revue juste de 3,6 Ko d'une phrase expliquant qu'il répondait en JSON brut « comme demandé ». Le bloc clôturé ne couvrait plus toute la réponse : refus, 231 s d'appel payant perdues. Il avait déjà lu « retourne seulement le JSON » et croyait l'appliquer. La ligne refusée n'était pas un principe mais une position sur une pente ; « jamais de défaut permissif » se tient au bon endroit — sans balise, un préfixe ou un suffixe restent un refus.*
 
+**Le préambule de format n'est pas un aléa : il naît d'une collision entre le rôle demandé et un outil du harnais de l'agent.** Quand le format demandé ressemble à une capacité que l'agent possède déjà, il explique laquelle il n'utilise pas.
+*Motif mesuré deux fois, le 2026-09-04 et le 2026-09-05 : les deux préambules de B nomment `ReportFindings` — un outil de son propre harnais dont le nom évoque « rendre des constats » — et s'expliquent de ne pas s'en servir. **Deux fois sur quatre appels de B côté outil 1.** Le second serait tombé sur l'appel le plus cher d'une mission montée pour prouver la boucle de révision. Conséquence : la tolérance au bloc entouré de prose n'est pas un confort, c'est ce qui empêche de perdre une mission sur deux ; et durcir le prompt aurait visé la mauvaise cause, puisque B croyait déjà obéir.*
+
 **Ne jamais prescrire une commande qu'on n'a pas lancée, ni affirmer une impossibilité sans avoir cherché tous les chemins.**
 
 ---

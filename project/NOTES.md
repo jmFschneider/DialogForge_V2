@@ -8,18 +8,16 @@
 
 ## Prochaine action — une seule
 
-**Une boucle de révision réelle**, avec `--max-revisions 1` ou plus. C'est la dernière garantie du
-cycle qui n'a **jamais** été exercée hors de la suite de tests : le report des constats ouverts d'une
-revue à la suivante, et la reprise exacte de chaque constat par B. Trois missions réelles, trois fois
-`--max-revisions 0`.
+**Les permutations `1→1` et `2→2` en réel.** Ce sont les deux dernières cases vides du tableau que
+`CLAUDE.md` déclare supporté et testé : quatre permutations, deux seulement mesurées en réel — et
+toujours les mêmes deux. `1→1` a un intérêt propre : c'est le seul cas où **le même outil tient les
+deux rôles**, donc le seul où une collision entre le rôle et le harnais peut jouer des deux côtés.
 
-Le terrain est prêt : la mission de recherche du 2026-09-05 a rendu **7 constats ouverts** et sa
-demande est conservée. La rejouer avec `--max-revisions 1` exercerait exactement ce report.
+**Autorisation de dépense à demander au PO.** Ordre de grandeur mesuré : ~150 s par appel de A côté
+outil 2, ~130 à 190 s côté outil 1 ; **~260 à 370 s pour un appel de B côté outil 1**. Un cycle sans
+révision ≈ 700 s, avec une révision ≈ 1 040 s.
 
-**Autorisation de dépense à demander au PO.** Ordre de grandeur, d'après le rejeu : ~200 s par appel
-de A, ~370 s pour B — une révision ajoute un aller-retour, donc ~570 s de plus.
-
-**Ensuite** : les permutations `1→1` et `2→2` en réel · `GUIDE.md`.
+**Ensuite** : `CONTEXT_ONLY`, jamais essayé · un crash provoqué en cours d'appel · `GUIDE.md`.
 
 ### Comment relancer une mission de recherche
 
@@ -60,11 +58,13 @@ imposé sous verrou : `recheck` → **`check_corpus`** → `intervene` → `gate
 `IntegrityError` seul. `command()` est résolu **avant le premier octet écrit**. La porte n'accepte que
 `READY` sans appel courant et `RUNNING` avec ; `ERROR` n'en sort que par `_RELAUNCHABLE`.
 
-**`contracts.py`** — CRLF→LF et bloc clôturé sont des **tolérances**, pas des correctifs à un défaut
-observé. **`_strip_fence` ancre *première clôture → dernière clôture*, jamais un comptage** : B a le
-droit de citer du markdown dans `analysis`, et compter y découperait au mauvais endroit. La prose
-autour est ignorée (voie B, PO, 2026-09-05) ; **sans balise, rien n'est cherché** — préfixe, suffixe,
-clôture inachevée et étiquette autre que `json` restent des refus.
+**`contracts.py`** — CRLF→LF est une **tolérance** sans défaut observé. **Le bloc entouré de prose,
+lui, a un défaut mesuré deux fois** : B fait précéder sa revue d'une phrase où il nomme un outil de
+son propre harnais (`ReportFindings`) et s'explique de ne pas s'en servir — **2 fois sur 4 appels de B
+côté outil 1**. `_strip_fence` ancre *première clôture → dernière clôture*, **jamais un comptage** : B
+a le droit de citer du markdown dans `analysis`, et compter y découperait au mauvais endroit.
+**Sans balise, rien n'est cherché** — préfixe, suffixe, clôture inachevée et étiquette autre que
+`json` restent des refus.
 `transformations` et `had_bom` existent mais **ne sont consignés nulle part** (D-8b).
 `Review.to_dict()` est la forme canonique écrite dans `echanges/` — jamais le texte de B.
 **Sévérité omise ⇒ `UNKNOWN` *et* `OPEN`** : la tolérance ne doit pas servir à fermer un constat.
@@ -104,9 +104,10 @@ celui du tube.*
 
 - **Étapes 0 et 1 closes.** Spécification : `conception/CONCEPTION_FINALE.md`.
 - **Étape 2 : lots 1 à 10 du plan correctif faits.** C-01 à C-10, N-01, N-02, D-4 à D-8 fermés.
-  **C-11 : trois missions réelles, dont la recherche menée à terme le 2026-09-05** —
-  `AWAITING_APPROVAL`, 7 constats ouverts, quatre appels payés. Restent **hors de tout essai réel** :
-  la boucle de révision, les permutations `1→1` et `2→2`, `CONTEXT_ONLY`, et un crash provoqué.
+  **C-11 : quatre missions réelles, toutes menées à terme le 2026-09-05** — dont **la boucle de
+  révision**, `--max-revisions 1`, cinq appels : les 7 constats de la revue 1 repris **exactement une
+  fois** par la revue 2, aucun disparu, aucun dupliqué, numérotation continuée par B. Restent **hors
+  de tout essai réel** : les permutations `1→1` et `2→2`, `CONTEXT_ONLY`, un crash provoqué.
 - **Relecture externe du 2026-09-05 : huit observations, huit exactes, toutes disposées**
   (`project/analyse/codex/2026-09-05-dispositions-relecture.md`). Six correctifs, deux corrections
   documentaires, **un correctif refusé** — le verrou tronqué, ci-dessus.

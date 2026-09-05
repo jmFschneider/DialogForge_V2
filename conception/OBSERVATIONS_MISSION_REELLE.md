@@ -263,8 +263,81 @@ aujourd'hui (§6). Ce qui n'est pas établi : sa **fréquence**. Une occurrence 
 le second n'a pas reproduit le préambule. La voie B se justifie par le coût du cas observé, pas par sa
 régularité — et ce rejeu ne change rien à cet équilibre.
 
+> **Démenti le jour même, §7 ter :** la mission suivante a reproduit le préambule, avec la même
+> cause. Deux fois sur quatre appels de B côté outil 1. La fréquence n'est plus inconnue.
+
 *Sorties conservées : `conception/essais/2026-09-05-recherche-tensions-livrable.md`,
 `…-critique-B-recherche.json`, et la réponse brute de B `…-critique-B-recherche-brute.txt`.*
+
+## 7 ter. La boucle de révision, exercée en réel — et la voie B qui se paie
+
+Même demande, corpus recapturé, `--max-revisions 1`. A = outil 2, B = outil 1 `sonnet`.
+
+| Appel | Rôle | Phase | Durée | Sortie |
+|---|---|---|---:|---:|
+| 0001 | A | `PROPOSAL_A` | 174,4 s | 12 743 o |
+| 0002 | B | `REVIEW_B` | 329,8 s | 5 888 o — **7 constats ouverts** |
+| 0003 | A | `REVISION_A` | 144,6 s | 20 678 o |
+| 0004 | B | `REVIEW_B` | 259,6 s | 7 450 o — **la reprise du registre** |
+| 0005 | A | `FINAL_A` | 127,6 s | 21 100 o |
+
+**Issue : `AWAITING_APPROVAL`, phase `CLOSED`, révision 1, 3 constats ouverts, code `0`.**
+
+### Le report du registre — la garantie tenue, contre de vrais agents
+
+C'était la dernière garantie du cycle jamais exercée hors de `FakeAdapter`, lequel ne fait que
+répéter les identifiants qu'on lui met dans la bouche. Résultat, constat par constat :
+
+| Revue 1 | Revue 2 |
+|---|---|
+| `B-etat-projet-001` `MAJOR` `OPEN` | `RESOLVED` |
+| `B-lot0-asymetrie-002` `MAJOR` `OPEN` | `RESOLVED` |
+| `B-inference-dialogforge-003` `MINOR` `OPEN` | `RESOLVED` |
+| `B-citation-plage-004` `MINOR` `OPEN` | `RESOLVED` |
+| `B-paraphrase-benefice-005` `MINOR` `OPEN` | `RESOLVED` |
+| `B-tension-genericite-006` `NOTE` `OPEN` | `RESOLVED` |
+| `B-cas-omis-protocole-007` `NOTE` `OPEN` | `RESOLVED` |
+| — | `B-citation-lot0-008` · `B-citation-palier4-009` · `B-mode-conditionnel-010`, tous `OPEN` |
+
+**Les sept repris exactement une fois. Aucun disparu, aucun dupliqué.** B a même **continué la
+numérotation** — `008`, `009`, `010` — ce que rien dans le prompt ne demande explicitement : il a
+compris que le registre était un registre. Décision `REVISER` maintenue, non par entêtement mais
+parce que trois constats neufs restent ouverts.
+
+*Et les trois neufs sont du même niveau d'exigence que les premiers : une plage de citation qui ne
+contient pas le chiffre qu'on lui attribue, un nombre rattaché à un palier auquel la source ne le
+rattache pas, un fait énoncé au conditionnel puis qualifié de « mesuré » dans la phrase suivante.*
+
+### La voie B s'est payée à sa première exposition réelle
+
+**La revue 0004 commence par une phrase :**
+
+> « Je me suis trompé d'outil à l'instant (ReportFindings ne correspond pas au schéma JSON v1
+> demandé) ; voici la revue correcte, au format demandé. »
+
+Vérifié : **l'ancien `_strip_sole_fence` l'aurait refusée** (`Expecting value: line 1 column 1`).
+Sans le correctif du matin, cet appel de 259,6 s partait au `CONTRACT_ERROR`, et **la boucle de
+révision restait non prouvée** — l'objet même de la mission.
+
+**Et la cause est la même qu'au 2026-09-04.** Les deux fois, B nomme `ReportFindings` — un outil de
+son propre harnais dont le nom évoque le rôle demandé — et **s'explique de ne pas s'en servir**.
+Ce n'est pas une politesse aléatoire : c'est une collision de vocabulaire qui se reproduit.
+
+**Fréquence, sur les appels de B réellement payés :**
+
+| B tenu par | Appels | Avec préambule |
+|---|---:|---:|
+| Outil 1 | 4 | **2** |
+| Outil 2 | 1 | 0 |
+
+Une fois sur deux côté outil 1, toujours pour le même motif. **Ce matin j'écrivais que la fréquence
+était inconnue et qu'une occurrence sur deux ne prouvait rien. Le compte est maintenant de deux sur
+quatre, avec une cause identifiée et répétable.** La voie B n'était pas un confort : sans elle, une
+mission réelle sur deux perd son appel le plus cher.
+
+*Sorties conservées : `conception/essais/2026-09-05-revision-livrable.md`,
+`…-revision-critique-B-1.json`, `…-revision-critique-B-2.json`, et le brut préfixé
+`…-revision-critique-B-2-brute.txt`.*
 
 ## 8. Coût et friction
 

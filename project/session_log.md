@@ -1181,10 +1181,54 @@ boucle de révision (trois fois `--max-revisions 0`), les permutations `1→1` e
 un crash provoqué. Sorties conservées dans `conception/essais/` — livrable, revue canonique, réponse
 brute de B.
 
-**Ce que la prochaine session trouve :** une boucle de révision réelle, la dernière garantie du cycle
-jamais exercée hors de la suite de tests. La mission de recherche a 7 constats ouverts et sa demande
-est conservée : la rejouer avec `--max-revisions 1` exerce exactement le report d'une revue à la
-suivante. Dépense à faire autoriser.
+### La boucle de révision, exercée le jour même — et le correctif du matin qui se paie
+
+Autorisation donnée dans la foulée. Même demande, corpus recapturé, `--max-revisions 1`. Lancé en
+processus détaché (`Start-Process`) pour échapper au plafond de dix minutes de l'outil, avec une
+veille sur `etat.json` qui a rapporté chaque changement de phase. Cinq appels, ~17 minutes.
+
+| Appel | Rôle | Phase | Durée | Sortie |
+|---|---|---|---:|---:|
+| 0001 | A | `PROPOSAL_A` | 174,4 s | 12 743 o |
+| 0002 | B | `REVIEW_B` | 329,8 s | 5 888 o — 7 constats ouverts |
+| 0003 | A | `REVISION_A` | 144,6 s | 20 678 o |
+| 0004 | B | `REVIEW_B` | 259,6 s | 7 450 o |
+| 0005 | A | `FINAL_A` | 127,6 s | 21 100 o |
+
+`AWAITING_APPROVAL`, révision 1, **3 constats ouverts**, code `0`.
+
+**Le report du registre tient contre de vrais agents.** Les 7 constats de la revue 1 repris
+**exactement une fois** par la revue 2, tous `RESOLVED`, plus trois neufs. Aucun disparu, aucun
+dupliqué. **B a continué la numérotation** — `008`, `009`, `010` — ce que le prompt ne demande pas
+explicitement : il a compris que le registre était un registre. `FakeAdapter` ne pouvait rien prouver
+de tout cela, puisqu'il répète les identifiants qu'on lui met dans la bouche.
+
+### Le correctif du matin a payé son coût dans la journée
+
+**La revue 0004 commence par une phrase** : « Je me suis trompé d'outil à l'instant (ReportFindings ne
+correspond pas au schéma JSON v1 demandé) ; voici la revue correcte, au format demandé. » Vérifié :
+l'ancien `_strip_sole_fence` l'aurait refusée. **Sans la voie B, cet appel de 259,6 s partait au
+`CONTRACT_ERROR` — et la mission montée pour prouver la boucle de révision ne prouvait rien.**
+
+**Et la cause est la même qu'au 2026-09-04 :** les deux préambules nomment `ReportFindings`, un outil
+du harnais de B dont le nom évoque le rôle demandé, et s'expliquent de ne pas s'en servir. Ce n'est
+pas une politesse aléatoire, c'est une **collision de vocabulaire entre le rôle et le harnais**.
+
+**Ce matin j'écrivais que la fréquence était inconnue** et qu'une occurrence sur deux ne prouvait
+rien. Compte de fin de journée : **2 sur 4 appels de B côté outil 1**, cause identifiée et répétable.
+La voie B n'était pas un confort — sans elle, une mission réelle sur deux perd son appel le plus cher.
+Et durcir le prompt (voie C) aurait visé la mauvaise cause : B croyait déjà obéir.
+
+### État final de la session
+
+**Quatre missions réelles menées à terme**, dont la boucle de révision. `_RELAUNCHABLE`, le report du
+registre, la relance après quota des deux côtés : trois garanties sorties de la suite de tests pour
+entrer dans le mesuré. **280 tests verts** + 2 ignorés, `ruff` et `mypy --strict` verts.
+
+**Ce que la prochaine session trouve :** les permutations `1→1` et `2→2` en réel — les deux dernières
+cases vides d'un tableau que `CLAUDE.md` déclare supporté et testé. `1→1` a un intérêt propre : seul
+cas où le **même outil tient les deux rôles**, donc seul cas où la collision rôle/harnais peut jouer
+des deux côtés. Puis `CONTEXT_ONLY`, un crash provoqué, `GUIDE.md`.
 
 **Ce que la prochaine session trouve :** la relance de la mission de recherche, préparée et en
 attente de quota. Si le scratchpad n'a pas survécu, la collaboration se reconstruit avec la commande

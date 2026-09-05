@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "decision": "REVISER",
+  "analysis": "## Ce qui tient\n\nLes deux tensions retenues (contrôles minimaux vs relecture systématique ; prompts allégés vs contrats explicites) sont correctement ancrées : citations vérifiées mot à mot contre POURQUOI.md et RULES.md, empreintes SHA-256 recalculées et exactes. Le mécanisme argumentatif — appliquer une règle affaiblit l'autre, avec échec documenté des deux côtés — est cohérent avec le critère de la demande.\n\n## Ce qui affaiblit la démonstration\n\n**Asymétrie de preuve non signalée (tension 2).** La branche « prompts trop prescriptifs dégradent » ne repose que sur le Lot 0 du refactoring de DialogForge — le prédécesseur mort, pas IAbinome (POURQUOI, lignes 17-20 et 43-44). La branche opposée (« rends DOCUMENT ») est un échec mesuré dans la première mission réelle d'IAbinome (RULES.md, ligne 134, 2026-09-04). Le document présente les deux comme des cas concrets de poids comparable ; il ne l'est pas, et le silence sur ce point fragilise directement la réponse au critère de fin n°1, qui exige un cas tiré du corpus pour chaque branche — pas un cas tiré d'un autre projet servant de motif hérité.\n\n**Incohérence de corpus non exploitée.** CLAUDE.md (lecture « non négociable », ligne 9) affirme que l'implémentation « n'a pas encore commencé » et que l'étape en cours est la récolte (ligne 34). RULES.md documente pourtant des mesures réelles jusqu'au « palier 4 » — mypy --strict, transport.py, cli.py, tests — datées du 2026-09-03 au 2026-09-05. Le document sous revue construit toute sa section 3 (chronologie de cession de règle) et ses réserves de la section 4 (« aucun relevé de taille actuel ») sur la fiabilité implicite de cette chronologie, sans jamais relever que le document de référence du projet situe celui-ci à une étape antérieure. C'est une omission touchant directement la fiabilité temporelle de l'analyse.\n\n**Défauts mineurs de citation.** Une plage citée (RULES.md 132-137) déborde sur une règle sans rapport ; une paraphrase (« bénéfice cinq corrections ») attribue au texte une précision qu'il n'a pas, le texte source disant explicitement « une passe qui porte ». Une analogie forte avec DialogForge n'est pas marquée comme inférence alors que rien dans le corpus ne la formule ainsi.\n\n**Exhaustivité de la recherche de tensions.** La section 4 écarte deux rapprochements avec motivation explicite mais en laisse un troisième candidat sans examen (généricité de l'outillage Claude/Codex testée sur quatre permutations vs métrique de garde des ~1500 lignes), alors qu'un indice existe dans le corpus (permutation jamais complète chez le prédécesseur, RULES.md ligne 62). Le rejet du rapprochement « protocole défaillant » ne discute pas non plus le candidat le plus proche disponible (défaut du contrat de format du bloc JSON de revue, RULES.md ligne 74).\n\n## Conclusion\n\nAucun de ces points n'exige une information humaine indispensable : ce sont des lacunes de vérification croisée et de marquage d'inférence que l'auteur peut corriger par une relecture du corpus déjà disponible. Le document nécessite donc une révision, pas un blocage ni une acceptation en l'état.",
+  "findings": [
+    {
+      "id": "B-etat-projet-001",
+      "severity": "MAJOR",
+      "disposition": "OPEN",
+      "statement": "CLAUDE.md affirme que l'implémentation « n'a pas encore commencé » (étape en cours : récolte, ligne 34), alors que RULES.md documente des mesures réelles jusqu'au palier 4 datées du 2026-09-03 au 2026-09-05, contradiction que le document ne relève pas malgré son usage de RULES.md comme chronologie fiable en section 3."
+    },
+    {
+      "id": "B-lot0-asymetrie-002",
+      "severity": "MAJOR",
+      "disposition": "OPEN",
+      "statement": "La branche « prompts trop prescriptifs » de la tension 2 n'est étayée que par le Lot 0 du prédécesseur DialogForge (POURQUOI, lignes 17-20 et 43-44), non par un incident interne à IAbinome, contrairement à la branche opposée — asymétrie que le document ne signale pas en présentant les deux comme des cas concrets équivalents."
+    },
+    {
+      "id": "B-inference-dialogforge-003",
+      "severity": "MINOR",
+      "disposition": "OPEN",
+      "statement": "La phrase « exactement comme l'étaient les contrôles de DialogForge » (section 1) énonce comme un fait établi une analogie de l'auteur qu'aucun passage du corpus ne formule, sans la marquer comme inférence."
+    },
+    {
+      "id": "B-citation-plage-004",
+      "severity": "MINOR",
+      "disposition": "OPEN",
+      "statement": "La citation « RULES.md, lignes 132-137 » pour l'épisode « rends DOCUMENT » déborde sur les lignes 136-137, qui portent sur une règle distincte (prompt testé contre un faux agent)."
+    },
+    {
+      "id": "B-paraphrase-benefice-005",
+      "severity": "MINOR",
+      "disposition": "OPEN",
+      "statement": "Le document dit le bénéfice de la méta-relecture « explicitement... cinq corrections », alors que RULES.md lignes 40-41 désigne explicitement ce bénéfice comme « une passe qui porte », les cinq corrections n'étant que le motif mesuré."
+    },
+    {
+      "id": "B-tension-genericite-006",
+      "severity": "NOTE",
+      "disposition": "OPEN",
+      "statement": "La section 4 n'examine pas, ni pour la retenir ni pour l'écarter, une troisième tension candidate entre la généricité outillage testée sur quatre permutations (RULES.md ligne 61, CLAUDE.md lignes 27-28) et la métrique de garde des ~1500 lignes, alors qu'un indice existe dans le corpus (RULES.md ligne 62)."
+    },
+    {
+      "id": "B-cas-omis-protocole-007",
+      "severity": "NOTE",
+      "disposition": "OPEN",
+      "statement": "Le rejet du rapprochement « protocole défaillant utilisé pour se réparer » ne discute pas le candidat le plus proche disponible dans le corpus, le défaut de contrat de format du bloc JSON de revue mesuré le 2026-09-04 (RULES.md ligne 74)."
+    }
+  ]
+}
