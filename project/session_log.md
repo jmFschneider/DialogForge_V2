@@ -1225,10 +1225,33 @@ Et durcir le prompt (voie C) aurait visé la mauvaise cause : B croyait déjà o
 registre, la relance après quota des deux côtés : trois garanties sorties de la suite de tests pour
 entrer dans le mesuré. **280 tests verts** + 2 ignorés, `ruff` et `mypy --strict` verts.
 
-**Ce que la prochaine session trouve :** les permutations `1→1` et `2→2` en réel — les deux dernières
-cases vides d'un tableau que `CLAUDE.md` déclare supporté et testé. `1→1` a un intérêt propre : seul
-cas où le **même outil tient les deux rôles**, donc seul cas où la collision rôle/harnais peut jouer
-des deux côtés. Puis `CONTEXT_ONLY`, un crash provoqué, `GUIDE.md`.
+### `A == B` — deux décisions du PO, en clôture
+
+Le PO signale qu'il n'utilisera pas le même fournisseur pour les deux rôles (documentation : gains
+faibles voire négatifs) et demande s'il ne faudrait pas **vérifier que A ≠ B**.
+
+**Fait de structure mis devant la décision : l'outil et le modèle sont deux axes séparés.**
+`adapters/claude.py:17` déclare `{Role.A: "opus", Role.B: "fable"}` — donc `1→1` n'est pas un modèle
+qui se relit, c'est Opus qui produit et Fable qui critique, soit la configuration recommandée par
+`CLAUDE.md` §6. Un contrôle sur `agent_a != agent_b` **viserait le mauvais axe** : il laisserait
+passer `--model-a opus --model-b opus`, qui est le vrai cas d'auto-révision, et interdirait le défaut
+recommandé. Second fait, mesuré le jour même : pendant les trois heures de quota d'outil 2,
+**`A == B` était la seule configuration exécutable** — un refus dur aurait transformé un quota
+fournisseur en arrêt complet. Troisième : `1→1` n'a jamais tourné, il n'y a aucun défaut mesuré à
+compenser (`RULES.md`, « avant d'ajouter un garde-fou… »).
+
+**Décision 1 — rien dans le code.** Le choix d'usage reste un choix d'usage.
+
+**Décision 2 — les missions réelles `1→1` et `2→2` sont écartées, pas reportées.** Si `A == B` n'est
+pas un usage retenu, les payer testerait une configuration morte. `CLAUDE.md` disait « les quatre
+permutations sont supportées et testées » : corrigé en « couvertes de bout en bout par l'agent
+`fake` ; deux seulement mesurées en réel, délibérément ». **Une case vide par choix n'est pas une
+lacune** — encore faut-il que le document le dise, sinon la prochaine session la rouvre.
+
+**Ce que la prochaine session trouve :** `GUIDE.md`. La matière existe — le brouillon de la mission du
+2026-09-04 et les **six constats que B avait laissés ouverts dessus**, à lire avant d'en faire le
+guide du projet. Quatre missions réelles menées à terme fournissent maintenant les chiffres et les
+commandes exactes qui manquaient. Puis `CONTEXT_ONLY` et un crash provoqué.
 
 **Ce que la prochaine session trouve :** la relance de la mission de recherche, préparée et en
 attente de quota. Si le scratchpad n'a pas survécu, la collaboration se reconstruit avec la commande

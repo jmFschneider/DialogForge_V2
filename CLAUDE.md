@@ -24,8 +24,12 @@ Un outil d'environ **1 500 lignes** qui coordonne **deux agents IA en CLI** aux 
 **A produit, B critique, l'humain arbitre.** Tout en fichiers sur disque.
 Le livrable est un document de **conception ou de recherche** — les deux, décidé le 2026-09-03.
 
-**Le rôle et l'outil sont deux axes indépendants.** A et B sont chacun Claude *ou* Codex, choisis au
-lancement. Les quatre permutations sont supportées et testées. Rien dans le code ne suppose lequel est où.
+**Le rôle et l'outil sont deux axes indépendants** — et le **modèle** en est un troisième. A et B sont
+chacun Claude *ou* Codex, choisis au lancement. Rien dans le code ne suppose lequel est où.
+Les quatre permutations sont supportées et couvertes de bout en bout par l'agent `fake` ; **deux
+seulement sont mesurées en réel, délibérément** (PO, 2026-09-05) — `A == B` n'est pas un usage retenu.
+**Rien n'interdit `A == B` pour autant** : c'est la seule porte de sortie quand un fournisseur est en
+quota, et c'est la configuration de `§6` ci-dessous. Motif complet dans `project/RULES.md`.
 
 ```
 demande.md → A produit → B critique → A révise → (N fois max) → A finalise → livrable

@@ -352,7 +352,9 @@ l'agent ne savait pas qu'il avait le droit de l'ouvrir.
 
 ## 9. Ce que ces missions ne prouvent pas
 
-- **Deux permutations sur quatre.** `1→1` et `2→2` n'ont pas été essayées en réel.
+- **Deux permutations sur quatre.** `1→1` et `2→2` n'ont pas été essayées en réel. *Et ne le seront
+  pas : `A == B` n'est pas un usage retenu — PO, 2026-09-05. Le programme ne l'interdit pas pour
+  autant, motif dans `project/RULES.md`.*
 - **Aucune boucle de révision** : `--max-revisions 0` par choix d'enveloppe. Le report des constats
   ouverts d'une revue à la suivante n'a donc pas été exercé en réel.
 - **Aucun crash réel** n'a été provoqué : la reprise après arrêt brutal reste prouvée par la suite de

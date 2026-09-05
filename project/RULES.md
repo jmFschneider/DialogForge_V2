@@ -61,6 +61,10 @@
 **Le rôle et l'outil sont deux axes indépendants : A et B sont chacun Claude ou Codex, choisis au lancement.** Aucun fournisseur n'est nommé hors de son adaptateur.
 *Motif : ajoutée en rattrapage à DialogForge, la permutation n'a jamais été complète — quotas et récupération de revue sont restés liés à un fournisseur (`recover_failed_review` ne cherchait que `*claude.txt`).*
 
+**Le modèle est un troisième axe : `A == B` en outil ne veut pas dire « le même modèle se relit ».** Le programme n'interdit pas `A == B`, et cette décision est écrite. *(PO, 2026-09-05.)*
+*Trois motifs, dans l'ordre de force. **Un.** Le risque documenté d'auto-révision porte sur le **modèle**, pas sur la CLI : `adapters/claude.py` déclare `{A: opus, B: fable}`, donc `1→1` est Opus qui produit et Fable qui critique — la configuration que `CLAUDE.md` §6 recommande. Un contrôle sur `agent_a != agent_b` viserait le mauvais axe : il laisserait passer `--model-a opus --model-b opus`, qui est le vrai cas, et interdirait le défaut recommandé. **Deux.** Mesuré le 2026-09-05 : outil 2 a été en quota de 09:38 à 14:56 : pendant ces trois heures, `A == B` était la **seule** configuration exécutable. Un refus dur aurait transformé un quota fournisseur en arrêt complet du projet. **Trois.** `1→1` n'a jamais tourné : il n'y a aucun défaut mesuré à compenser, seulement une attente.*
+*Conséquence assumée : **`A == B` n'étant pas un usage retenu, aucune mission réelle `1→1` ni `2→2` ne sera payée.** Les quatre permutations restent couvertes par `FakeAdapter` ; deux sont mesurées en réel, et c'est délibéré, pas une lacune à combler.*
+
 **Le cycle ne dépend que des capacités présentes chez les deux outils ; ce qui est propre à l'un est un bonus, jamais un prérequis.**
 *Motif : DialogForge a bâti sa reprise après quota sur l'erreur typée de Claude ; Codex ne la produit pas, et la reprise n'a jamais marché de ce côté.*
 

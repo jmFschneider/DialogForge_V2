@@ -8,16 +8,20 @@
 
 ## Prochaine action — une seule
 
-**Les permutations `1→1` et `2→2` en réel.** Ce sont les deux dernières cases vides du tableau que
-`CLAUDE.md` déclare supporté et testé : quatre permutations, deux seulement mesurées en réel — et
-toujours les mêmes deux. `1→1` a un intérêt propre : c'est le seul cas où **le même outil tient les
-deux rôles**, donc le seul où une collision entre le rôle et le harnais peut jouer des deux côtés.
+**`GUIDE.md`** — la page d'usage du projet. La matière existe : le brouillon de la mission du
+2026-09-04 (`conception/essais/2026-09-04-livrable-guide-brouillon.md`, 125 lignes) et **les six
+constats que B avait laissés ouverts dessus**, qui sont à lire avant d'en faire le guide du projet.
+Quatre missions réelles menées à terme fournissent maintenant les chiffres et les commandes exactes
+qui manquaient au brouillon.
 
-**Autorisation de dépense à demander au PO.** Ordre de grandeur mesuré : ~150 s par appel de A côté
-outil 2, ~130 à 190 s côté outil 1 ; **~260 à 370 s pour un appel de B côté outil 1**. Un cycle sans
-révision ≈ 700 s, avec une révision ≈ 1 040 s.
+**Ensuite** : `CONTEXT_ONLY`, jamais essayé · un crash provoqué en cours d'appel.
 
-**Ensuite** : `CONTEXT_ONLY`, jamais essayé · un crash provoqué en cours d'appel · `GUIDE.md`.
+*Les permutations `1→1` et `2→2` **ne sont plus au programme** — décision du PO, 2026-09-05, voir
+« Décisions actées ».*
+
+**Ordres de grandeur mesurés**, pour chiffrer une dépense : ~150 s par appel de A côté outil 2,
+~130 à 190 s côté outil 1 ; **~260 à 370 s pour un appel de B côté outil 1**. Cycle sans révision
+≈ 700 s, avec une révision ≈ 1 040 s.
 
 ### Comment relancer une mission de recherche
 
@@ -107,7 +111,8 @@ celui du tube.*
   **C-11 : quatre missions réelles, toutes menées à terme le 2026-09-05** — dont **la boucle de
   révision**, `--max-revisions 1`, cinq appels : les 7 constats de la revue 1 repris **exactement une
   fois** par la revue 2, aucun disparu, aucun dupliqué, numérotation continuée par B. Restent **hors
-  de tout essai réel** : les permutations `1→1` et `2→2`, `CONTEXT_ONLY`, un crash provoqué.
+  de tout essai réel** : `CONTEXT_ONLY` et un crash provoqué — plus `1→1` / `2→2`, **écartées, pas
+  en attente**.
 - **Relecture externe du 2026-09-05 : huit observations, huit exactes, toutes disposées**
   (`project/analyse/codex/2026-09-05-dispositions-relecture.md`). Six correctifs, deux corrections
   documentaires, **un correctif refusé** — le verrou tronqué, ci-dessus.
@@ -125,8 +130,12 @@ celui du tube.*
 - **Bloc clôturé entouré de prose : accepté** — voie B, PO, 2026-09-05. Motif et limites en §6
   d'`OBSERVATIONS_MISSION_REELLE.md`. Question close.
 - **Recherche au périmètre, sans accès externe en V0.1.** Réouverture : §12.1.
-- **A et B sont chacun l'un ou l'autre outil** — quatre permutations testées via `FakeAdapter`, **deux
-  seulement mesurées en réel**.
+- **A et B sont chacun l'un ou l'autre outil** — quatre permutations couvertes par `FakeAdapter`,
+  **deux mesurées en réel, et ce sera tout** (PO, 2026-09-05) : `A == B` n'est pas un usage retenu,
+  donc `1→1` et `2→2` ne seront pas payées. **Le programme ne l'interdit pas pour autant** — le
+  risque d'auto-révision porte sur le **modèle**, pas sur l'outil (`{A: opus, B: fable}` est le
+  défaut d'un même adaptateur), et `A == B` a été la seule configuration exécutable pendant les trois
+  heures de quota du 2026-09-05. Motif complet dans `RULES.md`.
 - **La relecture croisée est rouverte** depuis le 2026-09-05, sa condition s'étant réalisée.
 - Paramètres fixés : UTF-8 sans BOM pour les artefacts du programme · corpus copié **octet pour
   octet** · 8 MiB par flux · **Windows testé, POSIX écrit non testé**.
