@@ -1143,6 +1143,49 @@ lit que `stdout`.
 travers un tube n'est pas celui de la commande · quand une mesure nouvelle contredit une mesure
 ancienne, c'est la troisième qui tranche, pas la plus récente.
 
+### Le rejeu — première mission de recherche menée à terme
+
+Relancée à 15:05, quota réarmé. `AWAITING_APPROVAL`, phase `CLOSED`, code `0`.
+
+| Appel | Rôle | Outil | Durée | Sortie |
+|---|---|---|---:|---:|
+| 0001 | A | 2 | 3,3 s | quota, `rc` 1 — rien de payé |
+| 0002 | A | 2 | 194,9 s | 15 656 o — relance de 0001 |
+| 0003 | B | 1 | **373,4 s** | 4 426 o — **la revue qui n'avait jamais abouti** |
+| 0004 | A | 2 | 140,2 s | 16 994 o |
+
+Livrable de 208 lignes, `REVISER`, **7 constats ouverts dont 4 `MAJOR`, aucun `BLOCKING`**. La relance
+après quota a fonctionné en conditions réelles : `retries` tracé, prompt identique, l'appel refusé
+n'a rien coûté.
+
+**La revue de B vaut son prix.** Elle vérifie les citations ligne à ligne, les déclare exactes, puis
+retourne le **critère de fin de la demande contre A** — « une tension qu'on ne peut pas illustrer par
+un cas tiré du corpus n'en est pas une » — et montre que deux des quatre tensions annoncées n'y
+résistent pas. Un autre constat relève que l'analyse ignore l'interdit n°1 de `CLAUDE.md`, lequel
+retire le mécanisme même dont A fait sa preuve.
+
+### Ce que ce rejeu ne prouve pas — et il faut le dire
+
+**La voie B n'a pas été exercée.** B a rendu cette fois un bloc clôturé nu, sans phrase devant :
+vérifié, l'ancien `_strip_sole_fence` l'aurait accepté tel quel. Le correctif du matin n'a joué aucun
+rôle dans ce succès.
+
+Ce qui reste établi : le cas du 2026-09-04 est réel, et la revue alors jetée passe aujourd'hui. Ce
+qui ne l'est pas : sa **fréquence** — une occurrence sur deux appels de B. La voie B se justifie par
+le coût du cas observé, pas par sa régularité, et ce rejeu ne déplace pas cet équilibre.
+
+### État final
+
+Trois missions réelles, dont la recherche menée à terme. **Restent hors de tout essai réel :** la
+boucle de révision (trois fois `--max-revisions 0`), les permutations `1→1` et `2→2`, `CONTEXT_ONLY`,
+un crash provoqué. Sorties conservées dans `conception/essais/` — livrable, revue canonique, réponse
+brute de B.
+
+**Ce que la prochaine session trouve :** une boucle de révision réelle, la dernière garantie du cycle
+jamais exercée hors de la suite de tests. La mission de recherche a 7 constats ouverts et sa demande
+est conservée : la rejouer avec `--max-revisions 1` exerce exactement le report d'une revue à la
+suivante. Dépense à faire autoriser.
+
 **Ce que la prochaine session trouve :** la relance de la mission de recherche, préparée et en
 attente de quota. Si le scratchpad n'a pas survécu, la collaboration se reconstruit avec la commande
 ci-dessus — tout le nécessaire est dans `conception/essais/`.

@@ -8,26 +8,26 @@
 
 ## Prochaine action — une seule
 
-**Rejouer la mission de recherche, jusqu'à la revue de B incluse.** C'est le seul appel qui n'a jamais
-abouti, et la voie B vient de retirer sa cause de refus. **Lancé le 2026-09-05, arrêté au premier
-appel : quota d'outil 2 épuisé.** Attente du réarmement, puis relance à l'identique — décision du PO.
+**Une boucle de révision réelle**, avec `--max-revisions 1` ou plus. C'est la dernière garantie du
+cycle qui n'a **jamais** été exercée hors de la suite de tests : le report des constats ouverts d'une
+revue à la suivante, et la reprise exacte de chaque constat par B. Trois missions réelles, trois fois
+`--max-revisions 0`.
 
-**Si la collaboration du 2026-09-05 existe encore** (scratchpad de session, elle ne survit pas à la
-session) : `resume --retry-call 181ed4745ba046c48e1c536c7153b2df --reason-file <motif>`. `INTERRUPTED`
-se relance toujours, la configuration et le corpus sont intacts, rien n'a été payé.
+Le terrain est prêt : la mission de recherche du 2026-09-05 a rendu **7 constats ouverts** et sa
+demande est conservée. La rejouer avec `--max-revisions 1` exercerait exactement ce report.
 
-**Sinon, elle se reconstruit** — tout est dans `conception/essais/` : `2026-09-04-demande-recherche.md`,
-`2026-09-04-corpus-liste.txt` (`POURQUOI.md`, `CLAUDE.md`, `project/RULES.md`), et
-`2026-09-04-reponse-corpus.md` si A repose la `QUESTION`. Enveloppe : `--kind recherche`
-`--reviewer-access consult` `--max-revisions 0` `--timeout 600`, **A = outil 2, B = outil 1** avec
-**`--model-b sonnet` obligatoire** (`fable` n'a pas de crédits sur ce compte). Commande complète dans
-`session_log.md`.
+**Autorisation de dépense à demander au PO.** Ordre de grandeur, d'après le rejeu : ~200 s par appel
+de A, ~370 s pour B — une révision ajoute un aller-retour, donc ~570 s de plus.
 
-**Autorisation de dépense donnée le 2026-09-05, non consommée** — le quota a refusé avant tout coût.
-Coût attendu : ~390 s de temps fournisseur sur trois appels.
+**Ensuite** : les permutations `1→1` et `2→2` en réel · `GUIDE.md`.
 
-**Ensuite**, dans l'ordre : les permutations `1→1` et `2→2` · une boucle de révision réelle ·
-`GUIDE.md`.
+### Comment relancer une mission de recherche
+
+Tout est dans `conception/essais/` : `2026-09-04-demande-recherche.md`, `2026-09-04-corpus-liste.txt`
+(`POURQUOI.md`, `CLAUDE.md`, `project/RULES.md`), et `2026-09-04-reponse-corpus.md` si A repose la
+`QUESTION`. Enveloppe : `--kind recherche --reviewer-access consult --timeout 600`, **A = outil 2,
+B = outil 1** avec **`--model-b sonnet` obligatoire** (`fable` n'a pas de crédits sur ce compte).
+Commande `new` complète dans `session_log.md`, entrée du 2026-09-05.
 
 ---
 
@@ -104,8 +104,9 @@ celui du tube.*
 
 - **Étapes 0 et 1 closes.** Spécification : `conception/CONCEPTION_FINALE.md`.
 - **Étape 2 : lots 1 à 10 du plan correctif faits.** C-01 à C-10, N-01, N-02, D-4 à D-8 fermés.
-  **C-11 partiellement** : deux missions réelles faites ; la revue de la recherche **n'a jamais
-  abouti** — sa cause de refus est levée, le rejeu reste à faire.
+  **C-11 : trois missions réelles, dont la recherche menée à terme le 2026-09-05** —
+  `AWAITING_APPROVAL`, 7 constats ouverts, quatre appels payés. Restent **hors de tout essai réel** :
+  la boucle de révision, les permutations `1→1` et `2→2`, `CONTEXT_ONLY`, et un crash provoqué.
 - **Relecture externe du 2026-09-05 : huit observations, huit exactes, toutes disposées**
   (`project/analyse/codex/2026-09-05-dispositions-relecture.md`). Six correctifs, deux corrections
   documentaires, **un correctif refusé** — le verrou tronqué, ci-dessus.

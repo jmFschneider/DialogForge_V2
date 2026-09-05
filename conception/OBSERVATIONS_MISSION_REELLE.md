@@ -224,6 +224,48 @@ Vérifié le 2026-09-05 sur outil 1, gratuitement (`fable` sans crédits) :
 toujours ; il ne dépend même pas de la table fermée N-01. *C'était l'inverse chez le prédécesseur, où
 la reprise après quota était bâtie sur l'erreur typée d'un seul fournisseur — `CLAUDE.md` §6.*
 
+## 7 bis. Le rejeu du 2026-09-05 — première mission de recherche menée à terme
+
+Même demande, même corpus (recapturé le jour même), même permutation : A = outil 2 `gpt-5.6-sol`,
+B = outil 1 `sonnet`, `--max-revisions 0`, `--timeout 600`.
+
+| Appel | Rôle | Outil | Durée | Sortie |
+|---|---|---|---:|---:|
+| 0001 | A | 2 | 3,3 s | **quota, `rc` 1** — rien de payé |
+| 0002 | A | 2 | 194,9 s | 15 656 o — relance de 0001 |
+| 0003 | B | 1 | **373,4 s** | 4 426 o — **revue acceptée** |
+| 0004 | A | 2 | 140,2 s | 16 994 o |
+
+**Issue : `AWAITING_APPROVAL`, phase `CLOSED`, code de sortie `0`.** Livrable de 208 lignes, coiffé de
+*« constats restés ouverts : 7 (dont 0 BLOCKING) · corpus figé le 2026-09-05 »*.
+
+**C'est la première fois qu'une mission de recherche va au bout.** L'appel de B — celui qui n'avait
+jamais abouti — a été payé une fois et a produit sa revue. La relance après quota a fonctionné en
+conditions réelles : `retries` tracé, prompt identique, l'appel refusé n'a rien coûté.
+
+### La revue de B, et ce qu'elle vaut
+
+`REVISER`, sept constats ouverts, quatre `MAJOR`. B commence par vérifier les citations *ligne à
+ligne* et les déclare exactes — puis attaque l'argumentation. Le meilleur constat retourne **le
+critère de fin de la demande contre A** : « une tension qu'on ne peut pas illustrer par un cas tiré du
+corpus n'en est pas une » — et montre que deux des quatre tensions annoncées n'y résistent pas. Un
+autre relève que la tension 4 ignore l'interdit n°1 de `CLAUDE.md`, qui retire structurellement le
+mécanisme même dont A fait sa preuve. **Le contradicteur contredit, et sur le fond.**
+
+### Ce que ce rejeu ne prouve pas — la voie B n'a pas été exercée
+
+**B a rendu cette fois un bloc clôturé nu, sans phrase devant.** Vérifié : l'ancien
+`_strip_sole_fence` l'aurait accepté tel quel. Le correctif du matin **n'a donc joué aucun rôle** dans
+ce succès.
+
+Ce qui reste vrai : le cas de la mission du 2026-09-04 est réel, et la revue alors jetée passe
+aujourd'hui (§6). Ce qui n'est pas établi : sa **fréquence**. Une occurrence sur deux appels de B, et
+le second n'a pas reproduit le préambule. La voie B se justifie par le coût du cas observé, pas par sa
+régularité — et ce rejeu ne change rien à cet équilibre.
+
+*Sorties conservées : `conception/essais/2026-09-05-recherche-tensions-livrable.md`,
+`…-critique-B-recherche.json`, et la réponse brute de B `…-critique-B-recherche-brute.txt`.*
+
 ## 8. Coût et friction
 
 **Neuf appels payants au total** (4 + 5), **765 secondes** de temps fournisseur cumulé. Deux perdus au

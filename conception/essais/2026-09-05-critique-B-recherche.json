@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "decision": "REVISER",
+  "analysis": "Les trois citations et les nombres repris du corpus (POURQUOI.md, CLAUDE.md, RULES.md) sont exacts et correctement sourcés — vérification ligne à ligne effectuée, aucune erreur de citation trouvée. La critique porte sur la solidité de l'argumentation, pas sur l'exactitude des citations.\n\nDeux des « quatre tensions réellement présentes » ne résistent pas au propre critère de fin fixé par la demande (« une tension qu'on ne peut pas illustrer par un cas tiré du corpus n'en est pas une »). La tension 3 s'appuie sur un cas (Codex, passe 1 puis V1.1) qui est le motif ayant *fait naître* la règle du périmètre — il prouve l'échec de son absence, pas un échec produit par son application correcte conjointe avec la consigne d'omission. La tension 4 ignore l'interdit n°1 de `CLAUDE.md` (« Pas d'exécution autonome »), qui retire structurellement le mécanisme précis (missions autonomes réparant leur propre moteur) ayant causé l'échec de DialogForge cité comme preuve.\n\nLa tension 1 omet la règle d'arbitrage que le corpus fournit déjà (« vérifier qu'il compense un défaut encore réel »), qui résout au moins l'épisode cité plutôt que de le laisser ouvert. La réponse à « laquelle cède en premier » repose sur une confusion non justifiée par le texte entre deux variables distinctes : la faible rentabilité de la relecture est motivée par la précision/maturité de la conception, pas par le volume du projet — rien dans le corpus ne dit que ces deux axes varient ensemble. L'argument d'unicité qui soutient cette même conclusion ignore un second cas structurellement identique (la décision CRLF, suspendue puis rouverte sur condition), ce qui suggère un mécanisme général plutôt qu'une singularité de la relecture.\n\nDeux points mineurs : un chiffre (« 259 tests verts ») est importé d'une entrée RULES.md distincte de celle du cas cité, sans le signaler ; et la règle « code effectif contre code effectif » qui désamorce une partie du risque de croissance à ~1500 lignes n'est pas mobilisée alors qu'elle est directement pertinente à la conclusion finale.\n\nCes défauts touchent le cœur de la réponse aux deux premiers points du critère de fin (identification des tensions, détermination de laquelle cède en premier) : ils appellent une révision de l'argumentation, pas une information humaine indispensable.",
+  "findings": [
+    {
+      "id": "B-tension3-motif-001",
+      "severity": "MAJOR",
+      "disposition": "OPEN",
+      "statement": "Le cas cité pour la tension 3 est le motif d'origine de la règle du périmètre, pas la preuve d'un échec produit par son application correcte conjointe avec la consigne d'omission."
+    },
+    {
+      "id": "B-tension4-interdit-001",
+      "severity": "MAJOR",
+      "disposition": "OPEN",
+      "statement": "L'analyse de la tension 4 omet l'interdit n°1 (« Pas d'exécution autonome »), qui retire précisément le mécanisme ayant causé l'échec de DialogForge cité comme preuve."
+    },
+    {
+      "id": "B-cede-conflation-001",
+      "severity": "MAJOR",
+      "disposition": "OPEN",
+      "statement": "La conclusion sur « laquelle cède en premier » assimile sans base textuelle la faible rentabilité de la relecture (motif : précision de conception) à une sensibilité au volume du projet."
+    },
+    {
+      "id": "B-tension1-arbitrage-001",
+      "severity": "MAJOR",
+      "disposition": "OPEN",
+      "statement": "L'analyse de la tension 1 omet la règle d'arbitrage du corpus (« vérifier qu'il compense un défaut encore réel ») qui résout, au moins pour l'épisode cité, le conflit présenté comme ouvert."
+    },
+    {
+      "id": "B-cede-unicite-001",
+      "severity": "MINOR",
+      "disposition": "OPEN",
+      "statement": "La relecture n'est pas la seule règle documentée comme suspendue puis rouverte sur condition : la décision CRLF suit le même schéma."
+    },
+    {
+      "id": "B-tension2-source-001",
+      "severity": "MINOR",
+      "disposition": "OPEN",
+      "statement": "Le chiffre « 259 tests verts » du cas concret de la tension 2 provient d'une entrée RULES.md distincte de celle citée pour l'épisode, sans que ce croisement soit signalé."
+    },
+    {
+      "id": "B-tension1-codeeffectif-001",
+      "severity": "NOTE",
+      "disposition": "OPEN",
+      "statement": "La règle du corpus distinguant code brut et code effectif, pertinente pour désamorcer une partie du risque de croissance à ~1500 lignes, n'est pas mobilisée dans la conclusion."
+    }
+  ]
+}
