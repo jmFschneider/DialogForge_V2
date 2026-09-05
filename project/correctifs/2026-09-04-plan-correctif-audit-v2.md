@@ -461,7 +461,7 @@ conditionne un éventuel durcissement ultérieur.
 | 8 — classification des erreurs | C-10 | non | ~18 | **fait** |
 | 9 — revue canonique | C-09, D-8 | non | ~16 | **fait** |
 | 10 — frontière d'effets | C-06, D-6 | décision, pas correctif | ~4 + doc | **fait** |
-| 11 — validations réelles et guide | C-11 | — | doc | **bloqué : autorisation PO** |
+| 11 — validations réelles et guide | C-11 | — | doc | **partiel** — deux missions réelles faites le 2026-09-04, `GUIDE.md` non écrit |
 
 **Lots 1 à 10 fermés le 2026-09-04.** Suite : **255 tests verts** + 2 ignorés (liens symboliques,
 privilège absent sur cette machine), `ruff` et `mypy --strict` verts. Production : **2 659 lignes
@@ -482,9 +482,15 @@ brutes / 1 793 en code effectif**.
 | 8 | classification d'incident | `Popen` en échec sort en code 1 avec un état `RUNNING` |
 | 9 | revue canonique | le registre est **illisible par `json.loads`**, `severity` absente |
 
-**Le lot 11 reste entier et bloqué sur une décision** : il exige des appels payants. `GUIDE.md` n'est
-volontairement pas écrit d'avance — prescrire une commande qu'on n'a jamais lancée est exactement ce
-que `RULES.md` interdit.
+**Le lot 11 est engagé, pas clos.** Autorisation donnée le 2026-09-04 ; deux missions réelles menées
+(journal : `conception/OBSERVATIONS_MISSION_REELLE.md`). Faits : items 1 à 4. **Restent** : les
+permutations `1→1` et `2→2`, une boucle de révision réelle, `CONTEXT_ONLY` jamais essayé, la revue de
+recherche à relancer, et `GUIDE.md` — volontairement non écrit d'avance, prescrire une commande qu'on
+n'a jamais lancée étant exactement ce que `RULES.md` interdit.
+
+**Ces missions ont trouvé deux défauts de gabarit qu'aucun test ne pouvait voir** — sans eux, aucune
+mission n'allait au bout. Puis la relecture externe du 2026-09-05 en a trouvé six autres
+(`project/analyse/codex/2026-09-05-dispositions-relecture.md`).
 
 **Conditions avant la première mission réelle** (reprises de Codex, retenues) : lots 1 à 4 fermés ·
 lot 5 fermé pour toute mission de **recherche** · collaboration jetable et isolée tant que C-06 est

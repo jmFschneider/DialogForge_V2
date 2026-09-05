@@ -1,214 +1,130 @@
 # NOTES.md — Reprise immédiate IAbinome
 
 > Tableau de bord court pour démarrer une session.
-> État courant uniquement. Historique → `session_log.md`. Règles → `RULES.md`.
-> Dernière mise à jour : 2026-09-04
+> État courant uniquement. **Historique → `session_log.md`. Règles → `RULES.md`.**
+> Dernière mise à jour : 2026-09-05
 
 ---
 
 ## Prochaine action — une seule
 
-**Trancher §6 de `conception/OBSERVATIONS_MISSION_REELLE.md` : le bloc JSON clôturé précédé d'une
-phrase.** Toujours ouvert. Trois voies exclusives y sont écrites ; ma recommandation est **B —
-accepter un bloc clôturé même entouré de prose**, parce que la ligne actuelle (« un bloc, mais
-seulement s'il n'a rien autour ») n'est pas un principe mais une position sur une pente : le contrat
-tolère déjà la clôture, et extraire ce qui est explicitement balisé ne demande aucune interprétation.
-Condition d'implémentation à ne pas rater : garder l'ancrage **première clôture → dernière clôture**,
-sinon un bloc de code imbriqué dans `analysis` casse le découpage.
+**Trancher : le bloc JSON clôturé précédé d'une phrase** (§6 de
+`conception/OBSERVATIONS_MISSION_REELLE.md`, trois voies exclusives écrites).
 
-**Fait signalant :** la relecture externe du 2026-09-05 **n'a pas remonté ce point** alors que son
-axe 6 l'y menait. Une lecture neuve ne trouve donc rien de choquant à la ligne actuelle — c'est une
-information, pas une validation.
+En mission réelle, B a rendu une revue substantiellement excellente précédée d'une phrase expliquant
+son choix de format. `_strip_sole_fence` n'extrait un bloc que s'il couvre **toute** la réponse : refus
+conforme à §6 (« jamais de défaut permissif »), et 231 s de revue perdues.
 
-Ensuite : relancer la revue de la mission de recherche (`ERROR`, relançable ; collaboration déjà
-déplacée dans le dossier temporaire de session), puis `GUIDE.md`.
+**Recommandation : voie B — accepter un bloc clôturé même entouré de prose.** Motif : la ligne actuelle
+n'est pas un principe mais une position sur une pente — le contrat tolère déjà la clôture, et extraire
+ce qui est explicitement balisé ne demande aucune interprétation. **Condition d'implémentation à ne pas
+rater :** garder l'ancrage *première clôture → dernière clôture*, sinon un bloc de code imbriqué dans
+`analysis` casse le découpage. `json.loads` reste l'arbitre.
 
----
+**Fait à mettre en face :** la relecture externe du 2026-09-05 **n'a pas remonté ce point**, alors que
+son axe 6 l'y menait. Une lecture neuve ne trouve rien de choquant à la ligne actuelle.
 
-## Relecture externe du 2026-09-05 — faite, huit observations disposées
-
-`project/analyse/codex/` : la consigne, la relecture, les dispositions. **Huit observations, huit
-exactes.** Six correctifs de code, deux corrections documentaires, **un correctif refusé**.
-
-**Le refus, à connaître avant d'y revenir :** un `verrou.json` tronqué par un arrêt entre sa création
-exclusive et l'écriture de son contenu bloque définitivement la collaboration. **Ne pas « réparer »
-cela par une récupération automatique** — elle effacerait le verrou d'un détenteur vivant surpris dans
-la même fenêtre, échangeant un blocage visible contre deux détenteurs simultanés. Le message nomme le
-fichier à supprimer ; c'est la réponse retenue.
-
-**Seconde passe prévue, ciblée** : les écarts retenus sont-ils détectés par un test, et quelles
-garanties annoncées restent sans couverture — pas une revue générale des tests.
-
----
-
----
-
-## Lot 11 — ce qui est fait, ce qui reste
-
-**Fait le 2026-09-04, deux missions payantes, neuf appels, 765 s** — journal complet dans
-`conception/OBSERVATIONS_MISSION_REELLE.md`, sorties réelles dans `conception/essais/`.
-
-- **Conception** (A = outil 1, B = outil 2) : allée au bout, `AWAITING_APPROVAL`, code `0`.
-- **Recherche** (A = outil 2, B = outil 1) : `ERROR` en `REVIEW_B`, cause de forme — voir ci-dessus.
-- **Déplacement en cours d'usage vérifié**, et **aucun chemin absolu persisté**.
-- **Deux défauts de prompt trouvés et corrigés** (`ea8a009`, `8b96d77`) : sans eux, **aucune mission ne
-  pouvait aller au bout**. Détail en §5 du journal.
-- **La prémisse de D-2 est fausse pour outil 1** : quota rendu sur `stdout` avec code `0`. Décision
-  conservée, motif corrigé.
-
-**Reste :** la revue de recherche à relancer · les permutations `1→1` et `2→2` · une boucle de révision
-réelle (`--max-revisions 0` cette fois) · `CONTEXT_ONLY` jamais essayé · `GUIDE.md`.
+**Ensuite**, dans l'ordre : relancer la revue de la mission de recherche (`ERROR`, relançable) · les
+permutations `1→1` et `2→2` · une boucle de révision réelle · `GUIDE.md`.
 
 ---
 
 ## Contraintes acquises — à ne pas redécouvrir
 
-**`models.py`** — porte les neuf enums fermés ; 301 lignes pour 130 visées, ne pas y ajouter sans
-motif. `Decision`, `Severity`, `Disposition` y restent (vocabulaire fermé unique).
+**`corpus.py`** — les chemins logiques sont **canonisés en forme POSIX** au manifeste. Sans cela,
+`docs\note.md` ou `./note.md` étaient persistés tels quels puis comparés à leur forme posix par le
+balayage : fichier déclaré **surnuméraire au premier `run`**, collaboration créée sans erreur et morte
+avant son premier appel. C'est aussi ce que la portabilité exige.
 
-**`storage.py` / `lock.py`** — sur Windows, **ne jamais utiliser `os.kill(pid, 0)`** : l'implémentation
-y appelle `TerminateProcess`, y compris pour le signal `0`. Vivacité par `ctypes`/`OpenProcess` — mais
-un PID terminé y reste **vivant tant qu'un handle est ouvert** (`RULES.md`). Depuis le lot 1
-(`373479d`) : acquisition par `O_CREAT | O_EXCL`, récupération d'un verrou mort **sous jeton exclusif**
-`verrou.json.recuperation` (un candidat sans jeton ne touche jamais au verrou), libération vérifiée sur
-le `lock_id`. Le verrou ne passe plus par `storage.write_atomic_text` — il crée, il ne remplace pas.
-
-**`contracts.py`** — la normalisation CRLF→LF et l'acceptation du bloc JSON clôturé sont des
-**tolérances**, pas des correctifs à un défaut observé : les deux CLI rendent du `\n` et du JSON nu.
-Le brut reste intact sur le disque ; seule la copie est normalisée. `Normalized.transformations` et
-`had_bom` existent mais **ne sont consignés nulle part** (D-8b) — le diagnostic se refait en comparant
-`reponse_brute.txt` à la forme canonique. `Review.to_dict()` est cette forme canonique : c'est elle
-qui va dans `echanges/`, jamais le texte de B, qu'un bloc clôturé rendait illisible par `json.loads`.
+**`lock.py`** — sur Windows, **ne jamais `os.kill(pid, 0)`** : l'implémentation y appelle
+`TerminateProcess`, signal `0` compris. Vivacité par `ctypes`/`OpenProcess`, mais un PID terminé y
+reste **vivant tant qu'un handle est ouvert**. Acquisition par `O_CREAT | O_EXCL` ; récupération d'un
+verrou mort **sous jeton exclusif** `verrou.json.recuperation` ; libération vérifiée sur le `lock_id`.
+**Un `verrou.json` tronqué bloque définitivement, et c'est délibéré** — le récupérer effacerait celui
+d'un détenteur vivant surpris dans la même fenêtre. **Ne pas « réparer » cela.**
 
 **`transport.py`** — `taskkill /F /T` sous Windows, `os.kill(-pid, 9)` sous POSIX (`SIGKILL` n'est pas
-nommé : absent de Windows, il ferait échouer `mypy`). La **branche POSIX est écrite et non testée**
-(§0.1). Le prompt passe par `stdin_text`, écrit dans un fil. Depuis le lot 7 : nettoyage borné par
-**deux échéances communes** (`CLEANUP_LIMIT_SECONDS` = 12 s), issue `STREAMS_UNCLOSED` si un flux reste
-ouvert, et **les descripteurs ne sont pas fermés sous un lecteur vivant**. Conséquence assumée : sous
-Windows, un descendant survivant garde `stdout.txt` ouvert et le dossier ne peut pas être effacé avant
-sa fin — un test doit alors utiliser `TemporaryDirectory(ignore_cleanup_errors=True)`.
+nommé : absent de Windows, il ferait échouer `mypy`). **Branche POSIX écrite, non testée.** Prompt par
+`stdin_text`. Nettoyage borné par deux échéances communes (`CLEANUP_LIMIT_SECONDS` = 12 s) ;
+`STREAMS_UNCLOSED` si un flux reste ouvert, `STREAM_FAILED` si une pompe a échoué — **dans les deux
+cas, aucun `resultat.json`**. Les descripteurs **ne sont pas fermés sous un lecteur vivant** :
+conséquence assumée, un descendant survivant garde `stdout.txt` ouvert et le dossier n'est pas
+effaçable ; un test doit alors utiliser `TemporaryDirectory(ignore_cleanup_errors=True)`.
 
-**`workflow.py`** — `_Engine` porte le contexte du cycle plutôt que douze signatures. **Aucun compteur
-de garde sur la boucle** : `max_revisions` la borne, un compteur serait un quota interne. Les issues
-non-`COMPLETED` du transport, **et un `return_code` non nul (D-2)**, mènent à `INTERRUPTED`, jamais à
-un rejeu ; `ERROR` est réservé à l'échec de contrat. Transition et `current_call = null` sont une
-**seule** écriture atomique. Depuis le lot 2 : ordre imposé **sous verrou** — relecture, puis
-`intervene`, puis `gate`, puis dispatch. La **porte d'état** n'accepte que `READY` sans appel courant
-et `RUNNING` avec appel courant ; `ERROR` n'en sort que par la **table fermée** `_RELAUNCHABLE`
-(`CONTRACT_ERROR`, `DECODE_FAILED` — ce dernier naîtra au lot 8). `command()` est résolu **avant** la
-publication de `CALLING`. L'intervention (`Answer` / `RetryCall`) est un paramètre du moteur, plus une
-mutation de `cli.py`.
+**`workflow.py`** — `_Engine` porte le contexte. **Aucun compteur de garde** sur la boucle. Ordre
+imposé sous verrou : `recheck` → **`check_corpus`** → `intervene` → `gate` → dispatch. Le corpus passe
+**avant l'intervention** pour que le code de sortie 1 (« refus avant mutation ») dise la vérité.
+`read_result` est appelé **avant toute branche** de reprise, `RESPONSE_STORED` comprise, pour son
+`IntegrityError` seul. `command()` est résolu **avant le premier octet écrit**. La porte n'accepte que
+`READY` sans appel courant et `RUNNING` avec ; `ERROR` n'en sort que par `_RELAUNCHABLE`.
 
-**Rejouabilité de `--answer`** — ordre archive **par copie** → `demande.md` → `etat.json`. Deux pièces
-que rien n'annonce dans le code : `_check_demande` **tolère** que `demande.md` porte déjà l'empreinte
-de la réponse (sans quoi la reprise est refusée avant d'avoir pu réparer), et `_archive` **ne recopie
-pas** si la dernière archive porte déjà ce texte (sans quoi le rejeu empile `.002`). Le rejeu après la
-**troisième** écriture est un refus explicite : l'intervention est déjà appliquée, `resume` seul
-enchaîne.
+**`contracts.py`** — CRLF→LF et bloc clôturé sont des **tolérances**, pas des correctifs à un défaut
+observé. `transformations` et `had_bom` existent mais **ne sont consignés nulle part** (D-8b).
+`Review.to_dict()` est la forme canonique écrite dans `echanges/` — jamais le texte de B.
+**Sévérité omise ⇒ `UNKNOWN` *et* `OPEN`** : la tolérance ne doit pas servir à fermer un constat.
 
-**`prompts.py`** — le schéma du JSON de revue est dans le prompt de B — sans lui, aucune revue ne
-pouvait être conforme.
+**`prompts.py`** — **chaque** prompt de A nomme `IABINOME:DOCUMENT` et `IABINOME:QUESTION` en toutes
+lettres ; le schéma de revue est dans celui de B. La frontière d'effets y porte sur l'**écriture** :
+lire le corpus est explicitement ouvert. Chacun de ces trois points a coûté une mission réelle.
 
-**`adapters/base.py` est publié.** §13 rendait le protocole réversible « jusqu'à sa publication » : ce
-point est franchi, le modifier coûte désormais une migration. Porte `probe_version()` — utilitaire
-partagé par `claude.py` et `codex.py`, best-effort : un exécutable trouvé par `shutil.which()` reste
-`present` même si son bandeau `--version` échoue.
+**`adapters/`** — `base.py` est **publié** (§13) : le modifier coûte une migration. `command()` résout
+par `shutil.which()` **à chaque appel**. `AdapterError` est le type nommé attrapé à la frontière.
+**Le défaut de B côté outil 1 (`fable`) n'a pas de crédits sur ce compte** — surcharger `--model-b`.
+**Les deux vraies CLI sont sur le PATH** : tout test doit substituer `cli.ADAPTERS`, sans quoi il
+appelle un vrai fournisseur.
 
-**`adapters/claude.py` / `adapters/codex.py`** — `command()` résout l'exécutable par `shutil.which()`
-**à chaque appel**, jamais mis en cache (§8 : aucune attestation persistée). `CONSULT` est le défaut
-(D-1) ; `CONTEXT_ONLY` fonctionne mécaniquement pour les deux (`--tools ""` / `-c
-features.shell_tool=false`) mais reste partiel côté Codex — réserve non essayée, voir §12.3. Modèle
-Codex par défaut identique pour A et B (`gpt-5.6-sol`) : `CLAUDE.md` §6 ne fixe un rôle que pour
-Claude. **Les deux vraies CLI sont installées sur la machine de développement** — tout test doit
-substituer `cli.ADAPTERS`, sans quoi il appelle un vrai fournisseur (`RULES.md`).
+**`cli.py`** — ne lit ni n'écrit **aucun état** : `cmd_resume` valide ses arguments et transmet.
+Codes de sortie : `0` AWAITING_APPROVAL · `1` refus avant mutation · `2` argparse · `3` INTERRUPTED ·
+`4` ERROR · `5` WAITING_HUMAN.
 
-**`cli.py`** — `new` construit tout dans un dossier temporaire frère (`.new-<nom>-<uuid>`) et publie
-par `Path.rename()` ; il refuse une destination existante **avant** de créer ce dossier temporaire.
-`run`/`resume` partagent `_drive()`, seul point d'appel à `workflow.run`. Aucune commande `worker`,
-`serve`, `implement`, `apply`, `watch`, `repair`. Depuis le lot 2, **`cli.py` ne lit ni n'écrit plus
-aucun état** : `cmd_resume` valide ses arguments et transmet. `_RESUME_PHASE` est passé dans
-`workflow.py` — `resume --answer` sur une `QUESTION` née en `FINAL_A` y reste traité comme
-`REVISION_A`, par symétrie avec `BLOQUE` (§2 ne tranchait que `PROPOSAL_A`/`REVISION_A`/`BLOQUE`) —
-**non testé explicitement, à surveiller à la première mission réelle**. `resume --answer` ne touche
-jamais au compteur `revision`. `collaboration_id` = nom du dossier `COLLAB` passé en argument — aucun
-flag séparé n'est décrit en §7.
+**Tests** — `fakes.FakeAdapter.calls` compte des **résolutions**, borne supérieure des appels partis ;
+`fakes.launched_calls()` lit le disque pour la mesure exacte. Deux points d'observation distincts :
+`observed_status` y voit `READY` (résolution avant mutation), `status_marker` fait relire `etat.json`
+**par le processus lancé**, qui y voit `RUNNING`. Ne pas les fusionner.
 
-**Tests** — `tests/fakes.py` porte **deux** points d'observation, et ils prouvent deux choses
-différentes : `FakeAdapter.observed_status` y voit `READY` (donc `command()` est résolu avant toute
-mutation), et `status_marker` fait relire `etat.json` **par le processus lancé**, qui y voit `RUNNING`
-(donc `CALLING` précède `Popen`). Ne pas fusionner les deux.
+**Un fait de plateforme** — `Path.glob` est **insensible à la casse sous Windows** : ne jamais s'en
+servir pour sélectionner par un champ.
 
----
-
-## Budget — **tranché le 2026-09-04 : rien n'est retiré. Question close.**
-
-**Décision du PO, mot pour mot : « rien tout simplement. Le nombre de lignes est encore tout à fait
-raisonnable. »** La condition rouverte le matin est donc **refermée**, et cette fois sans condition de
-réouverture : le chiffre final est mesuré, plus projeté, et il est accepté tel quel. Ne pas rouvrir ce
-débat sans un fait nouveau — une croissance venant d'ailleurs que des garanties déjà annoncées.
-
-Pour mémoire, la projection validée le matin (~2 275 brutes) était fausse : le total est **2 659**, et
-les estimations lot par lot étaient basses d'un facteur 2 à 5 (+205 estimées, **+589 mesurées**).
-
-| Module | Visé (§11) | Brut | Code effectif |
-|---|---:|---:|---:|
-| `workflow.py` | 175 | **674** | 485 |
-| `models.py` | 130 | 323 | 235 |
-| `transport.py` | 160 | 313 | 225 |
-| `cli.py` | 155 | 260 | 203 |
-| `contracts.py` | 150 | 232 | 152 |
-| `lock.py` | — | 181 | 120 |
-| `corpus.py` | — | 152 | 116 |
-| paquet `adapters/` | 230 | 178 | 99 |
-| **Total production (12/12)** | **~1 430** | **2 659** | **1 793** |
-
-*Mesuré le 2026-09-04, lots 1 à 10 fermés. « Code effectif » = hors blanches, commentaires et
-docstrings (`ast` + `tokenize`). Ratio 67 %.*
-
-**Motif retenu :** contre les ~1 500 de `POURQUOI.md`, la mesure comparable est **1 793, soit +20 %** —
-et non +77 % comme le brut le laisse croire. Les deux tiers de l'écart brut sont de la documentation :
-ce code porte le motif de chaque garantie, par choix, et c'est ce qui a permis de dérouler dix lots
-sans relire le plan en entier. Aucun des cinq interdits n'a été touché.
-
-**Jamais sacrifiés pour tenir un chiffre** (§11) : état strict · absence de rejeu automatique · délai
-dur et terminaison d'arbre · `fsync` et publication atomique · artefact avant transition · les quatre
-permutations · registre de constats · porte `QUESTION` · terminal non ambigu.
+**D-2 a un motif faux** — outil 1 rend son message de quota **sur `stdout` avec le code `0`**. Le test
+du code de retour ne l'attrape pas ; la décision reste bonne, sa justification était fausse.
 
 ---
 
 ## État courant
 
 - **Étapes 0 et 1 closes.** Spécification : `conception/CONCEPTION_FINALE.md`.
-- **Étape 2 : les quatre paliers écrits, plus les dix lots correctifs de l'audit Codex.** **Lots 1 à
-  10 faits** — C-01 à C-10, N-01, N-02, D-4 à D-8 fermés. **C-11 seul reste ouvert** : il exige des
-  appels payants. Suite : **255 tests verts** + 2 ignorés (liens symboliques, privilège absent sur
-  cette machine), `ruff` et `mypy --strict` verts.
-- **Chaque correctif a été prouvé capable de voir son défaut** par neutralisation, un par un — tableau
-  complet dans le plan, §4. C'est la garantie que la suite n'est pas verte pour la mauvaise raison.
-- **Codes de sortie (D-5, tranché le 2026-09-04, appliqué au lot 3)** : `0` AWAITING_APPROVAL · `1`
-  refus avant mutation · `2` réservé à argparse · `3` INTERRUPTED · `4` ERROR · `5` WAITING_HUMAN.
-  Décision du PO **contre l'avis de Codex**, qui recommandait `0` pour WAITING_HUMAN.
-- **C-06 (frontière d'effets) est un risque accepté, pas un défaut à corriger** : les agents ne sont
-  pas mécaniquement confinés. Tant qu'il est ouvert, toute mission réelle se fait dans une
-  collaboration jetable, hors de tout dossier de valeur.
-- **La relecture Codex palier par palier reste suspendue** — décision du PO, 2026-09-03.
-- Récolte : `conception/INVENTAIRE.md` v3, 156 leçons. Cinq tours de structure conservés séparément.
+- **Étape 2 : lots 1 à 10 du plan correctif faits.** C-01 à C-10, N-01, N-02, D-4 à D-8 fermés.
+  **C-11 partiellement** : deux missions réelles faites, la recherche reste en `ERROR` relançable.
+- **Relecture externe du 2026-09-05 : huit observations, huit exactes, toutes disposées**
+  (`project/analyse/codex/2026-09-05-dispositions-relecture.md`). Six correctifs, deux corrections
+  documentaires, **un correctif refusé** — le verrou tronqué, ci-dessus.
+- **Suite : 275 tests verts** + 2 ignorés (liens symboliques, privilège absent), `ruff` et
+  `mypy --strict` verts. **2 746 lignes brutes / 1 816 en code effectif.**
+- **Taille : tranchée, question close.** « Rien tout simplement » — décision du PO, 2026-09-04. Ne pas
+  rouvrir sans un fait nouveau.
+- **C-06 reste un risque accepté, pas un défaut à corriger.** Toute mission réelle se fait dans une
+  collaboration **jetable, hors de tout dossier de valeur**.
 - Le dépôt n'a **pas de remote** — décision reportée.
 
 ## Décisions actées
 
-- **Recherche au périmètre, sans accès externe en V0.1.** Condition de réouverture : §12.1.
-- **A et B sont chacun l'un ou l'autre outil** — les quatre permutations sont **mesurées** (réelles
-  CLI) et **testées** (via `FakeAdapter`, `TestPermutations`).
-- **Sept accrétions retirées** de la V2 par audit contre les objectifs fondateurs.
-- **Huit remarques techniques de Codex, toutes retenues** (`DISPOSITION_TECHNIQUE_CODEX.md`).
-- **D-1, D-2, D-3 tranchées le 2026-09-04** dans `CONCEPTION_FINALE.md` (§1, §5, §12.3).
-- Paramètres fixés : UTF-8 sans BOM · 8 MiB par flux · **Windows testé, POSIX écrit non testé**.
+- **Recherche au périmètre, sans accès externe en V0.1.** Réouverture : §12.1.
+- **A et B sont chacun l'un ou l'autre outil** — quatre permutations testées via `FakeAdapter`, **deux
+  seulement mesurées en réel**.
+- **La relecture croisée est rouverte** depuis le 2026-09-05, sa condition s'étant réalisée.
+- Paramètres fixés : UTF-8 sans BOM pour les artefacts du programme · corpus copié **octet pour
+  octet** · 8 MiB par flux · **Windows testé, POSIX écrit non testé**.
 
 ## Rappels actifs
 
-- La mission DialogForge `e35cfcf1-47e5-4354-a4b1-d40235b8e3cf` est **en pause**, pas annulée. Elle
-  redémarrerait seule si on la reprenait. Ne pas la relancer sans décision.
+- **Les collaborations d'essai sont dans le dossier temporaire de session**, sous
+  `…\Temp\claude\C--Projets-IAbinome\<uuid-de-session>\scratchpad\essai\`. **Elles ne survivront pas à
+  la session.** Entrées et sorties utiles sont conservées dans `conception/essais/` : une mission s'y
+  **reconstruit**, elle ne s'y reprend pas.
 - Les quatre dossiers `C:\Projets\DialogForge*` sont en **lecture seule**. Point d'entrée du gel :
   `C:\Projets\DialogForge\ARRET_REFACTORING.md`.
+- La mission DialogForge `e35cfcf1-47e5-4354-a4b1-d40235b8e3cf` est **en pause**, pas annulée. Elle
+  redémarrerait seule si on la reprenait.
 - Reporté, tracé : la colonne **Code** de l'inventaire plus longue que **Prompt** — après la phase 2.
+- **Seconde passe de relecture prévue, ciblée** : les écarts retenus sont-ils détectés par un test, et
+  quelles garanties annoncées restent sans couverture. Pas une revue générale des tests.

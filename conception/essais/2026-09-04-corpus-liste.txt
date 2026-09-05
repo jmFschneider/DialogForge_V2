@@ -1,0 +1,3 @@
+POURQUOI.md
+CLAUDE.md
+project/RULES.md

@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-09-03
+> Dernière mise à jour : 2026-09-05
 
 ## Index
 

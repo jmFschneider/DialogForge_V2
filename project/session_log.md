@@ -977,3 +977,25 @@ externe parce que la suite de tests est verte était une erreur de raisonnement 
 pas le même espace.
 
 **État à la reprise :** **275 tests verts** + 2 ignorés, `ruff` et `mypy --strict` verts.
+
+### Clôture de session — 2026-09-05
+
+**Fichiers de suivi remis à plat.** `NOTES.md` avait doublé (214 lignes) en accumulant de l'historique
+lot par lot — ce que `CLAUDE.md` interdit explicitement. Réécrit comme tableau de bord : prochaine
+action, contraintes acquises, état, rappels. L'historique vit ici, les règles dans `RULES.md`.
+
+**Entrées des missions réelles conservées** dans `conception/essais/` — les deux demandes, la réponse
+à la question de A, la liste de corpus. Les collaborations elles-mêmes sont dans le dossier temporaire
+de session et **ne survivront pas** : une mission s'y reconstruit, elle ne s'y reprend pas.
+
+**Ce que la prochaine session trouve, dans l'ordre :** une décision à rendre (§6, le bloc clôturé
+précédé d'une phrase, avec ma recommandation et sa condition d'implémentation), puis la suite du
+lot 11. Rien d'autre n'est en attente, rien n'est cassé.
+
+**Deux choses à ne pas défaire par mégarde**, écrites dans `NOTES.md` :
+- un `verrou.json` tronqué **doit** bloquer — le récupérer effacerait le verrou d'un détenteur vivant ;
+- `FakeAdapter.calls` compte des **résolutions**, pas des lancements : la mesure exacte est
+  `launched_calls()`.
+
+**État final :** 2 746 lignes brutes / 1 816 en code effectif · **275 tests verts** + 2 ignorés ·
+`ruff` et `mypy --strict` verts · arbre propre.
