@@ -84,8 +84,16 @@ def command(
 class FakeAdapter:
     """Adaptateur de test : il rend les réponses scriptées, dans l'ordre.
 
-    `calls` compte les invocations réelles — un compteur inchangé après une
-    reprise est la preuve qu'aucun appel n'a été repayé (§5)."""
+    `calls` compte les **résolutions de commande**. Elles précèdent
+    immédiatement le lancement, donc un compteur inchangé après une reprise
+    reste la preuve qu'aucun appel n'a été repayé (§5) — mais l'inverse n'est
+    pas vrai : un arrêt injecté entre la résolution et `Popen` incrémente le
+    compteur sans qu'aucun appel parte. Pour compter les lancements réels,
+    `launched_calls()` lit le disque.
+
+    Une résolution consomme aussi une réponse scriptée, même si l'appel
+    n'aboutit pas. C'est un artefact du faux agent, pas du moteur : un vrai
+    adaptateur ne fait que résoudre un chemin dans `command()`."""
 
     def __init__(
         self,
@@ -203,6 +211,21 @@ def collaboration(
         "last_incident": None, "updated_at": "2026-09-03T00:00:00Z",
     })
     return collab
+
+
+def launched_calls(collab: Path) -> int:
+    """Nombre d'appels **réellement lancés**, lu sur le disque.
+
+    `FakeAdapter.calls` compte les *résolutions de commande*, qui précèdent
+    immédiatement le lancement : c'en est une borne supérieure, pas la mesure.
+    Depuis que `command()` est résolu avant le premier octet écrit, un arrêt
+    injecté entre les deux incrémente le compteur sans qu'aucun appel soit
+    parti. `stdout.txt` n'existe, lui, que si le transport a lancé le processus.
+    """
+    appels = collab / "appels"
+    if not appels.is_dir():
+        return 0
+    return sum(1 for d in appels.iterdir() if (d / "stdout.txt").exists())
 
 
 def call_result(call_dir: Path, *, return_code: int = 0) -> None:

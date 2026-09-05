@@ -11,7 +11,7 @@ from __future__ import annotations
 import shutil
 
 from ..models import ReviewerAccess, Role
-from .base import CallSpec, Capabilities, ObservedCli, probe_version
+from .base import AdapterError, CallSpec, Capabilities, ObservedCli, probe_version
 
 _EXECUTABLE = "claude"
 _DEFAULT_MODEL = {Role.A: "opus", Role.B: "fable"}
@@ -46,5 +46,5 @@ class ClaudeAdapter:
 def _resolve() -> str:
     exe = shutil.which(_EXECUTABLE)
     if exe is None:
-        raise RuntimeError(f"{_EXECUTABLE} : introuvable sur le PATH")
+        raise AdapterError(f"{_EXECUTABLE} : introuvable sur le PATH")
     return exe

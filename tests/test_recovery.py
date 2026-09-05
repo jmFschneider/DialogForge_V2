@@ -152,6 +152,15 @@ class TestIntegrity(RecoveryCase):
         self.assert_mismatch()
         self.assertFalse((self.collab / "echanges").exists(), "un artefact a ete ecrit")
 
+    def test_a_stored_response_does_not_escape_the_stream_check(self) -> None:
+        """Observation 2 de la relecture du 2026-09-05 : §5 annonce la
+        confrontation des flux **avant toute branche**, `RESPONSE_STORED`
+        comprise. Cette branche rendait avant d'y arriver, et le cycle avançait
+        sur un dossier de preuve devenu incohérent."""
+        call_dir = self.crash_mid_call(response=_DOC, result=True)
+        (call_dir / "stdout.txt").write_bytes(b"tronque")
+        self.assert_mismatch()
+
     def test_an_altered_prompt_is_checked_before_any_branch(self) -> None:
         """Vérifié **avant** la branche `RESPONSE_STORED`, qui autrement
         reprenait sur une réponse que plus rien ne rattachait à son prompt."""

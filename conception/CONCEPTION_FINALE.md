@@ -36,7 +36,9 @@ demande.md → A produit    → echanges/0001-proposition-A.md
 de la dernière phase close. **Interruption = fermer le terminal.**
 
 **A et B sont chacun Claude ou Codex**, choisis au lancement. Quatre permutations. Aucun fournisseur
-nommé hors de son adaptateur. Le cycle ne dépend que des capacités **présentes chez les deux** :
+nommé **dans le noyau ni dans un identifiant persisté** — hors de son adaptateur, donc, à la seule
+exception du point de câblage de la CLI, qui enregistre les adaptateurs disponibles et doit forcément
+les nommer. Le cycle ne dépend que des capacités **présentes chez les deux** :
 ce qui est propre à l'un est un bonus, jamais un prérequis.
 
 Python 3.12, **bibliothèque standard seule**, zéro dépendance de production. **~1 430 lignes.**
@@ -45,7 +47,7 @@ Python 3.12, **bibliothèque standard seule**, zéro dépendance de production. 
 
 | | Valeur | Motif |
 |---|---|---|
-| **Encodage** | Tout est écrit en **UTF-8 sans BOM, fins de ligne `\n`**, y compris sous Windows. À la lecture, un BOM UTF-8 est toléré et retiré. | Un dossier de collaboration doit se déplacer entre machines. Le BOM toléré reprend le comportement du normaliseur de DialogForge. **Aucune trace n'en est consignée** : la promettre serait fausse, et la différence entre preuve brute et forme canonique refait le diagnostic (D-8b). |
+| **Encodage** | Tout **artefact produit par le programme** est écrit en **UTF-8 sans BOM, fins de ligne `\n`**, y compris sous Windows. À la lecture, un BOM UTF-8 est toléré et retiré. **Le corpus fait exception : il est copié octet pour octet**, sans réencodage — l'empreinte du manifeste porte sur ces octets-là, et les réécrire l'invaliderait. | Un dossier de collaboration doit se déplacer entre machines. Le BOM toléré reprend le comportement du normaliseur de DialogForge. **Aucune trace n'en est consignée** : la promettre serait fausse, et la différence entre preuve brute et forme canonique refait le diagnostic (D-8b). |
 | **Plafond de sortie** | **8 MiB par flux**, constante nommée, **sans option de configuration**. Dépassement → terminaison de l'arbre, incident `OUTPUT_LIMIT`, flux conservés comme partiels. | Le plus gros livrable observé pèse 3 850 lignes ≈ 250 Kio. 8 MiB attrape une boucle folle sans jamais gêner un document. Une option serait un réglage de plus à justifier. |
 | **Systèmes** | **Windows : supporté et testé.** POSIX : les branches existent et sont écrites, **non testées en V0.1**. | Honnête plutôt que rassurant. Le poste de développement est Windows 11, et le prédécesseur était orienté Windows. Promettre une matrice qu'on ne peut pas exécuter serait une intention documentaire, pas une preuve — `R15`. |
 
@@ -279,8 +281,9 @@ une collaboration existante.
 
 ## 5. Protocole d'appel durable
 
-1. **Prévol, sans aucune mutation** — demande, schémas, état, empreintes, corpus, adaptateurs,
-   versions observées, modèles, profil de revue.
+1. **Prévol, sans aucune mutation** — demande, schémas, état, empreintes, adaptateurs, versions
+   observées, modèles, profil de revue. *Le corpus, lui, se vérifie sous verrou (étape 3 bis) : une
+   seule vérification, et placée là où le refus précède encore toute mutation.*
 2. Acquisition du verrou.
 3. **Relecture de l'état et des empreintes critiques sous verrou.** Toute différence depuis le prévol
    → refus. *Ferme la fenêtre de concurrence sans passer les sondages coûteux sous verrou.*
@@ -427,8 +430,10 @@ l'enveloppe supprimerait la traceback et laisserait au lancement suivant un faux
 | extraction impossible alors que les flux sont complets | `DECODE_FAILED`, flux préservés | `ERROR` |
 | l'exécutable a disparu depuis le prévol | — la résolution précède `CALLING` | — |
 
-`DECODE_FAILED` appartient à la table fermée des incidents relançables : la reprise ne retente que
-l'extraction, aucun appel supplémentaire n'étant nécessaire.
+`DECODE_FAILED` appartient à la table fermée des incidents relançables. **La relance construit un
+nouvel appel**, comme toute autre relance humaine — alors qu'aucun appel supplémentaire ne serait
+*nécessaire*, les flux étant complets. Ré-extraire localement économiserait cet appel : **différé, à
+écrire le jour où un `DECODE_FAILED` est observé en usage réel**, et pas avant.
 
 ### Porte d'état
 
@@ -544,7 +549,8 @@ publie par renommage. Il refuse une destination existante.
 `run` est l'unique moteur synchrone. `resume` **ne contient pas un second moteur** : il **transmet**
 l'intervention au moteur, qui l'applique **sous le verrou**, remet l'état dans une phase admissible,
 puis enchaîne le cycle. `resume` ne garde que la validation de ses arguments — **aucune commande ne
-mute la collaboration hors du verrou**.
+mute la collaboration hors du verrou** — à la seule exception, assumée et décrite en §5, des pompes
+d'un descendant survivant, qui peuvent écrire dans le dossier d'appel après la libération.
 *Motif : muter `demande.md` et `etat.json` avant de prendre le verrou laissait un `resume` concurrent
 modifier la collaboration d'un cycle en cours, puis annoncer un échec.*
 
@@ -631,8 +637,10 @@ Distingue faits, inférences, recommandations et incertitudes. Nomme tes limites
 preuve. Chaque recommandation dit jusqu'à quand elle est réversible et quel acte
 la referme.
 
-Tu ne modifies aucun fichier et n'exécutes rien. Proposer des modifications DANS le
-document est au contraire ce qu'on attend de toi.
+Tu ne produis aucun effet hors de ta réponse : tu ne modifies ni ne crées aucun
+fichier. **Lire** ceux du dossier courant t'est en revanche ouvert, et le corpus est
+là pour ça. Proposer des modifications DANS le document est ce qu'on attend de toi,
+pas les appliquer.
 
 Le corpus local est un instantané du <date>, sous corpus/fichiers/.
 
@@ -770,9 +778,14 @@ Web n'est pas immuable. Ce jour-là, relire d'abord « le critère de fin est d�
 
 *C'est la décision la plus réversible-si-fausse du document, et la plus facile à rouvrir.*
 
-### 12.2 — Ce qui doit être mesuré avant de figer la spécification
+### 12.2 — Ce qui devait être mesuré avant de figer la spécification — **fait**
 
-**Aucune CLI n'a jamais été lancée.** Tout ce document déduit du code lu.
+> **Cette section décrit l'état du 2026-09-03, avant toute mesure.** Les quatre points ont depuis été
+> mesurés : caractérisation du 2026-09-03 (`CARACTERISATION_CLI.md`), puis missions réelles du
+> 2026-09-04 (`OBSERVATIONS_MISSION_REELLE.md`), puis re-caractérisation des versions installées
+> `2.1.260` / `0.153.2`. Conservée pour trace du raisonnement, **elle ne décrit plus l'état courant**.
+
+**Aucune CLI n'avait alors été lancée.** Tout ce document déduisait du code lu.
 
 1. Invocation éphémère canonique et remplacement de modèle, pour chaque CLI.
 2. **Réalité ou absence du mode sans outils** — c'est ce qui décide B-2.

@@ -94,7 +94,23 @@ def _read_entry(raw: Any) -> ManifestEntry:
     # Mêmes refus qu'à la copie : un manifeste fabriqué ne doit pas pouvoir
     # faire lire un fichier hors du dossier de corpus.
     _check_logical_path(logical_path)
-    return ManifestEntry(logical_path=logical_path, size=size, sha256=digest)
+    return ManifestEntry(logical_path=_posix(logical_path), size=size, sha256=digest)
+
+
+def _posix(logical_path: str) -> str:
+    """Forme canonique d'un chemin logique : séparateurs `/`, sans `./`.
+
+    Le manifeste est comparé à un balayage du disque qui, lui, rend toujours du
+    `/`. Sans cette normalisation, une entrée écrite `docs\\note.md` ou
+    `./note.md` — acceptée à la copie — faisait déclarer le fichier
+    **surnuméraire** au premier appel, et la collaboration était inutilisable
+    dès sa création. Mesuré le 2026-09-05.
+
+    C'est aussi ce que la portabilité exige : un dossier de collaboration doit
+    se déplacer entre machines, et un chemin à contre-oblique n'y survivrait
+    pas.
+    """
+    return Path(logical_path).as_posix()
 
 
 def build(
@@ -139,7 +155,7 @@ def _copy_one(root: Path, logical_path: str, fichiers_dir: Path) -> ManifestEntr
     if hashlib.sha256(resolved.read_bytes()).hexdigest() != digest:
         dest_path.unlink(missing_ok=True)
         raise CorpusError(f"{logical_path}: empreinte changeante pendant la copie")
-    return ManifestEntry(logical_path=logical_path, size=len(data), sha256=digest)
+    return ManifestEntry(logical_path=_posix(logical_path), size=len(data), sha256=digest)
 
 
 def _check_logical_path(logical_path: str) -> None:

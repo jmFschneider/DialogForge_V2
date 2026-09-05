@@ -921,3 +921,59 @@ n'est pas la boucle A/B qui était fragile, ce sont les mots qu'on lui donnait.
 
 **Une décision attend le PO** : le bloc JSON clôturé précédé d'une phrase (§6 du journal). Coût contre
 principe, pas sûreté.
+
+---
+
+## 2026-09-05 — Relecture externe du fonctionnement : huit observations, huit exactes
+
+**Scope :** réouverture ciblée de la relecture croisée, suspendue le 2026-09-03. La condition écrite
+était remplie — deux défauts de gabarit trouvés en mission réelle qu'aucune relecture n'avait vus.
+
+**La consigne a elle-même été relue avant envoi** : cinq corrections, toutes retenues. La plus utile
+impose de **signaler une contradiction entre deux sources** plutôt que de choisir en silence celle qui
+permet de construire un manquement. Tests écartés de cette première passe, traités séparément ensuite.
+
+### Résultat
+
+**Huit observations, huit exactes** — vérifiées dans le code avant toute disposition, l'observation 4
+reproduite avant correction. Six correctifs de code, deux corrections documentaires, **un correctif
+implicite refusé**. Dispositions complètes dans `project/analyse/codex/2026-09-05-dispositions-relecture.md`.
+
+| # | Défaut | Disposition |
+|---|---|---|
+| 1 | une pompe en échec ne l'était pas : le préfixe passait pour le flux complet | corrigé — `STREAM_FAILED`, pas de `resultat.json` |
+| 2 | `RESPONSE_STORED` contournait la confrontation des flux | corrigé |
+| 3 | sévérité omise + `RESOLVED` fermait un constat que §6 dit garder ouvert | corrigé |
+| 4 | `docs\note.md` ou `./note.md` → fichier déclaré surnuméraire au premier `run` | corrigé — chemins canonisés |
+| 5 | verrou tronqué par un arrêt : blocage définitif | **correctif refusé**, message et promesse corrigés |
+| 6 | code 1 « avant mutation » rendu après avoir muté la demande | corrigé — corpus vérifié avant l'intervention |
+| 7 | `RuntimeError` nu et dossier d'appel orphelin | corrigé — `AdapterError`, résolution avant le premier octet |
+| 8 | reprise locale de `DECODE_FAILED` promise, jamais écrite | promesse corrigée, optimisation différée |
+
+### Le seul refus, et son motif
+
+**Observation 5.** Récupérer automatiquement un verrou illisible reviendrait à effacer celui d'un
+détenteur **vivant** surpris dans sa fenêtre création→écriture. C'est **exactement la même fenêtre** :
+le crash qu'on répare et la course qu'on introduit ont la même probabilité, pour une conséquence pire —
+deux détenteurs simultanés au lieu d'un blocage visible. `POURQUOI.md` règle 2 : ce qu'on retirerait en
+échange, c'est la garantie d'exclusion elle-même. Message rendu actionnable, promesse corrigée.
+
+### Un effet de bord traité plutôt que contourné
+
+Déplacer `command()` avant le premier octet écrit a changé la sémantique de `FakeAdapter.calls` : il
+compte désormais des **résolutions**, qui bornent par le haut les appels réellement partis. C'est
+l'assertion sur laquelle repose toute la preuve « aucun appel payé ». `fakes.launched_calls()` lit le
+disque pour la mesure exacte, et les tests concernés s'y appuient.
+
+### À retenir
+
+**Le rendement a démenti mon pronostic.** J'attendais « moyen » et j'avais tort. La différence avec
+l'audit du 2026-09-04 tient à la question posée : « où promet-il ce qu'il ne tient pas » force à citer
+une phrase et à construire un cas ; « audite ce déploiement » invitait à énumérer des risques.
+
+**Trois défauts sur six vivaient dans une fenêtre** — lecture rompue, arrêt entre deux écritures,
+séparateur de chemin — et **aucun n'était atteignable par un cycle nominal**. Suspendre la relecture
+externe parce que la suite de tests est verte était une erreur de raisonnement : les deux ne couvrent
+pas le même espace.
+
+**État à la reprise :** **275 tests verts** + 2 ignorés, `ruff` et `mypy --strict` verts.

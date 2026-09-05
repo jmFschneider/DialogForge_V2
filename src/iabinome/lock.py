@@ -36,6 +36,10 @@ _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 # plateforme testée est Windows (RULES.md).
 _BINARY = getattr(os, "O_BINARY", 0)
 
+_A_LA_MAIN = (
+    "supprimer {nom} à la main si aucune commande ne tourne sur cette collaboration"
+)
+
 
 class LockError(RuntimeError):
     """Verrou illisible, ou suppression refusée car détenu par un autre."""
@@ -57,7 +61,16 @@ class LockHolder:
 def acquire(path: Path, command: str) -> Iterator[None]:
     """Acquiert le verrou, récupérant un verrou mort au besoin. Le libère à la
     sortie normale — jamais garanti après un arrêt brutal, ce que la
-    récupération de verrou mort existe pour couvrir au prochain lancement."""
+    récupération de verrou mort couvre au prochain lancement.
+
+    **Une exception, et une seule** : un arrêt survenu entre la création
+    exclusive du fichier et l'écriture de son contenu laisse un verrou illisible,
+    qu'aucune récupération automatique ne reprend. Le refuser est délibéré —
+    récupérer un verrou illisible reviendrait à effacer celui d'un détenteur
+    vivant surpris dans cette même fenêtre, échangeant un blocage visible contre
+    deux détenteurs simultanés. Le message d'erreur nomme le fichier à
+    supprimer.
+    """
     holder = _acquire(path, command)
     try:
         yield
@@ -148,9 +161,14 @@ def _read(path: Path) -> LockHolder:
     try:
         raw = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise LockError(f"verrou illisible : {exc}") from exc
+        # Cas connu et non récupérable automatiquement : un arrêt entre la
+        # création exclusive et l'écriture du porteur. Le message doit donc
+        # dire quoi faire, faute de quoi la collaboration paraît perdue.
+        raise LockError(
+            f"{path.name} illisible ({exc}) — {_A_LA_MAIN.format(nom=path.name)}"
+        ) from exc
     if not isinstance(raw, dict) or set(raw) != _LOCK_KEYS:
-        raise LockError("verrou.json : schéma inattendu")
+        raise LockError(f"{path.name} : schéma inattendu — {_A_LA_MAIN.format(nom=path.name)}")
     pid = raw["pid"]
     if not isinstance(pid, int) or isinstance(pid, bool):
         raise LockError("verrou.json : pid entier attendu")

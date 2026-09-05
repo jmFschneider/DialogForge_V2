@@ -141,6 +141,10 @@ def run(
         engine, state = _preflight(collab, adapters, timeout_seconds, intervention)
         with lock.acquire(collab / "verrou.json", command_label):      # étape 2
             engine.recheck(state)                                      # étape 3
+            # Avant l'intervention, donc **avant toute mutation** : un corpus qui
+            # a bougé invalide la collaboration entière (§3), et le refus doit
+            # tomber pendant que le code de sortie 1 dit encore la vérité.
+            engine.check_corpus()
             state, retry = engine.intervene(state, intervention)
             engine.gate(state)
             if state.current_call is not None:
@@ -351,26 +355,24 @@ class _Engine:
         role = _ROLE_OF_PHASE.get(state.phase)
         if role is None:
             raise WorkflowError(f"phase {state.phase.value} : aucun appel n'y est prévu")
-        # Sous verrou, immédiatement avant la construction de l'appel : c'est le
-        # seul endroit où « vérifié avant chaque appel » est littéralement vrai.
-        self.check_corpus()
         agent = self.config.agent_a if role is Role.A else self.config.agent_b
         sequence, call_id = self.next_sequence(), uuid.uuid4().hex
         rel_dir = f"appels/{sequence:04d}-{role.value}-{call_id}"
-        (self.collab / rel_dir).mkdir(parents=True)
         prompt = self.build_prompt(state)
-        storage.write_atomic_text(self.collab / rel_dir / "prompt.txt", prompt)
         digest = contracts.normalize(prompt).sha256
         spec = CallSpec(
             prompt=prompt, model=agent.model, timeout_seconds=self.timeout_seconds,
             work_root=self.collab,
             reviewer_access=self.config.reviewer_access if role is Role.B else None,
         )
-        # `command()` est résolu AVANT `intention.json`, donc avant la
-        # publication de CALLING : un exécutable disparu entre le prévol et
-        # l'appel devient un refus sans mutation, au lieu d'un faux
-        # « possiblement payé » sur un appel jamais parti.
+        # `command()` est résolu avant **le premier octet écrit** : un exécutable
+        # disparu entre le prévol et l'appel est alors un refus qui ne laisse
+        # rien derrière lui, et non un faux « possiblement payé » sur un appel
+        # jamais parti. Résoudre après le `mkdir` laissait un dossier d'appel et
+        # un `prompt.txt` orphelins.
         argv = self.adapters[agent.adapter_id].command(spec)
+        (self.collab / rel_dir).mkdir(parents=True)
+        storage.write_atomic_text(self.collab / rel_dir / "prompt.txt", prompt)
         _write_json(self.collab / rel_dir / "intention.json", {
             "schema_version": SCHEMA_VERSION, "call_id": call_id, "sequence": sequence,
             "role": role.value, "phase": state.phase.value,
@@ -470,6 +472,11 @@ class _Engine:
         self.check_digest(
             call_dir / "prompt.txt", call.prompt_sha256, "l'empreinte de l'appel"
         )
+        # Avant **toute** branche, `RESPONSE_STORED` comprise : la valeur de
+        # retour ne sert pas ici, seule compte l'`IntegrityError` qu'un flux
+        # contredisant `resultat.json` déclenche. Sans cet appel, cette branche
+        # contournait la garantie d'intégrité que §5 annonce comme commune.
+        transport.read_result(call_dir)
         if call.status is CallStatus.RESPONSE_STORED:
             raw = self.check_digest(
                 call_dir / "reponse_brute.txt", call.response_sha256, "la reponse enregistree"

@@ -60,6 +60,15 @@ class AgentAdapter(Protocol):
     def extract(self, stdout: bytes, stderr: bytes) -> str: ...
 
 
+class AdapterError(RuntimeError):
+    """L'adaptateur ne peut pas construire son appel — exécutable introuvable.
+
+    Type **nommé**, et non un `RuntimeError` nu : la frontière attrape des types
+    un par un, et un `RuntimeError` générique y passait au travers, rendant une
+    traceback là où la conception promet un refus lisible.
+    """
+
+
 def probe_version(executable: str) -> str:
     """`<executable> --version`, au mieux : un exécutable trouvé par
     `shutil.which()` reste `present`, même si son bandeau de version échoue."""

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from . import contracts, corpus, lock, storage, transport, workflow
-from .adapters.base import AgentAdapter
+from .adapters.base import AdapterError, AgentAdapter
 from .adapters.claude import ClaudeAdapter
 from .adapters.codex import CodexAdapter
 from .models import (
@@ -188,6 +188,7 @@ def _status(collab: Path, *, json_output: bool) -> int:
 # quoi un défaut du programme se déguiserait en refus ordinaire (C-10).
 _BORDER_ERRORS = (
     SchemaError,
+    AdapterError,
     workflow.WorkflowError,
     lock.LockError,
     transport.TransportError,

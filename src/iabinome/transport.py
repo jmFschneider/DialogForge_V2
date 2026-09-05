@@ -55,6 +55,7 @@ class Outcome(Enum):
     TIMEOUT = "TIMEOUT"
     INTERRUPTED_BY_USER = "INTERRUPTED_BY_USER"
     STREAMS_UNCLOSED = "STREAMS_UNCLOSED"
+    STREAM_FAILED = "STREAM_FAILED"
 
 
 @dataclass(frozen=True)
@@ -149,6 +150,12 @@ def run(
     if unclosed:
         # On ne sait pas si les flux sont complets, donc on ne l'écrit pas.
         outcome = Outcome.STREAMS_UNCLOSED
+    if any(pump.failed for pump in pumps):
+        # Une pompe qui a rendu la main sur une erreur ne distingue pas la fin
+        # du flux d'une lecture interrompue : ce qu'elle a écrit peut être un
+        # préfixe. Publier `resultat.json` en présenterait l'empreinte comme
+        # celle d'un flux complet — exactement ce que sa présence promet.
+        outcome = Outcome.STREAM_FAILED
     result = CallResult(
         outcome=outcome,
         return_code=proc.returncode,
@@ -318,22 +325,35 @@ class _Pump(threading.Thread):
         self._source, self._path, self._limit = source, path, limit
         self.written = 0
         self.overflowed = False
+        self.failed = False
         self.digest = hashlib.sha256()
 
     def run(self) -> None:
-        with open(self._path, "wb") as out:
-            while not self.overflowed:
-                try:
-                    chunk = os.read(self._source.fileno(), _CHUNK)
-                except (OSError, ValueError):
-                    break
-                if not chunk:
-                    break
-                room = self._limit - self.written
-                if len(chunk) > room:
-                    chunk, self.overflowed = chunk[:room], True
-                out.write(chunk)
-                out.flush()
-                self.digest.update(chunk)
-                self.written += len(chunk)
-            os.fsync(out.fileno())
+        """Une erreur est **signalée**, jamais confondue avec une fin de flux.
+
+        `os.read` rend `b""` à la fin du flux et lève sur une lecture rompue :
+        sortir de la boucle dans les deux cas rendait les deux issues
+        indistinguables, et le préfixe déjà copié passait pour la réponse
+        entière. Une écriture ou un `fsync` en échec comptent pareil — le
+        fichier ne vaut alors pas ce que son empreinte affirme.
+        """
+        try:
+            with open(self._path, "wb") as out:
+                while not self.overflowed:
+                    try:
+                        chunk = os.read(self._source.fileno(), _CHUNK)
+                    except (OSError, ValueError):
+                        self.failed = True
+                        break
+                    if not chunk:
+                        break
+                    room = self._limit - self.written
+                    if len(chunk) > room:
+                        chunk, self.overflowed = chunk[:room], True
+                    out.write(chunk)
+                    out.flush()
+                    self.digest.update(chunk)
+                    self.written += len(chunk)
+                os.fsync(out.fileno())
+        except OSError:
+            self.failed = True

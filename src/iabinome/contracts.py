@@ -158,16 +158,26 @@ def has_open_blocking(review: Review) -> bool:
 
 
 def _parse_finding(raw: Any) -> Finding:
+    """Sévérité omise → `UNKNOWN`, **et le constat reste ouvert** (§6).
+
+    La tolérance sur `severity` ne doit pas devenir un moyen de **fermer** un
+    constat : sans ce maintien, B pouvait omettre la sévérité et rendre
+    `RESOLVED` dans le même constat, le retirer du registre et emmener le cycle
+    en finalisation. L'omission n'ouvre jamais rien de plus qu'elle-même.
+
+    Le maintien ne va que dans le sens sûr — il laisse ouvert, il ne ferme
+    jamais — et c'est pourquoi il n'est pas un jugement du programme sur les
+    sévérités, que §6 interdit par ailleurs.
+    """
     _require_keys(raw, _FINDING_REQUIRED, _FINDING_OPTIONAL, "constat")
-    severity = (
-        _decode_enum(Severity, raw["severity"], "severity")
-        if "severity" in raw
-        else Severity.UNKNOWN
-    )
+    given = _decode_enum(Disposition, raw["disposition"], "disposition")
+    omitted = "severity" not in raw
     return Finding(
         id=_require_str(raw["id"], "id"),
-        severity=severity,
-        disposition=_decode_enum(Disposition, raw["disposition"], "disposition"),
+        severity=Severity.UNKNOWN if omitted else _decode_enum(
+            Severity, raw["severity"], "severity"
+        ),
+        disposition=Disposition.OPEN if omitted else given,
         statement=_require_str(raw["statement"], "statement"),
     )
 

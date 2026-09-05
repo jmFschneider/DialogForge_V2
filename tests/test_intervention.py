@@ -216,7 +216,11 @@ class TestAnswerIsReplayable(InterventionCase):
     """
 
     def question(self) -> None:
-        self.a.responses = [_QUESTION, _QUESTION]
+        # Trois réponses pour deux appels attendus : l'arrêt injecté après la
+        # troisième écriture tombe entre la résolution de la commande et le
+        # lancement, et une résolution consomme une réponse scriptée
+        # (`fakes.FakeAdapter`). Les réponses en trop ne servent jamais.
+        self.a.responses = [_QUESTION, _QUESTION, _QUESTION]
         self.assertIs(self.drive(), Status.WAITING_HUMAN)
 
     def stop_after(self, n: int) -> Path:
@@ -265,13 +269,16 @@ class TestAnswerIsReplayable(InterventionCase):
         answer = self.stop_after(3)
         etat = self.etat()
         self.assertEqual(etat["status"], "READY")
-        self.assertEqual(self.a.calls, 1, "un appel est parti malgre l'arret")
+        # Mesure sur le disque, pas sur le compteur de résolutions : l'arrêt
+        # tombe désormais après la résolution de la commande et avant le
+        # lancement, donc `calls` compterait un appel jamais parti.
+        self.assertEqual(fakes.launched_calls(self.collab), 1, "un appel est parti malgre l'arret")
         self.assertIn("n'attend pas", self.refused(
             command_label="resume", intervention=workflow.Answer(answer)
         ))
         self.assertIs(self.drive(command_label="resume"), Status.WAITING_HUMAN)
         self.assertEqual(self.archives(), ["demande.md.001"])
-        self.assertEqual(self.a.calls, 2)
+        self.assertEqual(fakes.launched_calls(self.collab), 2)
 
 
 class TestRetryUnderLock(InterventionCase):
@@ -281,7 +288,10 @@ class TestRetryUnderLock(InterventionCase):
         state = workflow.run(self.collab, adapters=self.adapters, timeout_seconds=0.05)
         self.assertIs(state.status, Status.INTERRUPTED)
         self.a.sleep_seconds = 0.0
-        self.a.responses = [_QUESTION]
+        # Deux réponses pour un seul appel attendu : une résolution de commande
+        # en consomme une même quand l'arrêt injecté empêche le lancement.
+        # Artefact du faux agent, pas du moteur (`fakes.FakeAdapter`).
+        self.a.responses = [_QUESTION, _QUESTION]
         call_id = self.etat()["current_call"]["call_id"]
         assert isinstance(call_id, str)
         return call_id
