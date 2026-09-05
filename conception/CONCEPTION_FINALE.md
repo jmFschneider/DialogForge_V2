@@ -490,8 +490,11 @@ n'ajoute.***
 - Sévérité omise → `UNKNOWN` **après** décodage, et le constat **reste ouvert**.
 - Clé inconnue, décision inconnue, identifiant dupliqué, ou **disparition d'un constat antérieur** →
   échec du contrat, réponse brute préservée.
-- Un unique bloc JSON clôturé couvrant toute la réponse est accepté ; préfixe, suffixe ou second objet
-  sont refusés.
+- Un bloc JSON clôturé est accepté **même entouré de prose**, par ancrage *première clôture →
+  dernière clôture* — voie B, PO, 2026-09-05. *Sans balise, en revanche, le programme ne cherche
+  jamais où le JSON commence : préfixe, suffixe ou second objet en texte nu restent refusés, comme
+  une clôture jamais fermée et toute étiquette de langage autre que `json`. Motif en §6
+  d'`OBSERVATIONS_MISSION_REELLE.md`.*
 - **La décision globale n'est jamais calculée à partir des sévérités.** Une combinaison surprenante
   reste visible pour l'humain ; le programme ne la réécrit pas en consensus apparent.
 - `ACCEPTER` avec un constat ouvert `BLOCKING` : **la décision de B est conservée telle quelle**, la
@@ -703,7 +706,7 @@ incertitudes, les non-décisions et les constats encore ouverts.
 | Famille | Cas essentiels |
 |---|---|
 | Contrats A | `DOCUMENT` · `QUESTION` · **balise absente ou inconnue → erreur de contrat**, brut préservé |
-| Contrats B | JSON nu ou bloc unique clôturé · version, clé, enum invalides · sévérité manquante → `UNKNOWN` ouvert · constat antérieur omis ou dupliqué refusé · fermeture motivée · **décision jamais déduite** · `ACCEPTER` + `BLOCKING` ouvert refusé |
+| Contrats B | JSON nu ou bloc clôturé, **prose autour tolérée, clôture inachevée refusée** · version, clé, enum invalides · sévérité manquante → `UNKNOWN` ouvert · constat antérieur omis ou dupliqué refusé · fermeture motivée · **décision jamais déduite** · `ACCEPTER` + `BLOCKING` ouvert refusé |
 | État | Schéma strict · chaque phase · empreinte de demande · terminal `AWAITING_APPROVAL` |
 | Stockage | Temporaires uniques · publication atomique · échec simulé avant et après `os.replace` · **aucun chemin absolu persisté** · **déplacement complet puis reprise** |
 | Verrou | identifiant/PID/date/commande · **acquisition par création exclusive** · détenteur vivant refusé · verrou mort récupéré **sous jeton**, jamais par effacement direct · libération vérifiée sur le `lock_id`, jamais sur le seul PID · **jamais la suppression du verrou d'un autre** (corrigé le 2026-09-04, C-02) |

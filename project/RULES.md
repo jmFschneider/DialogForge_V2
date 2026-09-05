@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-09-05
+> Dernière mise à jour : 2026-09-05 (bloc clôturé, voie B)
 
 ## Index
 
@@ -69,6 +69,9 @@
 
 **Alléger les prompts, ne pas les durcir.**
 *Motif : sur les modèles récents, des consignes trop prescriptives dégradent la qualité de sortie. Mesuré sur des tâches à douze critères d'acceptation imbriqués.*
+
+**Un agent qui commente son choix de format n'est pas un agent qui désobéit.** Un contrat de forme accepte ce qui est **explicitement balisé**, et ne devine jamais ce qui ne l'est pas.
+*Motif mesuré le 2026-09-04 : B a fait précéder une revue juste de 3,6 Ko d'une phrase expliquant qu'il répondait en JSON brut « comme demandé ». Le bloc clôturé ne couvrait plus toute la réponse : refus, 231 s d'appel payant perdues. Il avait déjà lu « retourne seulement le JSON » et croyait l'appliquer. La ligne refusée n'était pas un principe mais une position sur une pente ; « jamais de défaut permissif » se tient au bon endroit — sans balise, un préfixe ou un suffixe restent un refus.*
 
 **Ne jamais prescrire une commande qu'on n'a pas lancée, ni affirmer une impossibilité sans avoir cherché tous les chemins.**
 
@@ -173,6 +176,9 @@
 ## Conduite de projet
 
 **Une décision actée peut être rouverte, mais jamais en silence :** signaler, tracer, faire re-décider.
+
+**Une voie écrite dans un document de décision n'est pas encore une implémentation : la relire contre le code avant de la soumettre à l'arbitrage.**
+*Motif mesuré le 2026-09-05 : la voie B du bloc clôturé était formulée « exactement un bloc ; zéro ou deux restent un refus » — inapplicable, puisque compter les clôtures découpe au mauvais endroit dès que la revue cite du markdown dans `analysis`. L'ancrage correct, première clôture → dernière, était déjà dans le code. Soumis tel quel, l'arbitrage aurait porté sur une règle qu'on n'aurait pas pu écrire.*
 
 **Une question marquée « à trancher avant de commencer » dans un document du projet se tranche dans ce document même**, avec son motif et sa date — pas seulement dans les notes de session.
 *Motif : la question de périmètre de `RECOLTE.md` portait la mention « non tranché » depuis le 2026-09-02 ; laissée dans les notes, elle se serait reposée à chaque session.*

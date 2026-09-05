@@ -1,4 +1,4 @@
-"""Discriminateur A, schéma de revue B, bloc JSON unique, normalisation.
+"""Discriminateur A, schéma de revue B, bloc JSON clôturé, normalisation.
 
 Un seul analyseur pour les quatre appels de A — finalisation comprise.
 Jamais de défaut permissif : balise inconnue, décision inconnue, identifiant
@@ -127,8 +127,9 @@ class Review:
 
 
 def parse_review(text: str, prior_open_finding_ids: Collection[str] = ()) -> Review:
-    """Un unique bloc JSON clôturé couvrant toute la réponse. Chaque constat
-    antérieurement ouvert doit être repris exactement une fois."""
+    """JSON nu, ou un bloc JSON clôturé — la prose qui l'entoure est ignorée.
+    Chaque constat antérieurement ouvert doit être repris exactement une
+    fois."""
     raw = _parse_sole_json_object(text)
     _require_keys(raw, _REVIEW_KEYS, set(), "revue")
     if raw["schema_version"] != SCHEMA_VERSION:
@@ -193,14 +194,31 @@ def _check_ids(findings: list[Finding], prior_open_finding_ids: Collection[str])
         raise ContractError(f"constat(s) antérieur(s) disparu(s) : {sorted(missing)}")
 
 
-def _strip_sole_fence(text: str) -> str:
-    """Retire un unique bloc clôturé s'il couvre **toute** la réponse. Un
-    préfixe, un suffixe ou une étiquette de langage autre que `json` laissent
-    le texte intact — donc refusé plus bas, comme le veut §6."""
+def _strip_fence(text: str) -> str:
+    """Retire un bloc clôturé, **même entouré de prose** — voie B tranchée par
+    le PO le 2026-09-05, §6 d'`OBSERVATIONS_MISSION_REELLE.md`.
+
+    Motif : en mission réelle, B a fait précéder une revue juste de 3,6 Ko
+    d'une phrase expliquant son choix de format. La réponse a été refusée,
+    231 s d'appel payant perdues. Un agent qui commente son format n'est ni
+    rare ni désobéissant.
+
+    L'ancrage est **première clôture → dernière clôture**, jamais un comptage :
+    B a le droit de citer du markdown dans `analysis`, et compter les clôtures
+    y découperait au mauvais endroit.
+
+    Ce qui laisse le texte **intact** — donc refusé plus bas, comme le veut
+    §6 : aucune clôture, une clôture jamais fermée, une étiquette de langage
+    autre que `json`. Ce n'est pas un défaut permissif : on n'extrait que ce
+    qui est explicitement balisé, sans jamais deviner où le JSON commence, et
+    `json.loads` reste l'arbitre — deux blocs distincts rendent un texte
+    invalide, donc un refus.
+    """
     stripped = text.strip()
-    if not (stripped.startswith("```") and stripped.endswith("```")):
+    opening = stripped.find("```")
+    if opening < 0 or stripped.rfind("```") == opening:
         return stripped
-    first_line, _, rest = stripped.partition("\n")
+    first_line, _, rest = stripped[opening:].partition("\n")
     if first_line[3:].strip() not in ("", "json"):
         return stripped
     return rest[: rest.rfind("```")]
@@ -208,7 +226,7 @@ def _strip_sole_fence(text: str) -> str:
 
 def _parse_sole_json_object(text: str) -> dict[str, Any]:
     try:
-        raw = json.loads(_strip_sole_fence(text))
+        raw = json.loads(_strip_fence(text))
     except json.JSONDecodeError as exc:
         raise ContractError(f"JSON invalide : {exc}") from exc
     if not isinstance(raw, dict):

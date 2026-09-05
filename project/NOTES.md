@@ -2,30 +2,27 @@
 
 > Tableau de bord court pour démarrer une session.
 > État courant uniquement. **Historique → `session_log.md`. Règles → `RULES.md`.**
-> Dernière mise à jour : 2026-09-05
+> Dernière mise à jour : 2026-09-05 (soir)
 
 ---
 
 ## Prochaine action — une seule
 
-**Trancher : le bloc JSON clôturé précédé d'une phrase** (§6 de
-`conception/OBSERVATIONS_MISSION_REELLE.md`, trois voies exclusives écrites).
+**Rejouer la mission de recherche, jusqu'à la revue de B incluse.** C'est le seul appel qui n'a jamais
+abouti, et la voie B vient de retirer sa cause de refus.
 
-En mission réelle, B a rendu une revue substantiellement excellente précédée d'une phrase expliquant
-son choix de format. `_strip_sole_fence` n'extrait un bloc que s'il couvre **toute** la réponse : refus
-conforme à §6 (« jamais de défaut permissif »), et 231 s de revue perdues.
+La collaboration d'origine était dans le dossier temporaire d'une session morte : elle **se
+reconstruit**, elle ne se reprend pas. Tout est dans `conception/essais/` — `2026-09-04-demande-
+recherche.md`, `2026-09-04-corpus-liste.txt` (`POURQUOI.md`, `CLAUDE.md`, `project/RULES.md`), et
+`2026-09-04-reponse-corpus.md` pour la `QUESTION` du premier appel. Enveloppe d'alors :
+`--max-revisions 0`, `--timeout 600`, A = outil 2 (`gpt-5.6-sol`), B = outil 1 — **`--model-b sonnet`
+obligatoire**, `fable` n'a pas de crédits sur ce compte.
 
-**Recommandation : voie B — accepter un bloc clôturé même entouré de prose.** Motif : la ligne actuelle
-n'est pas un principe mais une position sur une pente — le contrat tolère déjà la clôture, et extraire
-ce qui est explicitement balisé ne demande aucune interprétation. **Condition d'implémentation à ne pas
-rater :** garder l'ancrage *première clôture → dernière clôture*, sinon un bloc de code imbriqué dans
-`analysis` casse le découpage. `json.loads` reste l'arbitre.
+**Autorisation de dépense à demander au PO avant de lancer.** Coût d'alors pour ce parcours : ~390 s
+de temps fournisseur sur trois appels.
 
-**Fait à mettre en face :** la relecture externe du 2026-09-05 **n'a pas remonté ce point**, alors que
-son axe 6 l'y menait. Une lecture neuve ne trouve rien de choquant à la ligne actuelle.
-
-**Ensuite**, dans l'ordre : relancer la revue de la mission de recherche (`ERROR`, relançable) · les
-permutations `1→1` et `2→2` · une boucle de révision réelle · `GUIDE.md`.
+**Ensuite**, dans l'ordre : les permutations `1→1` et `2→2` · une boucle de révision réelle ·
+`GUIDE.md`.
 
 ---
 
@@ -59,7 +56,11 @@ imposé sous verrou : `recheck` → **`check_corpus`** → `intervene` → `gate
 `READY` sans appel courant et `RUNNING` avec ; `ERROR` n'en sort que par `_RELAUNCHABLE`.
 
 **`contracts.py`** — CRLF→LF et bloc clôturé sont des **tolérances**, pas des correctifs à un défaut
-observé. `transformations` et `had_bom` existent mais **ne sont consignés nulle part** (D-8b).
+observé. **`_strip_fence` ancre *première clôture → dernière clôture*, jamais un comptage** : B a le
+droit de citer du markdown dans `analysis`, et compter y découperait au mauvais endroit. La prose
+autour est ignorée (voie B, PO, 2026-09-05) ; **sans balise, rien n'est cherché** — préfixe, suffixe,
+clôture inachevée et étiquette autre que `json` restent des refus.
+`transformations` et `had_bom` existent mais **ne sont consignés nulle part** (D-8b).
 `Review.to_dict()` est la forme canonique écrite dans `echanges/` — jamais le texte de B.
 **Sévérité omise ⇒ `UNKNOWN` *et* `OPEN`** : la tolérance ne doit pas servir à fermer un constat.
 
@@ -94,12 +95,14 @@ du code de retour ne l'attrape pas ; la décision reste bonne, sa justification 
 
 - **Étapes 0 et 1 closes.** Spécification : `conception/CONCEPTION_FINALE.md`.
 - **Étape 2 : lots 1 à 10 du plan correctif faits.** C-01 à C-10, N-01, N-02, D-4 à D-8 fermés.
-  **C-11 partiellement** : deux missions réelles faites, la recherche reste en `ERROR` relançable.
+  **C-11 partiellement** : deux missions réelles faites ; la revue de la recherche **n'a jamais
+  abouti** — sa cause de refus est levée, le rejeu reste à faire.
 - **Relecture externe du 2026-09-05 : huit observations, huit exactes, toutes disposées**
   (`project/analyse/codex/2026-09-05-dispositions-relecture.md`). Six correctifs, deux corrections
   documentaires, **un correctif refusé** — le verrou tronqué, ci-dessus.
-- **Suite : 275 tests verts** + 2 ignorés (liens symboliques, privilège absent), `ruff` et
-  `mypy --strict` verts. **2 746 lignes brutes / 1 816 en code effectif.**
+- **Suite : 280 tests verts** + 2 ignorés (liens symboliques, privilège absent), `ruff` et
+  `mypy --strict` verts. **2 746 lignes brutes / 1 816 en code effectif** — à remesurer.
+  *Le « 275 » d'avant était faux : 277 avant cette session, 280 après.*
 - **Taille : tranchée, question close.** « Rien tout simplement » — décision du PO, 2026-09-04. Ne pas
   rouvrir sans un fait nouveau.
 - **C-06 reste un risque accepté, pas un défaut à corriger.** Toute mission réelle se fait dans une
@@ -108,6 +111,8 @@ du code de retour ne l'attrape pas ; la décision reste bonne, sa justification 
 
 ## Décisions actées
 
+- **Bloc clôturé entouré de prose : accepté** — voie B, PO, 2026-09-05. Motif et limites en §6
+  d'`OBSERVATIONS_MISSION_REELLE.md`. Question close.
 - **Recherche au périmètre, sans accès externe en V0.1.** Réouverture : §12.1.
 - **A et B sont chacun l'un ou l'autre outil** — quatre permutations testées via `FakeAdapter`, **deux
   seulement mesurées en réel**.

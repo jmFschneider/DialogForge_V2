@@ -999,3 +999,63 @@ lot 11. Rien d'autre n'est en attente, rien n'est cassé.
 
 **État final :** 2 746 lignes brutes / 1 816 en code effectif · **275 tests verts** + 2 ignorés ·
 `ruff` et `mypy --strict` verts · arbre propre.
+
+---
+
+## Session du 2026-09-05 (soir) — le bloc clôturé tranché
+
+**Scope déclaré :** trancher §6 d'`OBSERVATIONS_MISSION_REELLE.md`, puis implémenter.
+
+### Ce qui a été soumis au PO, et ce que la relecture préalable a changé
+
+Les trois voies étaient écrites depuis la veille. Les relire **contre le code** avant de les soumettre
+a changé la question :
+
+1. **Le code faisait déjà l'ancrage** *première clôture → dernière clôture* (`rfind`), mais seulement
+   à l'intérieur d'une réponse entièrement clôturée. La voie B n'était donc pas une réécriture : cinq
+   lignes.
+2. **La voie B, telle qu'écrite, était inapplicable.** « Exactement un bloc ; zéro ou deux refusés »
+   suppose un comptage des clôtures — or B a le droit de citer du markdown dans `analysis`, et le
+   comptage y découpe au mauvais endroit. Soumis tel quel, l'arbitrage aurait porté sur une règle
+   qu'on n'aurait pas pu écrire. → règle nouvelle dans `RULES.md`.
+3. `test_two_fenced_blocks_rejected` **survit** à la voie B, sans changer d'assertion : l'extraction
+   rend alors un texte que `json.loads` rejette. Ce n'est pas un comptage qui refuse deux blocs.
+
+### La décision — voie B, PO, 2026-09-05
+
+**Un bloc clôturé est extrait même entouré de prose.** `_strip_sole_fence` → `_strip_fence`.
+
+Ce qui tient toujours, et rend la voie tenable : **le programme ne cherche jamais où le JSON commence
+dans du texte libre.** Sans balise, un préfixe ou un suffixe restent un refus, comme une clôture
+inachevée et toute étiquette autre que `json`. « Jamais de défaut permissif » n'a pas été abandonné,
+il a été replacé au bon endroit — on lit ce qui est délimité, `json.loads` arbitre.
+
+### La vérification qui compte
+
+La réponse réellement refusée le 2026-09-04 est conservée octet pour octet
+(`conception/essais/2026-09-04-critique-B-recherche-refusee.txt`, 3 610 o). **Rejouée contre le
+nouveau `parse_review` : `REVISER`, cinq constats, tous `OPEN`** — trois `MAJOR`, deux `MINOR`. Les
+231 s d'appel payant que la forme avait jetées sont récupérables. *Rejeu à la main, hors suite : la
+suite de tests ne lit pas `conception/`.*
+
+### Deux tests basculés, trois ajoutés
+
+Basculés du refus vers l'acceptation : préfixe et suffixe **autour d'une clôture**. Ajoutés : prose
+des deux côtés · une revue citant du markdown dans `analysis` — la contre-épreuve de l'ancrage ·
+clôture jamais fermée, refusée. Le cas de la mission est reproduit avec sa phrase réelle.
+
+### Un chiffre faux corrigé
+
+`NOTES.md` annonçait **275 tests**. Mesuré sur `HEAD` avant toute modification : **277**. Après :
+**280**. Le compte de la clôture précédente était déjà décalé — les chiffres reportés d'une session à
+l'autre se remesurent.
+
+### État final
+
+`contracts.py` et `tests/test_contracts.py` touchés · **280 tests verts** + 2 ignorés · `ruff` et
+`mypy --strict` verts. Décision tracée en §6, dans `CONCEPTION_FINALE.md` (contrat B et table des
+tests), `RULES.md` (deux règles) et `NOTES.md`.
+
+**Ce que la prochaine session trouve :** rejouer la mission de recherche jusqu'à la revue de B — le
+seul appel qui n'a jamais abouti, dont la cause de refus vient d'être levée. **Demander
+l'autorisation de dépense au PO avant de lancer.** Tout le nécessaire est dans `conception/essais/`.

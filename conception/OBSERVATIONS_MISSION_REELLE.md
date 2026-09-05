@@ -109,7 +109,7 @@ Corrigé (`8b96d77`), et consigné en §1 de la conception.
 faux agent ne pouvait voir un défaut de gabarit. `tests/test_prompts.py` lit désormais les gabarits
 eux-mêmes.
 
-## 6. Une décision à rendre — le bloc clôturé précédé d'une phrase
+## 6. Tranché le 2026-09-05 — le bloc clôturé précédé d'une phrase
 
 **Le fait.** B a rendu ceci :
 
@@ -139,9 +139,43 @@ un agent qui commente son choix de format. Rien ne dit que ce soit rare.
 | **B. Accepter un bloc `json` clôturé **unique** même entouré de prose** | `_strip_sole_fence` extrait le bloc si et seulement s'il y en a **exactement un** ; zéro ou deux restent un refus | rouvre §6 « jamais de défaut permissif » — mais l'extraction reste **déterministe**, pas une devinette |
 | **C. Durcir le prompt de B** | ajouter « aucun texte avant ni après » | `POURQUOI.md` règle 4 : les consignes trop prescriptives **dégradent** les modèles récents ; et B a déjà lu « retourne seulement le JSON » |
 
-**Non tranché — décision du PO.** Le défaut n'est pas dangereux : la réponse brute est préservée,
-l'incident est nommé, aucun rejeu n'est automatique, et `--retry-call` refait le seul appel perdu.
-C'est un arbitrage coût contre principe, pas une correction de sûreté.
+### Décision — voie B, PO, 2026-09-05
+
+**Un bloc clôturé est extrait même entouré de prose.** `_strip_sole_fence` devient `_strip_fence`.
+
+**Motif.** La ligne refusée n'était pas un principe mais une position sur une pente : le contrat
+tolérait déjà la clôture, et extraire ce qui est explicitement balisé ne demande aucune
+interprétation. Un agent qui s'explique de son choix de format n'est ni rare ni désobéissant.
+
+**« Jamais de défaut permissif » tient toujours**, et c'est ce qui rend la voie tenable : le
+programme ne cherche jamais *où* le JSON commence dans du texte libre — sans balise, un préfixe ou
+un suffixe restent un refus. Il ne lit que ce qui est délimité, et `json.loads` reste l'arbitre.
+
+**La voie B telle qu'écrite dans le tableau ci-dessus était inapplicable.** « Exactement un bloc,
+zéro ou deux refusés » suppose un comptage des clôtures ; or B a le droit de citer du markdown dans
+`analysis`, et le comptage y découperait au mauvais endroit. **L'ancrage retenu est *première
+clôture → dernière clôture*** — celui que le code faisait déjà à l'intérieur d'une réponse
+entièrement clôturée. Deux blocs distincts restent refusés, non par un comptage, mais parce que
+l'extraction rend alors un texte que `json.loads` rejette.
+
+**Restent intacts — donc refusés :** aucune clôture · une clôture jamais fermée · une étiquette de
+langage autre que `json`.
+
+**Un fait à garder en face.** La relecture externe du 2026-09-05 **n'a pas remonté ce point**, alors
+que son axe 6 l'y menait. Une lecture neuve ne trouvait rien de choquant à la ligne d'alors : ce
+n'est pas une décision que la seule inspection statique imposait, c'est un arbitrage coût contre
+principe rendu par le PO. Le défaut n'était pas dangereux — réponse brute préservée, incident nommé,
+aucun rejeu automatique, `--retry-call` refaisant le seul appel perdu.
+
+**Fait :** `contracts.py` · deux tests basculés du refus vers l'acceptation, trois ajoutés — dont le
+cas exact de la mission et une revue citant du markdown dans `analysis` · **280 tests verts**.
+
+**Vérifié contre le réel.** La réponse refusée est conservée octet pour octet
+(`conception/essais/2026-09-04-critique-B-recherche-refusee.txt`, 3 610 o). Rejouée contre le nouveau
+`parse_review` : `REVISER`, **cinq constats, tous `OPEN`** — `B-doublon-001` `B-suspension-002`
+`B-metrique-003` en `MAJOR`, `B-lecture-004` `B-conclusion-005` en `MINOR`. C'est la revue que 231 s
+d'appel payant avaient produite et que la forme avait jetée. *Rejeu hors suite, à la main : la suite
+de tests ne lit pas `conception/`.*
 
 ## 7. Un motif écrit qui s'est révélé faux — D-2
 

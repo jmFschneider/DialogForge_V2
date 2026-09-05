@@ -136,19 +136,44 @@ class TestParseReviewJsonBlock(unittest.TestCase):
         review = parse_review("```\n" + json.dumps(_VALID_REVIEW) + "\n```")
         self.assertEqual(review.decision, Decision.REVISER)
 
-    def test_prefix_before_the_fence_rejected(self) -> None:
-        with self.assertRaises(ContractError):
-            parse_review("Voici :\n```json\n" + json.dumps(_VALID_REVIEW) + "\n```")
+    def test_prefix_before_the_fence_accepted(self) -> None:
+        """Voie B, tranchée le 2026-09-05. Le cas exact de la mission réelle :
+        B explique son choix de format avant de rendre le bloc."""
+        review = parse_review(
+            "La sortie attendue suit un schéma précis ; je réponds donc "
+            "directement en JSON, comme demandé.\n\n"
+            "```json\n" + json.dumps(_VALID_REVIEW) + "\n```"
+        )
+        self.assertEqual(review.decision, Decision.REVISER)
 
-    def test_suffix_after_the_fence_rejected(self) -> None:
-        with self.assertRaises(ContractError):
-            parse_review("```json\n" + json.dumps(_VALID_REVIEW) + "\n```\nMerci.")
+    def test_suffix_after_the_fence_accepted(self) -> None:
+        review = parse_review("```json\n" + json.dumps(_VALID_REVIEW) + "\n```\nMerci.")
+        self.assertEqual(review.decision, Decision.REVISER)
+
+    def test_prose_on_both_sides_of_the_fence_accepted(self) -> None:
+        review = parse_review(
+            "Voici :\n```json\n" + json.dumps(_VALID_REVIEW) + "\n```\nJ'espère que cela aide."
+        )
+        self.assertEqual(review.decision, Decision.REVISER)
+
+    def test_fence_inside_analysis_does_not_cut_the_block(self) -> None:
+        """L'ancrage est première clôture → dernière clôture, jamais un
+        comptage : B a le droit de citer du markdown dans `analysis`."""
+        quoting = dict(_VALID_REVIEW, analysis="le gabarit montre ```json\\n{…}\\n``` en exemple")
+        review = parse_review("Ma revue :\n```json\n" + json.dumps(quoting) + "\n```")
+        self.assertIn("```json", review.analysis)
 
     def test_other_language_fence_rejected(self) -> None:
         with self.assertRaises(ContractError):
             parse_review("```python\n" + json.dumps(_VALID_REVIEW) + "\n```")
 
+    def test_unclosed_fence_rejected(self) -> None:
+        with self.assertRaises(ContractError):
+            parse_review("```json\n" + json.dumps(_VALID_REVIEW))
+
     def test_two_fenced_blocks_rejected(self) -> None:
+        """Toujours refusé après la voie B : l'extraction première → dernière
+        rend un texte invalide, et `json.loads` reste l'arbitre."""
         block = "```json\n" + json.dumps(_VALID_REVIEW) + "\n```"
         with self.assertRaises(ContractError):
             parse_review(block + "\n" + block)
