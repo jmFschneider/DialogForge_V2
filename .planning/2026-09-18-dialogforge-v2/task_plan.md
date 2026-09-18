@@ -6,9 +6,11 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-Lot 0.3 : qualifier la reprise PWF dans une **nouvelle** session (lecture de la bonne prochaine
-étape, sélection erronée qui ne récupère pas un autre plan, hooks réellement nécessaires). Ensuite
-seulement, consigner J0 et ouvrir le lot 1.
+Lot 0.3, dernier point : ouvrir une **nouvelle** session dans `C:\Projets\DialogForge_2` épinglée
+par `PLAN_ID=2026-09-18-dialogforge-v2`, y faire invoquer le skill, puis lancer depuis Git Bash
+`sh reference/verifier_reprise_pwf.sh`. Les cinq points doivent être verts — le cinquième (hooks
+déclenchés en session) est rouge tant que l'essai n'a pas eu lieu. Ensuite seulement : consigner J0
+et ouvrir le lot 1.
 
 ## Current Phase
 Phase 1

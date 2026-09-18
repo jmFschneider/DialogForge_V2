@@ -121,6 +121,7 @@ tenue par le socle.
 | Point | Constat |
 |---|---|
 | Installation préexistante | **Aucune.** `~/.claude/skills/` n'existait pas ; aucun plugin, aucun `.planning` sur la machine |
+| Trace antérieure relevée | La **suite de tests de PWF** avait tourné sur la machine le 2026-09-18 entre 19:20 et 19:28 (résidus sous `%TEMP%\pytest-of-schne\pytest-1265\`), laissant trois marqueurs dans `~/.cache/pwf-turn`. Résidu de test, pas une intégration active : ces marqueurs portent des noms de 16 hex, alors que la v3.20.1 exige une clé de 64 hex |
 | Amont | `github.com/OthmanAdi/planning-with-files`, `HEAD` = `faf1a15a7dcc17a9e0f49760da0756d1a5d4609a` = tag `v3.20.1` |
 | Écart avec le commit étudié | **Aucun.** L'étude visait déjà ce commit : rien à arbitrer, aucune mise à jour subie |
 | Version installée | `3.20.1` (métadonnées du `SKILL.md` installé) |
@@ -206,9 +207,18 @@ Un seul point, et il exige une **nouvelle session** de l'hôte de développement
 prouvé depuis la session courante :
 
 - **Reprise en session neuve.** Ouvrir une session dans `C:\Projets\DialogForge_2`, vérifier que la
-  bonne prochaine étape est retrouvée (celle du `## Next Step` ci-dessus) et que les hooks
-  réellement nécessaires se déclenchent. Rappel de la limite déjà établie : sur la route standalone,
-  les hooks ne s'enregistrent qu'**après** la première invocation du skill dans la session ; si
-  l'engagement doit être déterministe, l'amont recommande une ligne de rappel dans `CLAUDE.md`.
+  bonne prochaine étape est retrouvée et que les hooks réellement nécessaires se déclenchent.
+  Rappel de la limite déjà établie : sur la route standalone, les hooks ne s'enregistrent
+  qu'**après** la première invocation du skill dans la session.
+
+La vérification est outillée : `sh reference/verifier_reprise_pwf.sh`, à lancer depuis Git Bash
+après l'essai. Elle contrôle cinq points — version installée, résolution nominale, sélection erronée
+sans repli, `## Next Step` non vide, et surtout **la preuve que les hooks se sont déclenchés en
+session**. Cette preuve est un marqueur de tour nommé par une clé de 64 hex, dérivée de l'identité
+de session transmise par l'hôte : un appel manuel des scripts n'en produit aucun, et les marqueurs
+de 16 hex laissés par la suite de tests amont ne comptent pas.
+
+Avant l'essai, le script rend 4 points verts et **le cinquième rouge** — c'est ce basculement qui
+constitue la preuve, et non une impression de bon fonctionnement.
 
 Tant que cette vérification n'est pas faite, **J0 n'est pas atteint** et le lot 1 n'est pas ouvert.
