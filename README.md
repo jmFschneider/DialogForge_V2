@@ -1,3 +1,38 @@
+# DialogForge_2
+
+> **Dépôt de développement de DialogForge V2.** Le contenu ci-dessous est celui d'IAbinome, repris
+> tel quel comme socle. Le nom affiché et le point d'entrée V2 seront introduits plus tard : au
+> lot 0, le package s'appelle toujours `iabinome`, délibérément, pour vérifier le réemploi sans
+> mélanger changements fonctionnels et renommage.
+
+## Origine du code
+
+| Élément | Valeur |
+|---|---|
+| Source | `C:\Projets\IAbinome`, clone local complet avec historique Git |
+| Commit de départ | `4a11cc7eae47a4920b845fda6e65937557a967cf` — *docs: cloturer le plan correctif et preparer la session CONTEXT_ONLY* |
+| Écart avec la référence d'étude | Aucun : le HEAD d'IAbinome au 18 septembre 2026 **est** le commit de référence de `astra/` |
+| Branche de travail | `v2-socle` |
+| Destination de push | Aucune. Le remote `origin` a été retiré après le clone : impossible d'écrire dans IAbinome par erreur |
+| Non importés | Environnement virtuel, fichiers non suivis (`DIAGNOSTIC_CHROME_GPU.md`), configuration personnelle (`iabinome.toml`, ignoré par Git) |
+
+Le plan de référence est [`astra/06_plan_mise_en_oeuvre.md`](../DialogForge_Next/astra/06_plan_mise_en_oeuvre.md)
+du dossier d'étude `DialogForge_Next`. Les dépôts sources — IAbinome et DialogForge — restent
+inchangés ; ce dépôt ne réécrit pas les missions historiques.
+
+## Périmètre de la première livraison
+
+**Couvert (J3) :** conception et synthèse **sur corpus local fourni**, en terminal guidé —
+demande → production A → critique B indépendante → correction avec une disposition explicite par
+objection → livrable et décisions restantes → acceptation, correction ciblée ou arrêt, avec reprise
+après incident sans rejouer un appel ambigu.
+
+**Hors périmètre à ce stade :** recherche externe (profil distinct, à qualifier), développement
+assisté (lot 4), interface graphique (extension conditionnelle après J3), service permanent ou
+reprise autonome après fermeture du programme.
+
+---
+
 # IAbinome
 
 Deux agents IA en ligne de commande : **A produit, B critique, vous arbitrez.**
