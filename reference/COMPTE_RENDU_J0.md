@@ -3,7 +3,8 @@
 Date : 18 septembre 2026. Machine : Windows 11, `C:\Projets\DialogForge_2`.
 Plan de référence : `astra/06_plan_mise_en_oeuvre.md` du dossier `DialogForge_Next`.
 
-**Périmètre de cette séance : 0.1 et 0.2. Le 0.3 (PWF) n'est pas fait — J0 n'est donc pas atteint.**
+**Périmètre : 0.1, 0.2 et 0.3. J0 n'est pas encore déclaré — il reste la vérification en
+session neuve, décrite au §6.**
 
 ## 1. Dépôt (0.1)
 
@@ -113,13 +114,101 @@ tenue par le socle.
    scénario fixe `PYTHONIOENCODING=utf-8` pour ses enfants. À garder en tête si le lot 1 ajoute
    des réponses simulées accentuées.
 
-## 5. Reste à faire pour déclarer J0
+## 5. PWF (0.3)
 
-- **0.3 — PWF.** Non installé sur cette machine : `~/.claude/skills/` est vide. L'étude a lu le
-  dépôt amont à distance au commit `faf1a15…` (v3.20.1) sans rien installer. Restent à faire :
-  installation, relevé de la version réellement utilisée, création du plan portant les lots 0 à 3,
-  sélection explicite de la racine et du plan, puis épreuve de reprise dans une **nouvelle**
-  session et vérification des hooks en session réelle.
+### Version réellement utilisée
 
-Tant que cette qualification n'est pas obtenue, **J0 n'est pas atteint** et le lot 1 n'est pas
-ouvert.
+| Point | Constat |
+|---|---|
+| Installation préexistante | **Aucune.** `~/.claude/skills/` n'existait pas ; aucun plugin, aucun `.planning` sur la machine |
+| Amont | `github.com/OthmanAdi/planning-with-files`, `HEAD` = `faf1a15a7dcc17a9e0f49760da0756d1a5d4609a` = tag `v3.20.1` |
+| Écart avec le commit étudié | **Aucun.** L'étude visait déjà ce commit : rien à arbitrer, aucune mise à jour subie |
+| Version installée | `3.20.1` (métadonnées du `SKILL.md` installé) |
+| Route retenue | « Standalone skill » de `docs/installation.md` : copie de `skills/planning-with-files` vers `~/.claude/skills/`, depuis un clone **détaché sur le commit épinglé** |
+| Contrôle du contenu | `diff -r` amont/installé : **aucune différence**, 32 fichiers. Empreinte cumulée `135edc457b91aeec…` |
+
+**Pourquoi pas la route plugin/marketplace**, pourtant recommandée par l'amont : elle suit la
+branche `master` et se mettrait à jour d'elle-même, alors que le plan exige une version consignée.
+Contrepartie assumée et vérifiée : la route retenue n'apporte **ni** hook `SessionStart`, **ni**
+commandes `/plan-*`, et ses hooks sont à portée d'activation — ils ne s'enregistrent qu'après la
+première invocation du skill dans une session.
+
+### Plan de développement
+
+`init-session.ps1 "DialogForge V2"` (mode par défaut, ni `-Autonomous` ni `-Gated`) a créé
+`PLAN_ID=2026-09-18-dialogforge-v2` sous `.planning/`. Les lots 0 à 3 y sont inscrits comme
+phases 1 à 4 ; le lot 4 y figure comme **extension identifiée, hors phases** — il ne peut donc pas
+être coché par inadvertance.
+
+Contrôle de lisibilité machine : `check-complete.sh` relit le plan rédigé en français et rend
+« 0/4 phases complete, 1 in_progress, 3 pending ». Le fichier reste exploitable par l'outillage amont.
+
+### Sélection et résolution — éprouvées, pas supposées
+
+| Cas | Attendu | Obtenu |
+|---|---|---|
+| Plan unique, sans sélecteur | le bon dossier | `.planning/2026-09-18-dialogforge-v2`, code 0 |
+| `PLAN_ID` explicite correct | le même dossier | idem, code 0 |
+| `PLAN_ID` inexistant | **ne pas récupérer un autre plan** | **sortie vide**, code 0 |
+| Deux plans, `PLAN_ID` inexistant | ne pas récupérer un autre plan | **sortie vide** — ni l'un ni l'autre |
+| Deux plans, aucun sélecteur | refus plutôt qu'un choix arbitraire | **sortie vide**, malgré un `.active_plan` présent |
+| `PLAN_ID` explicite + `task_plan.md` à la racine | le plan nommé l'emporte | le plan nommé |
+
+**Le point à retenir : une sélection erronée ou ambiguë rend une sortie vide avec un code de retour
+zéro.** Le critère du plan est satisfait — aucun autre plan n'est jamais récupéré — mais tout
+appelant doit traiter la sortie vide explicitement, sans se fier au code de retour. C'est exactement
+ce qu'exige le point 2.3 du plan pour la liaison du produit ; c'est ici vérifié sur le script
+installé, et non lu dans une documentation.
+
+**Conséquence datée pour ce dépôt :** la résolution sans sélecteur ne marche aujourd'hui que parce
+qu'il n'y a **qu'un** plan. Le jour où un second plan apparaît, elle devient silencieusement vide.
+Épingler `PLAN_ID=2026-09-18-dialogforge-v2` est donc la façon robuste d'ouvrir une session.
+
+### Windows et Git Bash
+
+`plan-doctor.sh` tourne sous Git Bash 5.2.26 (MINGW64) et rend :
+
+- `PASS resolver` — dossier de plan actif correctement résolu ;
+- `PASS injection` — le contexte de plan est bien émis (5 252 octets) ;
+- `info` — surface d'installation détectée sous `~/.claude/skills/planning-with-files`.
+
+Le contenu injecté à une session neuve a été relu directement : il porte le `## Next Step` du plan,
+accents intacts, encadré par un nonce et **annoncé comme donnée non fiable, jamais comme
+instruction** (`DATA ONLY`, `truncated=true` — la charge est bornée).
+
+### Coût réellement mesuré des hooks
+
+Mesure directe de `skill-hook.sh`, sur cette machine :
+
+| Événement | Durée |
+|---|---|
+| `userprompt` | 506 ms |
+| `pretool` | 586 ms |
+| `posttool` | 494 ms |
+| `stop` | 1 108 ms |
+| `precompact` | 495 ms |
+
+Le hook `PreToolUse` déclaré par le skill filtre `Write|Edit|Bash|Read|Glob|Grep` : en pratique,
+**presque chaque appel d'outil paierait ~0,6 s**. Ce n'est pas rédhibitoire pour un hôte de
+développement, mais cela confirme l'avertissement de l'étude — éviter l'activation de PWF chez un
+reviewer ponctuel, où elle n'apporte rien.
+
+### Autorité du plan dans le dépôt
+
+`CLAUDE.md` du dépôt a été repris sur un point : l'avancement V2 appartient désormais au plan PWF,
+et `project/NOTES.md`, `RECOLTE.md`, `DEPART.md` redeviennent la mémoire historique d'IAbinome —
+plus des tableaux de bord de reprise. Sans cela, le dépôt aurait imposé **deux** listes d'avancement
+concurrentes, ce que le plan interdit explicitement.
+
+## 6. Reste à faire pour déclarer J0
+
+Un seul point, et il exige une **nouvelle session** de l'hôte de développement — il ne peut pas être
+prouvé depuis la session courante :
+
+- **Reprise en session neuve.** Ouvrir une session dans `C:\Projets\DialogForge_2`, vérifier que la
+  bonne prochaine étape est retrouvée (celle du `## Next Step` ci-dessus) et que les hooks
+  réellement nécessaires se déclenchent. Rappel de la limite déjà établie : sur la route standalone,
+  les hooks ne s'enregistrent qu'**après** la première invocation du skill dans la session ; si
+  l'engagement doit être déterministe, l'amont recommande une ligne de rappel dans `CLAUDE.md`.
+
+Tant que cette vérification n'est pas faite, **J0 n'est pas atteint** et le lot 1 n'est pas ouvert.

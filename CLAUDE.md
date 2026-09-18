@@ -1,22 +1,32 @@
-# CLAUDE.md — IAbinome
+# CLAUDE.md — DialogForge_2 (socle IAbinome)
 
 > Chargé automatiquement à chaque session. Gardé court **volontairement** : ce projet naît de l'échec
 > d'un outil devenu trop gros. Si ce fichier dépasse une page, c'est un signal.
 
 ## 0. Début de session — OBLIGATOIRE
 
-1. Lire **`project/NOTES.md`** — tableau de bord de reprise : prochaine action, état courant, blocages.
-2. Lire **`POURQUOI.md`** — d'où vient ce projet et les règles qui en découlent. Non négociable : c'est ce qui empêche de refaire la même dérive.
-3. **Si le scope de session n'est pas déclaré dans le premier message : le demander avant toute action.**
-4. Consulter **`project/RULES.md`** pour le domaine touché.
-5. Lire l'étape en cours : **`RECOLTE.md`**, puis **`DEPART.md`** quand elle sera close.
-6. **Ne pas lire un fichier** si l'information est déjà dans `NOTES.md`, `RULES.md` ou le contexte courant.
+**L'avancement du développement V2 appartient au plan PWF, et à lui seul.**
+Plan : `.planning/2026-09-18-dialogforge-v2/`. Il n'y a pas de seconde liste à cocher.
+
+1. Résoudre le plan, puis lire son `task_plan.md` — `## Next Step` fait foi :
+   `sh "$HOME/.claude/skills/planning-with-files/scripts/resolve-plan-dir.sh"`.
+   **Une sortie vide avec un code 0 n'est pas un succès** : c'est une sélection ambiguë ou erronée.
+   Corriger l'épinglage (`PLAN_ID=2026-09-18-dialogforge-v2`) au lieu de retomber sur un autre plan.
+2. Lire `findings.md` et `progress.md` du **même** dossier de plan.
+3. Lire **`POURQUOI.md`** — d'où vient ce projet et les règles qui en découlent. Non négociable :
+   c'est ce qui empêche de refaire la même dérive.
+4. **Si le scope de session n'est pas déclaré dans le premier message : le demander avant toute action.**
+5. Consulter **`project/RULES.md`** pour le domaine touché.
+6. **Ne pas lire un fichier** si l'information est déjà dans le plan, `RULES.md` ou le contexte courant.
+
+`project/NOTES.md`, `RECOLTE.md` et `DEPART.md` sont la **mémoire historique d'IAbinome**, conservée
+comme contexte. Ce ne sont plus des tableaux de bord de reprise : ne pas y suivre l'avancement V2.
 
 **En fin de session — OBLIGATOIRE :**
 
-- `project/NOTES.md` — préparer la reprise immédiate. **Pas d'historique, pas de récit, pas de liste de travaux terminés.**
+- `task_plan.md` du plan — mettre à jour `## Next Step` et le statut des phases.
+- `progress.md` du plan — actions, résultats de tests, erreurs.
 - `project/RULES.md` — ajouter les règles nouvelles, sans doublon.
-- `project/session_log.md` — résumé, commits, décisions.
 
 ## 1. Ce qu'est IAbinome
 
