@@ -8,3 +8,5 @@ __pycache__/
 # Reglages locaux : le modele versionne est iabinome.toml.exemple.
 # Un iabinome.toml commite changerait le comportement du `new` de chacun.
 iabinome.toml
+.venv/
+.pytest_cache/
