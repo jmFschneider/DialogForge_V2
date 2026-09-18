@@ -121,7 +121,7 @@ tenue par le socle.
 | Point | Constat |
 |---|---|
 | Installation préexistante | **Aucune.** `~/.claude/skills/` n'existait pas ; aucun plugin, aucun `.planning` sur la machine |
-| Trace antérieure relevée | La **suite de tests de PWF** avait tourné sur la machine le 2026-09-18 entre 19:20 et 19:28 (résidus sous `%TEMP%\pytest-of-schne\pytest-1265\`), laissant trois marqueurs dans `~/.cache/pwf-turn`. Résidu de test, pas une intégration active : ces marqueurs portent des noms de 16 hex, alors que la v3.20.1 exige une clé de 64 hex |
+| Trace antérieure relevée | La **suite de tests de PWF** avait tourné sur la machine le 2026-09-18 en soirée, laissant des résidus sous `%TEMP%\pytest-of-schne\` et trois marqueurs dans `~/.cache/pwf-turn`. **Origine identifiée :** la session Claude Code qui a précédé celle-ci dans le même terminal — celle de l'étude `astra/` — a cloné l'amont (`git clone … planning-with-files.git pwf`) et exécuté sa suite de tests. À noter : l'étude déclare « installation de PWF : non effectuée », ce qui reste exact, mais elle ne mentionne pas ce clone ni cette exécution. Résidu de test, pas une intégration active — ces marqueurs portent des noms de 16 hex, alors que la v3.20.1 exige une clé de 64 hex |
 | Amont | `github.com/OthmanAdi/planning-with-files`, `HEAD` = `faf1a15a7dcc17a9e0f49760da0756d1a5d4609a` = tag `v3.20.1` |
 | Écart avec le commit étudié | **Aucun.** L'étude visait déjà ce commit : rien à arbitrer, aucune mise à jour subie |
 | Version installée | `3.20.1` (métadonnées du `SKILL.md` installé) |

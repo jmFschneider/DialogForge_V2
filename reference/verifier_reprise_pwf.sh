@@ -1,16 +1,18 @@
 #!/bin/sh
 # Qualification de la reprise PWF — lot 0.3, dernier point avant J0.
 #
-# A lancer depuis Git Bash, a la racine du depot, APRES avoir ouvert puis
-# ferme une nouvelle session de l'hote de developpement.
-#
 #   sh reference/verifier_reprise_pwf.sh
 #
-# Rend 0 si tout est vert, 1 sinon. Aucun appel fournisseur, aucun reseau.
+# Le critere d'acceptation est l'INJECTION AUTOMATIQUE du plan par les hooks,
+# constatee dans les traces de la session d'essai. Il n'est pas negocie a la
+# baisse : retrouver la bonne etape en lisant le plan soi-meme ne suffit pas.
+#
+# Le marqueur de cache ~/.cache/pwf-turn N'EST PAS un critere : il n'est ecrit
+# que par un PostToolUse d'ecriture, puis efface au UserPromptSubmit suivant.
+# Son absence ne prouve rien, et sa presence pourrait venir d'une autre session.
 
 PLAN_ATTENDU="2026-09-18-dialogforge-v2"
 SKILL="$HOME/.claude/skills/planning-with-files"
-CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/pwf-turn"
 echec=0
 
 dire() { printf '%-58s %s\n' "$1" "$2"; }
@@ -20,7 +22,6 @@ rouge() { dire "$1" "ECHEC  -> $2"; echec=1; }
 echo "=== Qualification de la reprise PWF ==="
 echo
 
-# 1. Le skill est installe, a la version consignee.
 version=$(sed -n 's/^  version: "\(.*\)"/\1/p' "$SKILL/SKILL.md" 2>/dev/null)
 if [ "$version" = "3.20.1" ]; then
     vert "1. Skill installe en version 3.20.1"
@@ -28,7 +29,6 @@ else
     rouge "1. Skill installe en version 3.20.1" "version lue : '${version:-absente}'"
 fi
 
-# 2. Resolution nominale : le bon plan, depuis la racine du depot.
 resolu=$(sh "$SKILL/scripts/resolve-plan-dir.sh" 2>/dev/null)
 case "$resolu" in
     */.planning/"$PLAN_ATTENDU") vert "2. Resolution nominale -> $PLAN_ATTENDU" ;;
@@ -36,8 +36,6 @@ case "$resolu" in
     *) rouge "2. Resolution nominale" "plan inattendu : $resolu" ;;
 esac
 
-# 3. Selection erronee : ne doit JAMAIS recuperer un autre plan.
-#    Rappel : l'amont rend une sortie vide AVEC un code de retour zero.
 errone=$(PLAN_ID=plan-qui-nexiste-pas sh "$SKILL/scripts/resolve-plan-dir.sh" 2>/dev/null)
 if [ -z "$errone" ]; then
     vert "3. Selection erronee -> sortie vide, aucun repli"
@@ -45,34 +43,56 @@ else
     rouge "3. Selection erronee" "un plan a ete recupere : $errone"
 fi
 
-# 4. La prochaine etape lue est bien celle du plan selectionne.
 suivant=$(sed -n '/^## Next Step/,/^## /p' "$resolu/task_plan.md" 2>/dev/null | sed '1d;$d' | tr -d '\r')
 if [ -n "$(printf '%s' "$suivant" | tr -d '[:space:]')" ]; then
     vert "4. '## Next Step' non vide dans le plan resolu"
-    printf '   prochaine etape lue :\n'
-    printf '%s\n' "$suivant" | sed 's/^/   | /'
 else
     rouge "4. '## Next Step' non vide" "section absente ou vide"
 fi
 
-# 5. Preuve que les hooks se sont declenches EN SESSION.
-#    Le marqueur de tour est nomme par une cle de 64 caracteres hexadecimaux,
-#    derivee de l'identite de session transmise par l'hote sur stdin. Un appel
-#    manuel du script n'en produit pas. Les marqueurs de 16 caracteres sont un
-#    residu de la suite de tests de PWF, anterieur a cette installation : ils ne
-#    comptent pas.
-if [ -d "$CACHE" ]; then
-    preuves=$(find "$CACHE" -maxdepth 1 -type f 2>/dev/null \
-        | sed 's#.*/##' \
-        | grep -c '^[0-9a-f]\{64\}$')
+# 5. Le critere : l'injection automatique a-t-elle eu lieu EN SESSION ?
+#    `===BEGIN-PWF-DATA ... nonce=` est forge a chaque execution de l'injecteur
+#    et ne figure dans AUCUN fichier de documentation du skill : sa presence
+#    dans une trace de session prouve que l'injecteur a ete execute par l'hote.
+#    Reserve : une session qui aurait LU les scripts du skill contiendrait le
+#    motif sans qu'aucun hook n'ait tourne. Ne pas lire scripts/ pendant l'essai.
+projet=$(pwd -W 2>/dev/null || pwd)
+cle=$(printf '%s' "$projet" | sed 's#[:/\_]#-#g')
+traces="$HOME/.claude/projects/$cle"
+derniere=$(ls -t "$traces"/*.jsonl 2>/dev/null | head -1)
+
+if [ -z "$derniere" ]; then
+    rouge "5. Injection automatique constatee en session" \
+        "aucune trace de session sous $traces"
 else
-    preuves=0
+    injections=$(grep -o "BEGIN-PWF-DATA kind=plan nonce=[0-9a-f]\{8,\}" "$derniere" 2>/dev/null \
+        | sort -u | wc -l)
+    if [ "$injections" -gt 0 ]; then
+        vert "5. Injection automatique constatee ($injections injection(s) distincte(s))"
+    else
+        rouge "5. Injection automatique constatee en session" \
+            "aucune injection dans $(basename "$derniere")"
+    fi
+    printf '   trace examinee : %s\n' "$(basename "$derniere")"
 fi
-if [ "$preuves" -gt 0 ]; then
-    vert "5. Hooks declenches en session ($preuves marqueur(s) de tour)"
+
+echo
+echo "--- Diagnostic (informatif, ne compte pas dans le verdict) ---"
+printf '   sh resolvable ici          : %s\n' "$(command -v sh || echo NON)"
+printf '   CLAUDE_CODE_GIT_BASH_PATH  : %s\n' "${CLAUDE_CODE_GIT_BASH_PATH:-non defini}"
+
+# Rejoue la ligne de hook exacte declaree par le SKILL.md, pour separer un
+# defaut de l'hote d'un defaut du script amont.
+sim=$(CLAUDE_SKILL_DIR="$SKILL" PATH="/c/Program Files/Git/bin:$PATH" \
+    printf '%s' '{"session_id":"simulation-locale","prompt_id":"t1"}' \
+    | CLAUDE_SKILL_DIR="$SKILL" PATH="/c/Program Files/Git/bin:$PATH" sh -c \
+    'SH="${CLAUDE_SKILL_DIR}/scripts/skill-hook.sh"; [ -f "$SH" ] && sh "$SH" --event=pretool' \
+    2>/dev/null | grep -c "BEGIN-PWF-DATA")
+if [ "${sim:-0}" -gt 0 ]; then
+    printf '   ligne de hook rejouee ici  : elle INJECTE correctement\n'
+    printf '                                (donc un echec du point 5 vient de l hote, pas du script)\n'
 else
-    rouge "5. Hooks declenches en session" \
-        "aucun marqueur de 64 hex dans $CACHE : le skill n'a pas ete invoque"
+    printf '   ligne de hook rejouee ici  : elle N INJECTE PAS\n'
 fi
 
 echo
