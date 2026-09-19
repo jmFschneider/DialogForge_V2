@@ -25,7 +25,6 @@ from tests import fakes
 from tests.test_workflow import WorkflowCase
 
 _DOC = "IABINOME:DOCUMENT\n# Proposition\nCorps du document."
-_FINAL = "IABINOME:DOCUMENT\n# Final\nCorps final."
 _ESSAIS = Path(__file__).resolve().parents[1] / "conception" / "essais"
 
 
@@ -229,8 +228,7 @@ class TestTheCycleKeepsTheObjections(WorkflowCase):
 
     def test_the_whole_history_of_an_objection_is_found_again(self) -> None:
         collab = self.run_cycle(
-            (_DOC, self.revision(reply(kind="CONTESTE", justification="X est hors périmètre.")),
-             _FINAL),
+            (_DOC, self.revision(reply(kind="CONTESTE", justification="X est hors périmètre."))),
             (review_v2("REVISER", finding()),
              review_v2("ACCEPTER", finding(disposition="RESOLVED", statement="Désormais levé."))),
         )
@@ -249,8 +247,7 @@ class TestTheCycleKeepsTheObjections(WorkflowCase):
 
     def test_b_sees_what_a_answered_and_the_initial_statement(self) -> None:
         self.run_cycle(
-            (_DOC, self.revision(reply(kind="CONTESTE", justification="X est hors périmètre.")),
-             _FINAL),
+            (_DOC, self.revision(reply(kind="CONTESTE", justification="X est hors périmètre."))),
             (review_v2("REVISER", finding()),
              review_v2("ACCEPTER", finding(disposition="RESOLVED", justification="Ok."))),
         )
@@ -302,11 +299,11 @@ class TestTheCycleKeepsTheObjections(WorkflowCase):
             f"Voici mes réponses :\n```json\n{responses(reply())}\n```\n"
         )
         collab = self.run_cycle(
-            (_DOC, wrapped, _FINAL),
+            (_DOC, wrapped),
             (review_v2("REVISER", finding()), review_v2("ACCEPTER", finding(
                 disposition="RESOLVED", justification="Corrigé."))),
         )
-        self.assertEqual(self.a.calls, 3)
+        self.assertEqual(self.a.calls, 2)
         self.assertIs(self.state(collab), Status.AWAITING_APPROVAL)
 
     def test_a_closure_without_justification_does_not_close_a_blocking_objection(self) -> None:
@@ -327,8 +324,7 @@ class TestTheCycleKeepsTheObjections(WorkflowCase):
 
     def test_each_of_several_objections_keeps_its_own_disposition(self) -> None:
         collab = self.run_cycle(
-            (_DOC, self.revision(reply("B-001"), reply("B-002", "ARBITRAGE", "Lequel choisir ?")),
-             _FINAL),
+            (_DOC, self.revision(reply("B-001"), reply("B-002", "ARBITRAGE", "Lequel choisir ?"))),
             (review_v2("REVISER", finding("B-001"), finding("B-002", statement="Manque Y.")),
              review_v2("ACCEPTER",
                        finding("B-001", disposition="RESOLVED", justification="Corrigé."),

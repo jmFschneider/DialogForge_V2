@@ -1,6 +1,6 @@
 """Discriminateur A, schéma de revue B, bloc JSON clôturé, normalisation.
 
-Un seul analyseur pour les quatre appels de A — finalisation comprise.
+Un seul analyseur pour les appels de A (proposition, révision).
 Jamais de défaut permissif : balise inconnue, décision inconnue, identifiant
 dupliqué ou constat antérieur disparu sont un échec de contrat ; la réponse
 brute reste à l'appelant, intacte (CONCEPTION_FINALE.md §6).
@@ -294,7 +294,7 @@ def _parse_finding(raw: Any) -> Finding:
     La tolérance sur `severity` ne doit pas devenir un moyen de **fermer** un
     constat : sans ce maintien, B pouvait omettre la sévérité et rendre
     `RESOLVED` dans le même constat, le retirer du registre et emmener le cycle
-    en finalisation. L'omission n'ouvre jamais rien de plus qu'elle-même.
+    à la promotion. L'omission n'ouvre jamais rien de plus qu'elle-même.
 
     Le maintien ne va que dans le sens sûr — il laisse ouvert, il ne ferme
     jamais — et c'est pourquoi il n'est pas un jugement du programme sur les

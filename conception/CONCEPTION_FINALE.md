@@ -147,6 +147,7 @@ Après `QUESTION` de A ou `BLOQUE` de B, l'humain fournit une **nouvelle demande
 est archivée en `demande.md.001`, la nouvelle devient `demande.md`, son empreinte est republiée dans
 l'état. *Motif : une réponse partielle créerait une seconde autorité — `C35` l'interdit.*
 **Amendé le 2026-09-19 (PO, V2 lot 1 point 1.1) : la réponse *complète* la demande, elle ne la remplace plus.** `demande.md.001` garde l'ancienne ; la nouvelle version reprend le texte existant **intact**, puis la réponse sous « Précisions n°K ». `demande.md` reste l'unique autorité — le motif ci-dessus tient toujours, aucune seconde autorité n'apparaît — et rien de ce qu'elle disait ne peut disparaître. Un remplacement intégral n'est plus une réponse : il devra être une commande explicite et distincte. Chaque version est consignée dans `provenance_demande.json`.
+**Amendé le 2026-09-19 (PO, V2 lot 1 point 1.3) : la finalisation `FINAL_A` n'existe plus.** Le schéma ci-dessous et la liste des phases (§4) sont conservés pour l'histoire ; en V2, `ACCEPTER` et `REVISER` à la limite mènent directement à `CLOSED`, par la **promotion du document que B vient d'examiner** (`livrables/version_finale.md`, corps identique octet pour octet) et un bilan écrit par le programme (`livrables/bilan.md`). Motif : la finalisation réécrivait librement le texte après la dernière revue — ce que B livrait n'était plus ce qu'il avait examiné. Le discriminateur (§6) ne s'applique plus qu'aux appels de proposition et de révision.
 Une question née en `PROPOSAL_A` y retourne ; une née en `REVISION_A` ou un `BLOQUE` reprennent en
 `REVISION_A`, avec le document courant et les constats déjà ouverts.
 
@@ -264,7 +265,7 @@ problème réel — c'est la première marche vers ce que `X9` a écarté.*
 
 **Valeurs fermées.**
 `status` ∈ `READY` `RUNNING` `WAITING_HUMAN` `INTERRUPTED` `ERROR` `AWAITING_APPROVAL` ·
-`phase` ∈ `PROPOSAL_A` `REVIEW_B` `REVISION_A` `FINAL_A` `CLOSED` ·
+`phase` ∈ `PROPOSAL_A` `REVIEW_B` `REVISION_A` `FINAL_A` *(supprimée en V2, 1.3)* `CLOSED` ·
 `current_call.status` ∈ `CALLING` `RESPONSE_STORED`.
 
 `current_call` porte exactement : UUID, séquence, rôle, phase, statut, dossier logique, empreinte du

@@ -145,10 +145,22 @@ Trois choses qu'il ne fait pas, et c'est délibéré :
 ## Le cycle
 
 ```
-demande.md → A produit → B critique → A révise → (N fois max) → A finalise → livrable
+demande.md → A produit → B critique → A révise → B relit → (N fois max) → livrable
 ```
 
-`--max-revisions` fixe le N. À `0`, B critique une fois et A finalise sans réviser.
+`--max-revisions` fixe le N. À `0`, B critique une fois et la proposition est livrée sans révision.
+
+**Le livrable est ce que B a examiné, jamais une réécriture.** Quand B accepte, ou au plafond, le
+document que B vient de relire est promu **octet pour octet** dans `livrables/version_finale.md` :
+il n'y a plus d'appel de finalisation, donc un appel payant de moins et plus de texte que personne
+n'aurait relu. Dès qu'une correction a eu lieu, la relecture de B est **ciblée** : les objections
+traitées et les régressions, pas une nouvelle critique. Une remarque nouvelle est notée et
+présentée, elle n'ouvre pas de tour de plus.
+
+**`livrables/bilan.md`**, écrit par le programme sans modèle, dit ce qui est livré, ce qui l'a
+examiné (empreintes de la demande, du livrable et de la revue), le registre des objections et les
+**désaccords restants**. Au plafond, ils sont présentés, pas traités. Un tour de plus est une
+décision humaine explicite, tracée (point 1.4 du plan).
 
 B reprend **exactement une fois** chaque constat resté ouvert dans sa revue précédente. Un constat
 qui disparaît ou qui se dédouble fait échouer le contrat : c'est ce qui empêche une critique
@@ -200,7 +212,8 @@ ma-collab/
 ├── corpus/fichiers/              les copies octet pour octet
 ├── echanges/                     propositions de A, revues de B, en clair
 ├── appels/NNNN-<role>-<uuid>/    prompt, flux bruts, resultat, incident
-└── livrables/version_finale.md   le document
+├── livrables/version_finale.md   le document (la version que B a examinée)
+└── livrables/bilan.md            ce qui est livré, examiné, et resté en désaccord
 ```
 
 `echanges/` est ce qu'on lit pour suivre le raisonnement. `appels/` est la preuve : le prompt exact

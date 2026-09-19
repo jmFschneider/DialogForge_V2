@@ -25,7 +25,6 @@ from tests.test_cli import CliCase
 _COMPLETE = fakes.DEMANDE_COMPLETE
 
 _DOC = "IABINOME:DOCUMENT\n# Proposition\nCorps."
-_FINAL = "IABINOME:DOCUMENT\n# Final\nCorps final."
 _QUESTION = "IABINOME:QUESTION\nQuel est le critere de fin ?"
 
 
@@ -237,11 +236,12 @@ class TestTheWholeJourney(CliCase):
     def test_a_clear_demande_goes_straight_to_production(self) -> None:
         self.demande.write_text(_COMPLETE, encoding="utf-8")
         self.assertEqual(cli.main(["new", *self.new_args()]), 0)
-        self.a.responses = [_DOC, _FINAL]
+        self.a.responses = [_DOC]
         self.b.responses = [fakes.review("ACCEPTER", findings=())]
         self.assertEqual(cli.main(["run", str(self.collab)]), 0)
-        # Deux appels de A (proposition, finale), un de B : aucun de cadrage.
-        self.assertEqual((self.a.calls, self.b.calls), (2, 1))
+        # Un appel de A (la proposition), un de B qui accepte : ni cadrage, ni
+        # finalisation — la version examinée est promue telle quelle (1.3).
+        self.assertEqual((self.a.calls, self.b.calls), (1, 1))
         self.assertIn("Décider de la stratégie de cache.", self.a.prompts[0])
 
     def test_an_ambiguity_becomes_a_question_and_the_answer_resumes_with_the_right_demande(

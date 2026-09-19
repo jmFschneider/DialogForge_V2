@@ -73,12 +73,13 @@ CORRIGE : la version corrige le point. CONTESTE : tu maintiens ta position, moti
 REPORTE : hors périmètre ou sous condition, dis laquelle. ARBITRAGE : seul l'humain peut
 trancher, pose la question. Sauf CORRIGE, la justification est obligatoire."""
 
-_A_FINAL = """\
-Tu es A. Commence par IABINOME:QUESTION s'il manque encore une information humaine
-indispensable. Sinon commence par IABINOME:DOCUMENT, puis donne le document final
-autonome à partir de la version courante. Intègre les apports utiles sans raconter le
-dialogue. Garde visibles les incertitudes, les non-décisions et les constats encore
-ouverts."""
+_B_TARGETED = """\
+C'est une relecture ciblée : A a corrigé la version que tu as examinée. Ne reprends pas
+la critique depuis le début. Examine seulement (1) chaque objection antérieure et ce que
+A y a répondu, (2) les régressions que la correction a pu introduire. Une observation
+nouvelle hors de ce périmètre se note en NOTE : elle sera présentée à l'humain, elle
+n'ouvre pas de tour de plus. Si rien ne reste à corriger dans ce périmètre, rends
+ACCEPTER : la version examinée sera livrée telle quelle, sans réécriture."""
 
 _CORPUS = (
     "Le corpus local est un instantané du {date}, à lire sous corpus/fichiers/ : c'est"
@@ -102,11 +103,16 @@ def build_review(
     prior_findings: str,
     access: ReviewerAccess,
     corpus_date: str | None,
+    targeted: bool = False,
 ) -> str:
+    """`targeted` : la revue suit une correction de A (1.3), et se limite aux
+    objections traitées et aux régressions."""
     blocks = [_B_REVIEW]
     if access is ReviewerAccess.CONTEXT_ONLY:
         blocks.append(_CONTEXT_ONLY)
         corpus_date = None
+    if targeted:
+        blocks.append(_B_TARGETED)
     blocks.append(_B_RULES)
     return _assemble(
         blocks,
@@ -121,12 +127,6 @@ def build_revision(
     return _a_on_document(_A_REVISION, demande, document, review, kind, corpus_date)
 
 
-def build_final(
-    demande: str, document: str, review: str, kind: MissionKind, corpus_date: str | None
-) -> str:
-    return _a_on_document(_A_FINAL, demande, document, review, kind, corpus_date)
-
-
 def _a_on_document(
     head: str,
     demande: str,
@@ -135,9 +135,10 @@ def _a_on_document(
     kind: MissionKind,
     corpus_date: str | None,
 ) -> str:
-    """§9 ne donne que le bloc de consignes pour la révision et la finalisation.
-    Les trois sections de charge sont les mêmes que pour B : sans elles, A
-    n'aurait ni l'autorité, ni la version courante, ni la critique à traiter."""
+    """§9 ne donne que le bloc de consignes pour la révision. Les trois sections
+    de charge sont les mêmes que pour B : sans elles, A n'aurait ni l'autorité,
+    ni la version courante, ni la critique à traiter. Il n'y a plus de
+    finalisation par A : la version examinée est promue telle quelle (1.3)."""
     blocks = [head]
     if kind is MissionKind.RECHERCHE:
         blocks.append(_RESEARCH)

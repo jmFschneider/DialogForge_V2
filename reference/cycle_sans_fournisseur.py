@@ -161,6 +161,11 @@ def main(argv: list[str]) -> int:
     if etat["status"] != "AWAITING_APPROVAL" or etat["open_finding_ids"]:
         print("ECHEC : le cycle n'est pas arrive a AWAITING_APPROVAL sans objection ouverte")
         return 1
+    # Proposition, correction : deux appels de A, deux de B. Un troisieme appel de
+    # A serait une finalisation qui reecrit apres la derniere revue (1.3).
+    if (agent_a.calls, agent_b.calls) != (2, 2):
+        print(f"ECHEC : appels A={agent_a.calls} B={agent_b.calls}, attendu 2 et 2")
+        return 1
     return 0
 
 

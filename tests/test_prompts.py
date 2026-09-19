@@ -27,7 +27,8 @@ _TAGS = ("IABINOME:DOCUMENT", "IABINOME:QUESTION")
 
 class TestAgentATagsAreSpelledOut(unittest.TestCase):
     def a_prompts(self) -> dict[str, str]:
-        """Les quatre prompts adressés à A, dans les quatre situations."""
+        """Les prompts adressés à A : proposition (deux genres) et révision. Il
+        n'y a plus de finalisation par A depuis 1.3."""
         demande, document, review = "La demande.", "# Document courant", "{}"
         return {
             "proposition": prompts.build_proposal(demande, MissionKind.CONCEPTION, None),
@@ -35,9 +36,6 @@ class TestAgentATagsAreSpelledOut(unittest.TestCase):
                 demande, MissionKind.RECHERCHE, "2026-09-04"
             ),
             "revision": prompts.build_revision(
-                demande, document, review, MissionKind.CONCEPTION, None
-            ),
-            "finalisation": prompts.build_final(
                 demande, document, review, MissionKind.CONCEPTION, None
             ),
         }
@@ -159,17 +157,40 @@ class TestRevisionPromptCarriesTheResponseFormat(unittest.TestCase):
         self.assertEqual(got[0].kind, ResponseKind.CORRIGE)
         self.assertIn('"id": "B-sujet-001"', self.prompt())
 
-    def test_only_the_revision_asks_for_it(self) -> None:
-        """La proposition n'a rien à répondre, et la finalisation garde son
-        périmètre (1.3) : ils ne réclament pas le bloc."""
-        demande = "La demande."
-        for name, prompt in (
-            ("proposition", prompts.build_proposal(demande, MissionKind.CONCEPTION, None)),
-            ("finalisation",
-             prompts.build_final(demande, "# Doc", "{}", MissionKind.CONCEPTION, None)),
-        ):
-            with self.subTest(prompt=name):
-                self.assertNotIn(contracts.TAG_RESPONSES, prompt)
+    def test_the_proposal_has_nothing_to_answer_and_does_not_ask(self) -> None:
+        prompt = prompts.build_proposal("La demande.", MissionKind.CONCEPTION, None)
+        self.assertNotIn(contracts.TAG_RESPONSES, prompt)
+
+    def test_there_is_no_finalisation_prompt_any_more(self) -> None:
+        """1.3 : la version examinée est promue telle quelle. Un gabarit de
+        finalisation qui survivrait serait le chemin d'une réécriture non
+        relue."""
+        self.assertFalse(hasattr(prompts, "build_final"))
+
+
+class TestTargetedReview(unittest.TestCase):
+    """1.3 : après une correction, B ne relit que les objections traitées et les
+    régressions ; une observation nouvelle n'ouvre pas de tour."""
+
+    def review(self, *, targeted: bool) -> str:
+        return prompts.build_review(
+            "La demande.", "# Doc", "Aucun.", ReviewerAccess.CONSULT, None, targeted=targeted
+        )
+
+    def test_the_first_review_is_not_targeted(self) -> None:
+        self.assertNotIn("relecture ciblée", self.review(targeted=False))
+
+    def test_the_targeted_review_names_its_two_perimeters_and_the_way_out(self) -> None:
+        prompt = self.review(targeted=True)
+        self.assertIn("relecture ciblée", prompt)
+        self.assertIn("objection antérieure", prompt)
+        self.assertIn("régressions", prompt)
+        self.assertIn("n'ouvre pas de tour de plus", prompt)
+        self.assertIn("ACCEPTER", prompt)
+
+    def test_the_targeted_block_comes_before_the_schema_so_the_format_still_ends_it(self) -> None:
+        prompt = self.review(targeted=True)
+        self.assertLess(prompt.index("relecture ciblée"), prompt.index('"schema_version": 2'))
 
 
 if __name__ == "__main__":

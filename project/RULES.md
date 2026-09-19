@@ -26,6 +26,9 @@
 **Un réglage inconnu est refusé, jamais ignoré.** Et la commande annonce quel fichier a servi et ce qu'elle y a pris.
 *Motif : un réglage silencieusement perdu est pire qu'un réglage absent — on croit l'avoir posé, et on cherche la cause ailleurs. C'est `C2b` appliqué à l'entrée humaine ; et un réglage qui agit sans se montrer est la moitié d'un état caché.*
 
+**Rien n'est livré que B n'ait examiné : le livrable est la version relue, promue telle quelle.**
+*Motif (1.3, confirmé sur pièce dans le moteur hérité) : un 5e appel `FINAL_A` réécrivait librement le document après la dernière revue de B. Le livrable n'était plus ce qui avait été critiqué, et l'appel coûtait un tour de A pour un texte que personne ne relisait. Supprimé, remplacé par la promotion et un bilan écrit sans modèle.*
+
 **Le livrable de la boucle est un document, jamais une exécution.**
 *Motif : l'exécution autonome n'a jamais mené une implémentation au bout — 1 tâche sur 7 sur FloraPi, 1 sur 10 sur DialogForge.*
 

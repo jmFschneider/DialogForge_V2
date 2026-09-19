@@ -32,7 +32,6 @@ from iabinome.models import Status
 from tests import fakes
 
 _DOC = "IABINOME:DOCUMENT\n# Proposition\nCorps du document."
-_FINAL = "IABINOME:DOCUMENT\n# Final\nCorps final."
 _QUESTION = "IABINOME:QUESTION\nQuel est le critere de fin ?"
 _HORS_CONTRAT = "Bonjour, voici mon document."
 
@@ -139,7 +138,7 @@ class TestStateGate(InterventionCase):
     def test_a_second_run_after_awaiting_approval_is_refused_not_a_keyerror(self) -> None:
         """Avant le lot 2, la phase `CLOSED` sortait en `KeyError` — un défaut
         du programme, pas un refus lisible par l'humain."""
-        self.a.responses = [_DOC, _FINAL]
+        self.a.responses = [_DOC]
         self.b.responses = [fakes.review("ACCEPTER", findings=())]
         self.assertIs(self.drive(), Status.AWAITING_APPROVAL)
         message = self.refused()
@@ -407,7 +406,7 @@ class TestAnswerKeepsTheDemande(InterventionCase):
 
     def test_a_contract_error_then_a_retry_still_keeps_every_section(self) -> None:
         self.question()
-        self.a.responses = [_HORS_CONTRAT, _DOC, _FINAL]
+        self.a.responses = [_HORS_CONTRAT, _DOC]
         self.assertIs(
             self.drive(command_label="resume", intervention=self.answer()), Status.ERROR
         )
@@ -440,7 +439,7 @@ class TestAnswerKeepsTheDemande(InterventionCase):
             intervention=workflow.RetryCall(call_id, self.reason_file()),
         )
         self.assertEqual(self.etat()["status"], "WAITING_HUMAN")
-        self.a.responses = [_DOC, _FINAL]
+        self.a.responses = [_DOC]
         self.b.responses = [fakes.review("ACCEPTER", findings=())]
         second = self.answer_file("Une seconde precision.")
         self.assertIs(

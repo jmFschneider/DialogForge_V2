@@ -19,7 +19,6 @@ _DOC = "IABINOME:DOCUMENT\n# Proposition\nCorps du document."
 # Depuis 1.2, une révision répond à chaque objection ouverte : `fakes.review()`
 # en ouvre une, `B-001`.
 _DOC2 = fakes.revision()
-_FINAL = "IABINOME:DOCUMENT\n# Final\nCorps final."
 _QUESTION = "IABINOME:QUESTION\nQuel est le critere de fin ?"
 
 # B reprend chaque constat antérieur exactement une fois, même pour le fermer :
@@ -55,7 +54,7 @@ class WorkflowCase(unittest.TestCase):
 class TestFullCycle(WorkflowCase):
     def test_cycle_reaches_awaiting_approval(self) -> None:
         collab = self.build(
-            a=(_DOC, _DOC2, _FINAL),
+            a=(_DOC, _DOC2),
             b=(fakes.review("REVISER"), fakes.review("ACCEPTER", findings=_RESOLVED)),
         )
         state = workflow.run(collab, adapters=self.adapters, timeout_seconds=30.0)
@@ -63,12 +62,13 @@ class TestFullCycle(WorkflowCase):
         self.assertIs(state.phase, Phase.CLOSED)
         self.assertIsNone(state.current_call)
         self.assertEqual(state.current_document, "livrables/version_finale.md")
-        self.assertEqual(self.a.calls, 3)
+        # Plus d'appel de finalisation : la version examinée est promue (1.3).
+        self.assertEqual(self.a.calls, 2)
         self.assertEqual(self.b.calls, 2)
 
     def test_exchange_artifacts_are_named_and_ordered(self) -> None:
         collab = self.build(
-            a=(_DOC, _DOC2, _FINAL),
+            a=(_DOC, _DOC2),
             b=(fakes.review("REVISER"), fakes.review("ACCEPTER", findings=_RESOLVED)),
         )
         self.run_engine(collab)
@@ -83,7 +83,7 @@ class TestFullCycle(WorkflowCase):
 
     def test_final_document_opens_on_the_program_written_line(self) -> None:
         collab = self.build(
-            a=(_DOC, _DOC2, _FINAL),
+            a=(_DOC, _DOC2),
             b=(fakes.review("REVISER"), fakes.review("ACCEPTER", findings=_RESOLVED)),
             corpus_captured_at="2026-09-03",
         )
@@ -93,7 +93,8 @@ class TestFullCycle(WorkflowCase):
         self.assertIn("Revue B : CONSULT", final)
         self.assertIn("constats restés ouverts : 0 (dont 0 BLOCKING)", final)
         self.assertIn("corpus figé le 2026-09-03", final)
-        self.assertTrue(final.endswith("Corps final."))
+        examined = (collab / "echanges" / "0003-revision-1-A.md").read_text(encoding="utf-8")
+        self.assertTrue(final.endswith(examined), "le livrable n'est pas la version examinee")
 
     def test_calling_is_published_before_popen(self) -> None:
         """Étape 4 : le processus **lancé** relit `etat.json` et y voit RUNNING.
@@ -156,15 +157,15 @@ class TestTransitions(WorkflowCase):
         self.assertIs(state.status, Status.WAITING_HUMAN)  # type: ignore[attr-defined]
         self.assertEqual(self.etat(collab)["open_finding_ids"], ["B-001"])
 
-    def test_revision_limit_goes_straight_to_final(self) -> None:
+    def test_revision_limit_goes_straight_to_promotion(self) -> None:
         collab = self.build(
-            a=(_DOC, _FINAL),
+            a=(_DOC,),
             b=(fakes.review("REVISER"),),
             max_revisions=0,
         )
         state = self.run_engine(collab)
         self.assertIs(state.status, Status.AWAITING_APPROVAL)  # type: ignore[attr-defined]
-        self.assertEqual(self.a.calls, 2)
+        self.assertEqual(self.a.calls, 1, "un appel de finalisation a ete paye")
 
     def test_accepter_with_open_blocking_keeps_the_decision_and_hands_back(self) -> None:
         blocking = ({
@@ -184,7 +185,7 @@ class TestTransitions(WorkflowCase):
 
     def test_prior_findings_reach_the_next_review(self) -> None:
         collab = self.build(
-            a=(_DOC, _DOC2, _FINAL),
+            a=(_DOC, _DOC2),
             b=(fakes.review("REVISER"), fakes.review("ACCEPTER", findings=_RESOLVED)),
         )
         self.run_engine(collab)
@@ -255,7 +256,7 @@ class TestCanonicalReview(WorkflowCase):
         prompt de la revue suivante."""
         fenced = "```json\n" + fakes.review("REVISER") + "\n```"
         collab = self.build(
-            a=(_DOC, _DOC2, _FINAL),
+            a=(_DOC, _DOC2),
             b=(fenced, fakes.review("ACCEPTER", findings=_RESOLVED)),
         )
         self.run_engine(collab)
@@ -428,11 +429,11 @@ class TestPermutations(WorkflowCase):
                 with self.subTest(a=id_a, b=id_b):
                     tmp = TemporaryDirectory()
                     self.addCleanup(tmp.cleanup)
-                    a = fakes.FakeAdapter(id_a, (_DOC, _FINAL))
+                    a = fakes.FakeAdapter(id_a, (_DOC,))
                     b = fakes.FakeAdapter(id_b, (fakes.review("ACCEPTER", findings=()),))
                     adapters = {id_a: a, id_b: b} if id_a != id_b else {id_a: a}
                     if id_a == id_b:
-                        a.responses = [_DOC, fakes.review("ACCEPTER", findings=()), _FINAL]
+                        a.responses = [_DOC, fakes.review("ACCEPTER", findings=())]
                     collab = fakes.collaboration(
                         Path(tmp.name), adapter_a=id_a, adapter_b=id_b,
                         model_a=f"{id_a}-modele-a", model_b=f"{id_b}-modele-b",

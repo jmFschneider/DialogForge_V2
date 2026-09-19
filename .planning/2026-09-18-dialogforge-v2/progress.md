@@ -3,7 +3,7 @@
 ## Session: 2026-09-18 — mise en place du chantier
 
 ### Current Status
-- **Phase :** 1 terminée (J0 atteint le 2026-09-19) — phase 2 en cours, 1.1 et 1.2 faits
+- **Phase :** 1 terminée (J0 atteint le 2026-09-19) — phase 2 en cours, 1.1 à 1.3 faits
 - **Started :** 2026-09-18
 - **Reste pour J0 :** rien. Injection automatique prouvée avec le plugin local épinglé.
 
@@ -175,3 +175,45 @@ lu comme le prochain point du plan, **1.2** ; 1.3 non ouvert.
 | `test_exchange_artifacts_are_named_and_ordered` rouge | Il attendait 4 artefacts ; `0003-reponses-A.json` s'y ajoute |
 | Motifs de mutation en heredoc, `SyntaxError` sur une apostrophe | Réécrits avec l'outil d'édition (règle déjà consignée, étendue aux scripts jetables) |
 | `cd conception/essais` pour lire des essais | Le répertoire de travail a persisté ; revenu à la racine. À ne pas refaire (`RULES.md`) |
+
+## Session: 2026-09-19 — lot 1, point 1.3 (boucle et version livrée)
+
+Autorisation du PO (« allons y ») après `2b5ae15`. **Non commité** : aucune demande de commit.
+
+### Actions Taken
+- **`FINAL_A` supprimé** : `Phase.FINAL_A`, `prompts.build_final`, `_A_FINAL`, la branche de `apply_a`.
+- **Promotion** (`workflow.promote`) : `ACCEPTER`, ou plafond atteint, mène à `CLOSED` ; le document que B
+  vient d'examiner est copié octet pour octet dans `livrables/version_finale.md`, en-tête vraie
+  (« non approuvé », fin du cycle, version examinée). Rejouable après arrêt brutal (mêmes octets, aucun
+  appel repayé).
+- **Bilan** (`objections.bilan`, `livrables/bilan.md`) écrit par le programme, sans modèle : livrable,
+  revue et demande avec leurs empreintes, registre des objections, désaccords restants.
+- **Relecture ciblée** : `build_review(..., targeted=True)` dès `revision >= 1` ; B ne relit que les
+  objections traitées et les régressions ; une nouvelle remarque se note en `NOTE`.
+- Scénario de référence : A=2, B=2 (avant : A=3, B=2), et garde sur ce compte.
+- README, `CONCEPTION_FINALE.md` (amendement daté), `RULES.md` mis à jour.
+- **Non fait, volontairement :** le tour supplémentaire demandé après le plafond (décision humaine,
+  point 1.4) ; aucun jugement du programme sur ce qui est « hors périmètre ».
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `tests/test_promotion.py` (nouveau) | verte | 14 tests | OK |
+| `tests/test_prompts.py` (ciblé, plus de `build_final`) | verte | verte | OK |
+| Contre-épreuve 1 : livrable réécrit après la revue | rouge | échec | OK, rétabli |
+| Contre-épreuve 2 : relecture jamais ciblée | rouge | échec | OK, rétabli |
+| Contre-épreuve 3 : plafond décalé d'un tour | rouge | échec | OK, rétabli |
+| Contre-épreuve 4 : bilan qui cache les désaccords | rouge | échec | OK, rétabli |
+| Contre-épreuve 5 : livrable ≠ document examiné | rouge | échec | OK, rétabli |
+| `ruff check .` | aucun constat | All checks passed | OK |
+| `mypy` strict | aucun constat | no issues in 37 source files | OK |
+| `pytest tests` (porte complète) | suite verte | 390 passés, 2 ignorés, 67 sous-tests, 58 s | OK |
+| Scénario `reference/cycle_sans_fournisseur.py` | `AWAITING_APPROVAL`, A=2 B=2 | rc=0, bilan et registre lus | OK |
+
+### Errors
+| Error | Resolution |
+|-------|------------|
+| 7 tests rouges au premier passage | Attendus : ils décrivaient le cycle à 5 appels (`_FINAL`, `build_final`, compte d'appels). Réécrits pour la promotion, `_FINAL` retiré partout |
+| Script de patch des tests : motif en CRLF non trouvé | Le script gère maintenant les fins de ligne ; un patch partiel avait déjà écrit 3 fichiers sur 4, repris fichier par fichier |
+| `cat >> fichier <<EOF` vide lancé par réflexe | Sans effet (rien ajouté) ; fonction ajoutée avec l'outil d'édition (`RULES.md` : pas de heredoc pour du code) |
+| Une assertion tautologique écrite (`hash == même hash`) | Remplacée par la vraie preuve : empreinte du corps livré = empreinte du document examiné |

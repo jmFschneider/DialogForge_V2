@@ -30,7 +30,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import contracts, corpus, lock, prompts, storage, transport
+from . import contracts, corpus, lock, objections, prompts, storage, transport
 from .adapters.base import AgentAdapter, CallSpec, ObservedCli
 from .contracts import ContractError, Finding
 from .demande import complete as complete_demande
@@ -89,13 +89,12 @@ _ROLE_OF_PHASE = {
     Phase.PROPOSAL_A: Role.A,
     Phase.REVIEW_B: Role.B,
     Phase.REVISION_A: Role.A,
-    Phase.FINAL_A: Role.A,
 }
 
-# Une QUESTION née en PROPOSAL_A ou REVISION_A y retourne ; une née en FINAL_A
-# ou un BLOQUE (né en REVIEW_B) reprennent en REVISION_A, avec le document
-# courant et les constats déjà ouverts (§2).
-_RESUME_PHASE = {Phase.REVIEW_B: Phase.REVISION_A, Phase.FINAL_A: Phase.REVISION_A}
+# Une QUESTION née en PROPOSAL_A ou REVISION_A y retourne ; un BLOQUE (né en
+# REVIEW_B) reprend en REVISION_A, avec le document courant et les constats
+# déjà ouverts (§2).
+_RESUME_PHASE = {Phase.REVIEW_B: Phase.REVISION_A}
 
 # La porte d'état nomme la commande qui sort du statut refusé : un refus qui
 # n'indique pas la suite renvoie l'humain au code source.
@@ -114,7 +113,9 @@ _NOT_APPROVED = (
     "> Ce document n'est pas approuvé : sa présence prouve que le cycle s'est"
     " achevé, rien de plus.\n"
     "> Revue B : {access} · constats restés ouverts : {open} (dont {blocking}"
-    " BLOCKING) · corpus {corpus}.\n\n"
+    " BLOCKING) · corpus {corpus}.\n"
+    "> Version examinée par B (`{examined}`), livrée sans réécriture : {ending}."
+    " Voir `bilan.md`.\n\n"
 )
 
 
@@ -134,7 +135,7 @@ def run(
     vaut que pour la première itération.
 
     La boucle est bornée par la machine à états elle-même — `max_revisions`
-    plafonne les allers-retours et `FINAL_A` est terminal. **Aucun compteur de
+    plafonne les allers-retours et la promotion (`CLOSED`) est terminale. **Aucun compteur de
     garde n'est ajouté** : ce serait un quota interne.
     """
     # Surface appelée directement — par les tests, et par quiconque importe le
@@ -584,12 +585,6 @@ class _Engine:
             return self.publish(
                 replace(state, status=Status.WAITING_HUMAN, current_call=None)
             )
-        if state.phase is Phase.FINAL_A:
-            path = self.write_final(state, response.body)
-            return self.publish(replace(
-                state, status=Status.AWAITING_APPROVAL, phase=Phase.CLOSED,
-                current_document=path, current_call=None,
-            ))
         body = response.body
         if state.phase is Phase.REVISION_A:
             # Une réponse par objection ouverte, **avant** toute écriture : un
@@ -634,9 +629,9 @@ class _Engine:
                     state, call.call_dir, "ACCEPTER_WITH_OPEN_BLOCKING",
                     Status.WAITING_HUMAN, "revue conservee ; incoherence rendue a l'humain",
                 )
-            return self.publish(replace(state, status=Status.READY, phase=Phase.FINAL_A))
+            return self.promote(state, capped=False)
         if state.revision >= self.config.max_revisions:
-            return self.publish(replace(state, status=Status.READY, phase=Phase.FINAL_A))
+            return self.promote(state, capped=True)
         return self.publish(replace(
             state, status=Status.READY, phase=Phase.REVISION_A, revision=state.revision + 1
         ))
@@ -653,14 +648,15 @@ class _Engine:
             prior = "\n".join(
                 _prior_line(f, replies.get(f.id)) for f in self.open_findings(state)
             ) or "Aucun."
+            # Relecture **ciblée** dès qu'une correction a eu lieu (1.3).
             return prompts.build_review(
-                self.demande, document, prior, self.config.reviewer_access, date
+                self.demande, document, prior, self.config.reviewer_access, date,
+                targeted=state.revision >= 1,
             )
         review = self.read_relative(state.latest_review)
-        build = (
-            prompts.build_revision if state.phase is Phase.REVISION_A else prompts.build_final
+        return prompts.build_revision(
+            self.demande, document, review, self.config.mission_kind, date
         )
-        return build(self.demande, document, review, self.config.mission_kind, date)
 
     def replies_to(self, state: State) -> dict[str, contracts.ObjectionResponse]:
         """Les réponses de A à la revue précédente, par identifiant — vides pour
@@ -683,21 +679,50 @@ class _Engine:
         review = contracts.parse_review(self.read_relative(state.latest_review))
         return [f for f in review.findings if f.id in open_ids]
 
-    def write_final(self, state: State, body: str) -> str:
-        """La ligne d'en-tête est écrite par le programme et vraie à tout moment :
-        le cycle s'achève en `AWAITING_APPROVAL`, jamais en « succès » (§2)."""
+    def promote(self, state: State, *, capped: bool) -> State:
+        """Le cycle s'achève par la **promotion de la version que B vient
+        d'examiner** — jamais par une réécriture que personne n'aurait relue.
+
+        `current_document` est ce document : la revue qui vient d'être publiée
+        porte sur lui, et A n'a plus d'appel après B. Le livrable en reprend le
+        corps octet pour octet ; le bilan, écrit par le programme, dit ce qui
+        reste en désaccord. La ligne d'en-tête est vraie à tout moment : le cycle
+        s'achève en `AWAITING_APPROVAL`, jamais en « succès » (§2).
+
+        Deux écritures puis l'état : un arrêt entre elles laisse un livrable sans
+        état, et le rejeu de la reprise relit la même revue — mêmes octets.
+        """
+        assert state.current_document is not None and state.latest_review is not None
+        examined = state.current_document
         findings = self.open_findings(state)
         date = self.corpus_date()
         header = _NOT_APPROVED.format(
             access=self.config.reviewer_access.value, open=len(findings),
             blocking=sum(1 for f in findings if f.severity is Severity.BLOCKING),
             corpus="absent" if date is None else f"figé le {date}",
+            ending=(
+                f"plafond de {self.config.max_revisions} révision(s) atteint" if capped
+                else "acceptée par B"
+            ),
+            examined=examined,
         )
         (self.collab / "livrables").mkdir(exist_ok=True)
+        delivered = "livrables/version_finale.md"
         storage.write_atomic_text(
-            self.collab / "livrables" / "version_finale.md", header + body
+            self.collab / delivered, header + self.read_relative(examined)
         )
-        return "livrables/version_finale.md"
+        storage.write_atomic_text(
+            self.collab / "livrables" / "bilan.md",
+            objections.bilan(
+                self.collab, delivered=delivered, examined=examined,
+                review=state.latest_review, revisions=state.revision,
+                max_revisions=self.config.max_revisions, capped=capped,
+            ),
+        )
+        return self.publish(replace(
+            state, status=Status.AWAITING_APPROVAL, phase=Phase.CLOSED,
+            current_document=delivered, current_call=None,
+        ))
 
     def write_exchange(self, sequence: int, name: str, body: str) -> str:
         (self.collab / "echanges").mkdir(exist_ok=True)

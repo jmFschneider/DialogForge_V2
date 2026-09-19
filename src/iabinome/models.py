@@ -55,7 +55,6 @@ class Phase(Enum):
     PROPOSAL_A = "PROPOSAL_A"
     REVIEW_B = "REVIEW_B"
     REVISION_A = "REVISION_A"
-    FINAL_A = "FINAL_A"
     CLOSED = "CLOSED"
 
 
@@ -294,8 +293,8 @@ class Configuration:
     created_at: str
 
     def __post_init__(self) -> None:
-        """Un plafond de révisions négatif n'a pas de sens : `FINAL_A` serait
-        atteint sans qu'aucune révision soit possible, ce que `0` exprime
+        """Un plafond de révisions négatif n'a pas de sens : la promotion serait
+        atteinte sans qu'aucune révision soit possible, ce que `0` exprime
         déjà. Vérifié à la construction, donc aussi bien au `new` qu'au
         chargement."""
         if self.max_revisions < 0:

@@ -6,16 +6,17 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**1.1 et 1.2 sont faits** (2026-09-19). 1.1 commité (`b0dc6a3`) ; 1.2 validé (ciblé puis porte
-complète), commité à la demande du PO.
+**1.1 à 1.3 sont faits** (2026-09-19). 1.1 (`b0dc6a3`) et 1.2 (`2b5ae15`) commités ; 1.3 validé
+(ciblé puis porte complète), **non commité** : à committer sur demande du PO.
 
-Poursuivre par **1.3 — la boucle et la version livrée** : proposition A → revue B → correction A
-→ relecture ciblée B → décision humaine, et **promotion de la version examinée** à la place de
-`FINAL_A`, qui réécrit librement. Le moteur consomme encore ce 5e appel ; `FINAL_A` ne demande pas
-de réponses aux objections restées ouvertes (limite connue de 1.2, à traiter ici). Au plafond,
-présenter les désaccords ; un tour de plus est explicite et tracé. Avant de coder, relire
-`workflow.py` (`apply_b`, `Phase.FINAL_A`, `write_final`) et ce que `1.4` attend du bilan.
-**Attendre l'autorisation du PO pour ouvrir 1.3** : elle change le nombre d'appels d'un cycle.
+Poursuivre par **1.4 — rendre le résultat et la décision utilisables** : afficher le document, les
+corrections principales, les réserves et la prochaine action ; permettre acceptation, acceptation
+avec réserves, **correction ciblée** et arrêt, depuis le même moteur ; conserver une décision
+**datée portant sur une version précise** (« terminé » n'est pas « accepté ») ; diagnostic de reprise
+lisible ; liste des collaborations calculée depuis les dossiers. Le **tour supplémentaire demandé
+après le plafond** (1.3) est la « correction ciblée » : décision humaine explicite et tracée, à
+écrire ici. Point d'appui : `objections.ledger()` et `livrables/bilan.md`. **Attendre l'autorisation
+du PO pour ouvrir 1.4.**
 
 Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la seule voie où
 l'injection automatique du plan est qualifiée.
@@ -52,11 +53,11 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 - [x] 1.1 Format court de demande, fichier direct ou cadrage guidé, provenance conservée
 - [x] 1.2 Objections et dispositions : énoncé, réponse de A, disposition et justification distincts
 - [x] 1.2 Réponse exigée pour chaque objection ouverte ; identifiants absents ou dupliqués détectés
-- [ ] 1.3 Boucle : A → B → correction A → relecture ciblée B → décision humaine
-- [ ] 1.3 Promotion de la version examinée à la place de la finalisation qui réécrit librement
+- [x] 1.3 Boucle : A → B → correction A → relecture ciblée B → décision humaine
+- [x] 1.3 Promotion de la version examinée à la place de la finalisation qui réécrit librement
 - [ ] 1.4 Résultat, réserves, prochaine action ; acceptation, réserve, correction ciblée, arrêt
 - [ ] 1.4 Décision datée portant sur une version précise ; « terminé » n'est pas « accepté »
-- **Status:** in_progress — 1.1 et 1.2 faits, 1.3 et 1.4 restent
+- **Status:** in_progress — 1.1 à 1.3 faits, 1.4 reste
 - **Jalon :** J1 — version fonctionnelle avec faux agents.
 
 ### Phase 3: Lot 2 — Robustesse et liaison PWF du produit
@@ -100,6 +101,9 @@ commit, ni déploiement automatique dans le moteur documentaire.
 | Revue B **v2** : `justification` distincte, énoncé initial immuable, fermeture non justifiée = reste ouverte (1.2) | Mesuré sur la revue réelle du 2026-09-05 : B réécrit l'énoncé de ses 7 constats pour y dire « désormais résolu ». Le programme garde l'initial et reprend la réécriture comme justification (sans nouvel appel). La v1 reste lisible (revues historiques). Le sens sûr seulement : une omission laisse ouvert, ne ferme jamais |
 | A **répond** à chaque objection ouverte, en révision (1.2) | Bloc `IABINOME:REPONSES` après le document libre ; `CORRIGE`/`CONTESTE`/`REPORTE`/`ARBITRAGE`, justification exigée sauf `CORRIGE`. Réponse absente, dupliquée ou inconnue = `CONTRACT_ERROR` (relançable). **Choix rigoureux, à mesurer au lot 3** : il peut coûter un appel payé si A oublie le bloc ; le préambule autour du JSON, lui, est récupéré sans appel. `FINAL_A` non touché (1.3) |
 | Registre des objections **relu**, pas stocké (1.2) | `objections.ledger()` assemble `critique-B.json` et `reponses-A.json` : aucune seconde vérité. Servira le bilan de 1.4 |
+| **Promotion à la place de `FINAL_A`** (1.3, autorisé par le PO le 2026-09-19) | `ACCEPTER`, ou plafond atteint, mène directement à `CLOSED` : le document que B vient d'examiner est copié octet pour octet dans `livrables/version_finale.md`, et `livrables/bilan.md` (écrit par le programme, sans modèle) porte les empreintes de la demande, du livrable et de la revue et les désaccords restants. **Un appel payant de moins par cycle** (A=2, B=2 au lieu de A=3, B=2). `Phase.FINAL_A`, `build_final` et le gabarit sont supprimés : un état `FINAL_A` d'une collaboration ancienne est refusé au chargement (aucune collaboration V2 n'existe). « Correction substantielle non revue » ne peut plus naître du cycle : A n'a plus d'appel après B |
+| **Relecture ciblée** par le prompt, pas par le programme (1.3) | Dès `revision >= 1`, B ne relit que les objections traitées et les régressions ; une nouvelle observation se note en `NOTE`. Le programme ne juge pas si une remarque est « hors périmètre » (§6 : il ne décide pas sur les sévérités) : la transition reste `ACCEPTER`/`REVISER` de B et le plafond. **À mesurer au lot 3** : si B ouvre des tours pour des remarques nouvelles malgré la consigne |
+| Tour supplémentaire après le plafond **renvoyé à 1.4** | C'est une décision humaine (« correction ciblée »), pas une transition automatique. Le plafond présente les désaccords ; l'humain décide |
 | `ruff format` hors de la porte de validation | Le projet ne l'a jamais utilisé ; reformater 26 fichiers brouillerait les diffs du lot 1 sans rien prouver |
 
 ## Errors Encountered
