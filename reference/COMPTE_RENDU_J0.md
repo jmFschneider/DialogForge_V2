@@ -226,6 +226,57 @@ Ce qui reste vrai sans réserve : la ligne de hook amont fonctionne dans l'envir
 Ce qui n'est pas établi : que l'hôte la déclenche effectivement sur `UserPromptSubmit` et
 `PreToolUse`. **Les hooks ne sont pas déclarés validés.**
 
+### Essai concluant — session `fa10ebab-fedf-42f6-9259-29770d640fde`
+
+Protocole complet cette fois : invocation du skill au premier message, **puis un second message
+ordinaire** provoquant des appels d'outil. Sept appels au total : `Skill`, `Bash` ×2, `Read` ×3,
+`Glob`.
+
+| Mesure | Valeur |
+|---|---|
+| Hooks exécutés par l'hôte | **2**, tous deux `stop` — 60 ms et 53 ms, `hookErrors` vides |
+| `UserPromptSubmit` exécuté | **jamais** |
+| `PreToolUse` exécuté | **jamais**, malgré six appels d'outil couverts par son filtre |
+| `PostToolUse` exécuté | **jamais** |
+| Injections `BEGIN-PWF-DATA` | **0** |
+
+**Conclusion, cette fois sans réserve de protocole :** sur Claude Code 2.1.278, avec PWF installé
+en skill autonome, seul l'événement `Stop` est réellement exécuté. Les trois événements qui portent
+l'injection du plan ne le sont jamais, bien qu'ils soient enregistrés (`Added session hook for
+event UserPromptSubmit…`, journal `--debug` de l'essai précédent).
+
+**Sur les 53-60 ms du `stop` qui s'exécute.** Mesures comparatives de la même ligne de hook :
+
+| Conditions | Durée | Sortie |
+|---|---|---|
+| Depuis la racine du dépôt | ~1 060 ms | 193 octets |
+| Depuis un autre dossier | ~140 ms | **0 octet** |
+
+Le `stop` de la session est plus proche du second cas : il sort sans rien faire. L'explication la
+mieux étayée est la garde en tête de `skill-hook.sh`, qui sort immédiatement quand ni `PLAN_ID` ni
+`PWF_PLAN_ROOT` ne sont dans l'environnement du hook **et** que son dossier courant ne contient ni
+`task_plan.md` ni `.planning`. La trace ne consigne ni le dossier ni l'environnement du hook :
+c'est l'hypothèse la mieux soutenue, pas un fait prouvé.
+
+### Réserve retenue
+
+L'**injection automatique du plan par les hooks n'est pas qualifiée** sur cet hôte. Elle n'est pas
+déclarée acquise, et le critère n'a pas été abaissé pour obtenir un vert.
+
+Ce qui fonctionne et sur quoi la reprise repose réellement :
+
+- la résolution du plan par les scripts amont, éprouvée sur six cas dont la sélection erronée ;
+- le `CLAUDE.md` du dépôt, qui fait du plan PWF l'autorité unique de l'avancement et impose sa
+  lecture en début de session ;
+- l'essai en session neuve : la bonne prochaine étape **a bien été retrouvée**, deux fois.
+
+Ce qui est perdu tant que la réserve tient : la réinjection automatique du plan après compactage ou
+perte de contexte. La parade est la relecture explicite du plan, déjà inscrite dans `CLAUDE.md`.
+
+Deux pistes restent ouvertes, aucune engagée : la route plugin/marketplace, seule à livrer les
+hooks au démarrage d'après l'amont — au prix du suivi de `master` ; et une déclaration de hooks
+locale appelant les scripts amont par chemin absolu.
+
 ## 6. Reste à faire pour déclarer J0
 
 Un seul point, et il exige une **nouvelle session** de l'hôte de développement — il ne peut pas être

@@ -31,9 +31,12 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 - [x] 0.3 PWF installé et version consignée (3.20.1, commit `faf1a15`)
 - [x] 0.3 Plan nommé créé avec les scripts amont, lots 0 à 3 inscrits
 - [x] 0.3 Racine et plan sélectionnés explicitement, résolution et ambiguïté éprouvées
-- [ ] 0.3 Reprise vérifiée **en session** : bonne prochaine étape, sélection erronée refusée, hooks
+- [x] 0.3 Reprise vérifiée **en session** : bonne prochaine étape retrouvée, sélection erronée refusée
+- [!] 0.3 Injection automatique par les hooks : **qualifiée négativement**, réserve consignée
 - **Status:** in_progress
-- **Jalon :** J0 — chantier prêt. Non atteint tant que la ligne ci-dessus est ouverte.
+- **Jalon :** J0 — chantier prêt, **sous réserve** : l'injection automatique par les hooks n'est
+  pas qualifiée sur cet hôte (voir `reference/COMPTE_RENDU_J0.md` §5). La reprise repose sur
+  `CLAUDE.md` et la résolution explicite, tous deux vérifiés en session.
 
 ### Phase 2: Lot 1 — Parcours documentaire complet
 - [ ] 1.1 Format court de demande, fichier direct ou cadrage guidé, provenance conservée

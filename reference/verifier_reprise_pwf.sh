@@ -80,9 +80,11 @@ echo
 echo "--- Diagnostic (informatif, ne compte pas dans le verdict) ---"
 
 # Telemetrie de hooks laissee par l'hote dans la trace : evenement, duree,
-# erreurs. Une duree de l'ordre de 60-100 ms signe une ligne de hook qui n'a
-# PAS execute le script (sh introuvable, echec avale par son « ; exit 0 ») ;
-# le script reellement execute coute plus de 1000 ms sur cette machine.
+# erreurs. Mesures sur cette machine : le script fait son travail en ~1000 ms
+# depuis la racine du depot, et sort en ~150 ms sans rien faire depuis un
+# autre dossier. Une duree de l'ordre de 50-100 ms signe donc une sortie
+# immediate. L'hypothese « sh introuvable » a ete invalidee : sh se resout
+# bien en /usr/bin/sh dans le Git Bash non-login qu'utilise l'hote.
 if [ -n "$derniere" ] && command -v python >/dev/null 2>&1; then
     python - "$derniere" <<'PY'
 import json
@@ -122,7 +124,7 @@ else:
     print("   hooks declenches par l hote :")
     for evenement, duree, erreurs in vus:
         if isinstance(duree, int) and duree < 200:
-            verdict = "script NON execute (sh introuvable ?)"
+            verdict = "sortie immediate, aucun travail (voir COMPTE_RENDU_J0 §5)"
         else:
             verdict = "script execute"
         print(f"     {evenement:<11} {duree} ms  -> {verdict}")
