@@ -24,7 +24,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -76,6 +76,16 @@ class Correct:
 
 
 @dataclass(frozen=True)
+class Reprocess:
+    """`resume --reprocess` : relire **localement** la réponse brute conservée d'un
+    appel en erreur, sans rien relancer. Le fichier dit pourquoi, comme pour une
+    relance : une opération humaine reste attribuable."""
+
+    call_id: str
+    reason_path: Path
+
+
+@dataclass(frozen=True)
 class RetryCall:
     """`resume --retry-call` : l'appel à relancer et le fichier de motif."""
 
@@ -83,7 +93,7 @@ class RetryCall:
     reason_path: Path
 
 
-Intervention = Answer | Correct | RetryCall
+Intervention = Answer | Correct | Reprocess | RetryCall
 
 
 @dataclass(frozen=True)
@@ -139,9 +149,15 @@ def run(
     timeout_seconds: float,
     command_label: str = "run",
     intervention: Intervention | None = None,
+    pause: Callable[[], bool] | None = None,
 ) -> State:
     """L'unique moteur synchrone. Il enchaîne les appels tant que l'état reste
     `READY` ; toute autre valeur rend la main à l'humain.
+
+    **Pause à la frontière d'appel** : `pause()` n'est consultée qu'**entre** deux
+    appels, une fois le précédent appliqué. Elle rend l'état `READY` tel quel — rien
+    n'est perdu, `run` reprend au même endroit. Ce n'est pas l'arrêt immédiat, qui
+    interrompt l'appel en cours (`INTERRUPTED_BY_USER`, possiblement payé).
 
     L'intervention humaine est appliquée **sous le verrou**, entre la relecture
     et la porte d'état, puis consommée — comme la relance l'était déjà, elle ne
@@ -170,6 +186,8 @@ def run(
                 state = engine.new_call(state, retry)
         intervention = None
         if state.status is not Status.READY:
+            return state
+        if pause is not None and pause():
             return state
 
 
@@ -317,6 +335,8 @@ class _Engine:
             return self.apply_answer(state), None
         if isinstance(intervention, Correct):
             return self.apply_correction(state), None
+        if isinstance(intervention, Reprocess):
+            return self.apply_reprocess(state, intervention), None
         if isinstance(intervention, RetryCall):
             return self.apply_retry(state, intervention)
         return state, None
@@ -424,6 +444,42 @@ class _Engine:
             replace(state, status=Status.READY, current_call=None),
             _Retry(call.call_id, reason.strip()),
         )
+
+    def apply_reprocess(self, state: State, request: Reprocess) -> State:
+        """Retraitement **local** d'une réponse reçue mais mal interprétée : la
+        réponse brute est déjà sur disque et payée, en relire l'interprétation ne
+        coûte rien — alors que `--retry-call` repaierait un appel pour la même
+        réponse. Même table fermée que la relance (N-01) : seuls `CONTRACT_ERROR`
+        et `DECODE_FAILED`, des erreurs **d'interprétation**.
+
+        Rien n'est réécrit : les données brutes restent intactes, l'opération est
+        **tracée** (`retraitements.jsonl`, dans le dossier de l'appel), puis l'état
+        repasse en `RUNNING` avec son appel courant — le chemin de reprise
+        ordinaire, qui confronte le dossier aux empreintes avant de relire. Un
+        arrêt brutal ensuite se reprend par un simple `run`.
+        """
+        call = state.current_call
+        if state.status is not Status.ERROR or call is None or call.call_id != request.call_id:
+            raise WorkflowError(f"aucun appel en erreur {request.call_id!r} à retraiter")
+        if not self.relaunchable(state, call):
+            raise WorkflowError(
+                "cet incident n'est pas une erreur d'interprétation : un retraitement local"
+                " ne changerait rien (voir `status`)"
+            )
+        reason, _ = storage.read_text(request.reason_path)
+        if not reason.strip():
+            raise WorkflowError("le motif du retraitement ne peut pas être vide")
+        incident = _read_json(self.collab / str(state.last_incident))
+        trace = self.collab / call.call_dir / "retraitements.jsonl"
+        previous = storage.read_text(trace)[0] if trace.exists() else ""
+        entry = {
+            "at": _now(), "reason": reason.strip(), "incident": incident.get("kind"),
+            "detail": incident.get("detail"),
+        }
+        storage.write_atomic_text(
+            trace, previous + json.dumps(entry, ensure_ascii=False) + "\n"
+        )
+        return self.publish(replace(state, status=Status.RUNNING))
 
     def relaunchable(self, state: State, call: CallState) -> bool:
         """`INTERRUPTED` se relance ; `ERROR` ne sort que par la **table fermée**

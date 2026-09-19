@@ -3,7 +3,7 @@
 ## Session: 2026-09-18 — mise en place du chantier
 
 ### Current Status
-- **Phase :** 1 terminée (J0 atteint le 2026-09-19) — phase 2 terminée, 1.1 à 1.4 faits ; J1 à constater par le PO
+- **Phase :** 1 terminée (J0 atteint le 2026-09-19) — phase 2 terminée (J1 validé), lot 2 ouvert : 2.1 fait
 - **Started :** 2026-09-18
 - **Reste pour J0 :** rien. Injection automatique prouvée avec le plugin local épinglé.
 
@@ -264,3 +264,55 @@ commité** : aucune demande de commit.
 ### Reste ouvert
 - **Lot 2** non ouvert. **J1** : critères réunis, à constater par le PO.
 - `show` affiche le document en entier par défaut : à ajuster si le PO préfère le résumé seul.
+
+## Session: 2026-09-19 — lot 2 ouvert, point 2.1 (appels, interruptions, récupération)
+
+J1 validé par le PO (« je valide J1, et nous ouvrons le lot 2 »). 1.4 commité (`6cf7aa4`). **2.1 non
+commité** : aucune demande de commit.
+
+### Actions Taken
+- **Mesuré avant de coder** : le moteur hérité distinguait déjà `LAUNCH_FAILED` (échec de `Popen`
+  observé), `CALL_POSSIBLY_PAID`, `CLI_FAILED`, `TIMEOUT`, `INTERRUPTED_BY_USER`, `CONTRACT_ERROR`,
+  `DECODE_FAILED`, `INTEGRITY_MISMATCH` — mais **rien ne les expliquait** à l'humain, et sur
+  `CONTRACT_ERROR`/`DECODE_FAILED` la seule sortie était un **nouvel appel payant**.
+- **`incidents.py`** (nouveau) : catalogue « payé ? » (non / peut-être / inconnu / oui), sens, action ;
+  pour `CLI_FAILED`, le message de l'outil cité **tel quel**, sans coût ni heure de reprise déduits.
+  `decisions.next_action`/`render` et `status` s'en servent.
+- **`resume --reprocess <uuid> --reason-file`** (`workflow.Reprocess`) : retraitement **local** d'une
+  réponse brute conservée, sans appel ; motif exigé ; trace `retraitements.jsonl` ; données brutes
+  intactes ; même table fermée que la relance ; un échec reste `ERROR`.
+- **Pause à la frontière d'appel** : `workflow.run(pause=…)`, consultée entre deux appels seulement ;
+  **Ctrl+C à deux temps** dans la CLI (`_PauseSwitch`) : pause (code de sortie 6), puis arrêt immédiat
+  (`INTERRUPTED_BY_USER`). Les conséquences sont affichées, puis la prochaine action après chaque commande.
+- Verrou : inchangé (déjà exclusif, jamais effacé quand ambigu) ; tests ajoutés au niveau CLI.
+- README, `CONCEPTION_FINALE.md` §7 (amendement daté), `RULES.md` (2 règles), plan à jour.
+- **Non fait, volontairement** : « appel non lancé » **prouvé après crash** est impossible (`pid.txt`
+  s'écrit après `Popen`) ; seul `LAUNCH_FAILED` l'est. Aucune heure de reprise ni coût affichés.
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `tests/test_incidents.py` (nouveau) | verte | 28 tests, 4 sous-tests | OK |
+| Contre-épreuve 1 : retraitement non tracé | rouge | 2 échecs | OK, rétabli |
+| Contre-épreuve 2 : retraiter un appel qui n'est pas en erreur | rouge | 1 échec | OK, rétabli |
+| Contre-épreuve 3 : pause jamais consultée | rouge | 3 échecs | OK, rétabli |
+| Contre-épreuve 4 : « payé ? » toujours « inconnu » | rouge | 3 échecs | OK, rétabli |
+| Contre-épreuve 5 : message de l'outil caché | rouge | 1 échec | OK, rétabli |
+| Contre-épreuve 6 : le second Ctrl+C n'arrête rien | rouge | 2 échecs | OK, rétabli |
+| Contre-épreuve 7 : la pause rend le code 0 | rouge | 1 échec | OK, rétabli |
+| `ruff check .` | aucun constat | All checks passed | OK |
+| `mypy` strict | aucun constat | no issues in 41 source files | OK |
+| `pytest tests` (porte complète) | suite verte | 457 passés, 2 ignorés, 71 sous-tests, 54 s | OK |
+| Scénario `reference/cycle_sans_fournisseur.py` | rc=0, prochaine action affichée | rc=0 | OK |
+
+### Errors
+| Error | Resolution |
+|-------|------------|
+| Test CLI du retraitement en `ERROR` (code 4 au lieu de 0) | Mon test : B « révisait », donc A devait ensuite répondre à une objection. B accepte ; le moteur était juste |
+| 4 constats `ruff` sur les nouveaux tests (lignes longues, variable inutilisée) | Corrigés |
+| Un motif de patch de test trouvé plusieurs fois, script abandonné sans rien écrire | Motif rendu unique, script rejoué |
+
+### Reste ouvert
+- **2.2** (séparation des rôles) et **2.3** (liaison PWF) non ouverts.
+- Le double Ctrl+C est testé avec `_thread.interrupt_main` (ce que fait le signal) : le vrai clavier
+  Windows n'est pas simulé.

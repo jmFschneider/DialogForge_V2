@@ -190,7 +190,7 @@ tour suivant, ce que A a répondu. Le registre par objection se relit dans `echa
 | `AWAITING_APPROVAL` | le cycle est allé à son terme — **pas accepté** | `show`, puis `decide` (ci-dessous) |
 | `WAITING_HUMAN` | A a posé une question, ou une revue est incohérente | `resume --answer <fichier>` |
 | `INTERRUPTED` | l'appel n'a pas abouti — délai, quota, arrêt brutal | `resume --retry-call <uuid> --reason-file <fichier>` |
-| `ERROR` | la réponse est arrivée mais ne respecte pas le contrat | idem, si l'incident est relançable |
+| `ERROR` | la réponse est arrivée (et payée) mais ne respecte pas le contrat | `resume --reprocess <uuid> --reason-file <fichier>` : relit **localement** la réponse conservée, sans appel ; ou `--retry-call` (nouvel appel payant) |
 | `STOPPED` | vous avez arrêté la collaboration (`decide --stop`) | rien : c'est définitif |
 
 Le message de refus **nomme toujours la commande** qui sort du statut : vous n'avez pas à
@@ -222,7 +222,22 @@ décision par commande :
 d'index, rien à garder à jour, et un dossier illisible est nommé plutôt que caché.
 
 Codes de sortie : `0` terminé · `1` refus avant toute modification · `2` erreur d'usage
-(`argparse`) · `3` interrompu · `4` erreur · `5` en attente de vous.
+(`argparse`) · `3` interrompu · `4` erreur · `5` en attente de vous · `6` pause demandée.
+
+**Un incident dit s'il est payé — jamais combien, ni jusqu'à quand.** `status` et `show` distinguent
+trois cas : une réponse **reçue mais mal interprétée** (payée, conservée, relisible en local), un
+appel **qui n'est pas parti** (`LAUNCH_FAILED` : rien de payé), et une **issue inconnue** (délai,
+interruption, arrêt brutal, code de retour non nul : l'appel a pu être payé). Un code de retour non
+nul ne distingue pas un quota épuisé d'une erreur de configuration : le message de l'outil est cité
+**tel quel**, et aucun coût ni aucune heure de reprise n'est déduit. Rien n'est jamais relancé tout
+seul. Le retraitement local est tracé dans `appels/<appel>/retraitements.jsonl` ; les données brutes
+ne sont jamais touchées.
+
+**Ctrl+C se fait en deux temps.** Le premier demande une **pause à la frontière d'appel** : l'appel
+en cours se termine, le cycle s'arrête, rien n'est perdu (code `6`, `run` reprend au même endroit).
+Le second est un **arrêt immédiat** : l'appel en cours est interrompu, il a pu être payé (statut
+`INTERRUPTED`, aucun rejeu automatique). Le programme affiche ces conséquences au moment de la
+demande, puis la prochaine action.
 
 **Ce qu'un arrêt brutal garantit, et ce qu'il ne garantit pas.** Les artefacts d'un appel sont
 écrits avant toute transition d'état, et rien n'est jamais rejoué tout seul — donc vous ne payez

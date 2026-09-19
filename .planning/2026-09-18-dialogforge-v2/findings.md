@@ -45,6 +45,8 @@
 | B réécrit l'énoncé de ses constats au tour suivant (revue réelle du 2026-09-05, 7 sur 7) | Contrat v2 : énoncé initial immuable, justification à part (1.2). Rejoué dans `tests/test_objections.py` |
 | Le moteur hérité livrait une réécriture non relue (`FINAL_A`, 5e appel) | Supprimé le 2026-09-19 (1.3) : promotion de la version examinée + `bilan.md`. Un appel payant de moins par cycle |
 | Aucun moyen de lire un résultat, de décider, ni de retrouver une collaboration (moteur hérité) | 1.4 : `show`, `decide`, `list`, `decisions.json` ; « terminé » distinct d'« accepté » |
+| Sur `CONTRACT_ERROR`/`DECODE_FAILED`, seule sortie = nouvel appel payant, alors que la réponse est sur disque | 2.1 : `--reprocess`, retraitement local tracé |
+| Un incident n'était pas expliqué à l'humain (payé ? cause ? suite ?) | 2.1 : `incidents.py`, sans coût ni heure déduits |
 | `reference/cycle_sans_fournisseur.py` rend rc=0 même en `ERROR` | Corrigé le 2026-09-19 : rc=1 hors de `AWAITING_APPROVAL` sans objection ouverte |
 | `ruff format --check` signale 26 fichiers | Laissé ouvert : `ruff format` n'appartient pas à la porte historique du projet. À trancher explicitement, pas à subir |
 

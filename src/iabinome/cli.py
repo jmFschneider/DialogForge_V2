@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import signal
 import sys
 import uuid
 from datetime import UTC, datetime
@@ -63,6 +64,7 @@ _EXIT_CODE = {
     Status.INTERRUPTED: 3,
     Status.ERROR: 4,
     Status.WAITING_HUMAN: 5,
+    Status.READY: 6,  # pause demandée par l'humain (Ctrl+C) : reprendre par `run`
 }
 
 # Réglages que le fichier de configuration peut fournir, par commande. Une clé
@@ -236,15 +238,19 @@ def cmd_run(args: argparse.Namespace) -> int:
 def cmd_resume(args: argparse.Namespace) -> int:
     """Valide les arguments, construit l'intervention, la transmet. Aucune
     lecture d'état, aucune écriture : tout cela appartient au verrou."""
-    if args.answer and (args.retry_call or args.reason_file):
-        return _fail("--answer est incompatible avec --retry-call/--reason-file")
-    if bool(args.retry_call) != bool(args.reason_file):
-        return _fail("--retry-call et --reason-file vont ensemble")
+    if args.answer and (args.retry_call or args.reprocess or args.reason_file):
+        return _fail("--answer est incompatible avec --retry-call/--reprocess/--reason-file")
+    if args.retry_call and args.reprocess:
+        return _fail("--retry-call (nouvel appel payant) et --reprocess (local) s'excluent")
+    if bool(args.retry_call or args.reprocess) != bool(args.reason_file):
+        return _fail("--retry-call ou --reprocess vont avec --reason-file, et inversement")
     intervention: workflow.Intervention | None = None
     if args.answer:
         intervention = workflow.Answer(Path(args.answer))
     elif args.retry_call:
         intervention = workflow.RetryCall(args.retry_call, Path(args.reason_file))
+    elif args.reprocess:
+        intervention = workflow.Reprocess(args.reprocess, Path(args.reason_file))
     return _drive(
         Path(args.collab), timeout_seconds=args.timeout, command_label="resume",
         intervention=intervention,
@@ -255,18 +261,76 @@ def _drive(
     collab: Path, *, timeout_seconds: float, command_label: str,
     intervention: workflow.Intervention | None = None,
 ) -> int:
+    switch = _PauseSwitch()
+    previous = _install(switch)
     try:
         state = workflow.run(
             collab, adapters=ADAPTERS, timeout_seconds=timeout_seconds,
-            command_label=command_label, intervention=intervention,
+            command_label=command_label, intervention=intervention, pause=switch,
         )
+    except KeyboardInterrupt:
+        # Ctrl+C **hors** d'un appel (préflight, verrou, écriture) : aucun appel
+        # n'était en cours, l'état est celui d'avant ou d'après une publication
+        # atomique — rien n'est perdu et rien n'a été payé par cet arrêt.
+        print(
+            "arrêt immédiat entre deux appels : aucun appel n'était en cours, rien n'est perdu ;"
+            f" `run {collab}` reprend", file=sys.stderr,
+        )
+        return _EXIT_CODE[Status.READY]
     except _BORDER_ERRORS as exc:
         return _fail(_describe(exc))
+    finally:
+        _restore(previous)
     print(f"statut : {state.status.value} · phase : {state.phase.value}")
-    # Indexation directe, sans défaut : `run` ne rend jamais `READY` ni
-    # `RUNNING`, et masquer un statut inattendu derrière un code plausible
-    # recréerait l'indiscernabilité que D-5 corrige.
+    if state.status is Status.READY:
+        print(
+            "pause : le cycle s'est arrêté à la frontière d'appel — le dernier appel est appliqué,"
+            " rien n'est perdu ; `run` reprend au même endroit"
+        )
+    print(f"prochaine action : {decisions.next_action(collab, state)}")
+    # Indexation directe, sans défaut : `run` ne rend jamais `RUNNING`, et masquer
+    # un statut inattendu derrière un code plausible recréerait l'indiscernabilité
+    # que D-5 corrige. `READY` n'est rendu que par une **pause** demandée.
     return _EXIT_CODE[state.status]
+
+
+_PAUSE_ASKED = (
+    "pause demandée : l'appel en cours va se terminer, puis le cycle s'arrête à la frontière"
+    " d'appel. Ctrl+C encore = arrêt immédiat : l'appel en cours sera interrompu et pourra avoir"
+    " été payé (INTERRUPTED, aucun rejeu automatique)"
+)
+
+
+class _PauseSwitch:
+    """Le Ctrl+C à deux temps. Le premier demande une **pause à la frontière
+    d'appel** — l'appel en cours se termine, rien n'est perdu. Le second est un
+    **arrêt immédiat** : l'appel en cours est interrompu, ses conséquences sont
+    affichées (`incidents`). Instance appelable : c'est la valeur de `pause`."""
+
+    def __init__(self) -> None:
+        self.requested = False
+
+    def __call__(self) -> bool:
+        return self.requested
+
+    def on_signal(self, signum: int, frame: Any) -> None:
+        if not self.requested:
+            self.requested = True
+            print(_PAUSE_ASKED, file=sys.stderr)
+            return
+        raise KeyboardInterrupt
+
+
+def _install(switch: _PauseSwitch) -> Any:
+    try:
+        return signal.signal(signal.SIGINT, switch.on_signal)
+    except ValueError:  # hors du fil principal : pas de gestion de Ctrl+C
+        return None
+
+
+def _restore(previous: Any) -> None:
+    if previous is not None:
+        signal.signal(signal.SIGINT, previous)
 
 
 def cmd_status(args: argparse.Namespace) -> int:
@@ -463,6 +527,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_resume.add_argument("--timeout", type=_timeout)
     p_resume.add_argument("--answer")
     p_resume.add_argument("--retry-call")
+    p_resume.add_argument("--reprocess", metavar="UUID")
     p_resume.add_argument("--reason-file")
     p_resume.set_defaults(func=cmd_resume)
 

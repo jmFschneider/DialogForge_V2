@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import objections, storage
+from . import incidents, objections, storage
 from .models import State, Status
 
 DECISIONS = "decisions.json"
@@ -118,10 +118,7 @@ def describe(collab: Path, state: State) -> str:
 
 
 def _incident(collab: Path, state: State) -> dict[str, Any] | None:
-    if state.last_incident is None or not (collab / state.last_incident).is_file():
-        return None
-    incident: dict[str, Any] = json.loads(storage.read_text(collab / state.last_incident)[0])
-    return incident
+    return incidents.incident(collab, state)
 
 
 def incident_line(collab: Path, state: State) -> str | None:
@@ -144,7 +141,7 @@ def next_action(collab: Path, state: State) -> str:
     if status is Status.WAITING_HUMAN:
         return _waiting_human(collab, state)
     if status in (Status.INTERRUPTED, Status.ERROR):
-        return _incident_action(collab, state)
+        return incidents.action(collab, state)
     if status is Status.STOPPED:
         return "aucune : la collaboration a été arrêtée par décision humaine"
     decision = latest(collab)
@@ -183,24 +180,6 @@ def _waiting_human(collab: Path, state: State) -> str:
     )
 
 
-def _incident_action(collab: Path, state: State) -> str:
-    call = state.current_call
-    who = "" if call is None else f" (appel `{call.call_id}`)"
-    incident = _incident(collab, state)
-    what = "incident inconnu" if incident is None else incident["kind"]
-    if state.status is Status.INTERRUPTED:
-        return (
-            f"{what}{who} : l'appel a pu être payé, aucun rejeu automatique. Si vous décidez de le"
-            " relancer : `resume <dossier> --retry-call <id> --reason-file <fichier>` (le fichier"
-            " dit pourquoi) ; sinon `decide <dossier> --stop`"
-        )
-    return (
-        f"{what}{who} : la réponse brute est conservée dans `appels/`. Si l'incident est de ceux"
-        " qu'on relance : `resume <dossier> --retry-call <id> --reason-file <fichier>` ;"
-        " sinon `decide <dossier> --stop`"
-    )
-
-
 def render(collab: Path, state: State, *, with_document: bool) -> str:
     """Ce que l'humain lit avant de décider : où en est le cycle, ce qui a été
     corrigé, ce qui reste en réserve, la prochaine action, puis le document."""
@@ -224,11 +203,8 @@ def render(collab: Path, state: State, *, with_document: bool) -> str:
             reserves.append(f"  - de l'humain : {decision['reserves']}")
         lines += reserves or ["  aucune"]
     lines += ["", f"Prochaine action : {next_action(collab, state)}"]
-    incident = incident_line(collab, state)
-    if incident is not None and state.status in (
-        Status.INTERRUPTED, Status.ERROR, Status.WAITING_HUMAN
-    ):
-        lines.insert(2, f"Incident : {incident}")
+    if state.status in (Status.INTERRUPTED, Status.ERROR, Status.WAITING_HUMAN):
+        lines[2:2] = incidents.explain(collab, state)
     if with_document and delivered.is_file():
         lines += ["", "--- Document (livrables/version_finale.md) ---", ""]
         lines.append(delivered.read_text(encoding="utf-8").rstrip("\n"))

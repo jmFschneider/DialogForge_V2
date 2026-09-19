@@ -32,6 +32,12 @@
 **Une décision humaine porte sur une version précise, et l'acceptation n'est jamais un statut du moteur.**
 *Motif (1.4) : « terminé » et « accepté » ne sont pas le même fait. Le cycle s'arrête en `AWAITING_APPROVAL` ; l'acceptation est une entrée datée de `decisions.json` avec les empreintes du livrable, de la revue et de la demande. Une décision dont l'empreinte ne correspond plus à ce qui est sur le disque le dit, au lieu de laisser croire que la nouvelle version est acceptée.*
 
+**Un incident dit s'il est payé — « non », « peut-être », « inconnu » ou « oui » — jamais un montant ni une heure de reprise.**
+*Motif (2.1) : un code de retour non nul ne distingue pas un quota d'une erreur de configuration (mesuré des deux côtés, règle sur les codes de retour). Le programme cite donc le message de l'outil **tel quel** et n'en déduit rien : « 14h » n'y apparaît que dans la citation. Prétendre connaître un coût ou une reprise qu'aucune donnée ne porte est le défaut inverse de l'appel rejoué à l'aveugle.*
+
+**Relire une réponse déjà payée ne coûte pas un appel.**
+*Motif (2.1) : sur `CONTRACT_ERROR` et `DECODE_FAILED` la seule sortie était `--retry-call`, un nouvel appel payant, alors que la réponse brute était sur disque — et que le code disait lui-même « aucun appel n'est nécessaire pour retenter l'extraction ». `--reprocess` relit localement, trace l'opération et laisse les données brutes intactes ; s'il échoue encore, l'état reste `ERROR` : jamais un avis favorable par défaut.*
+
 **Le livrable de la boucle est un document, jamais une exécution.**
 *Motif : l'exécution autonome n'a jamais mené une implémentation au bout — 1 tâche sur 7 sur FloraPi, 1 sur 10 sur DialogForge.*
 

@@ -6,20 +6,26 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Le lot 1 est terminé** (1.1 à 1.4, 2026-09-19). 1.1 (`b0dc6a3`), 1.2 (`2b5ae15`), 1.3 (`25ab101`)
-commités ; **1.4 validé (ciblé puis porte complète) et commité** (commit `feat: ... (1.4)`, voir `git log`).
+**J1 validé par le PO le 2026-09-19. LOT 2 OUVERT le 2026-09-19** (autorisation du PO). Lot 1 : 1.1
+`b0dc6a3`, 1.2 `2b5ae15`, 1.3 `25ab101`, 1.4 `6cf7aa4`.
 
-**J1** : critères réunis, **à constater par le PO** (voir le jalon de la phase 2). Ensuite : **lot 2 —
-robustesse et liaison PWF du produit** (2.1 reprise après résultat reçu non appliqué, 2.2 paquet B
-minimal et session reviewer fraîche, 2.3 référence de plan PWF facultative). Avant de coder 2.1, relire
-`workflow.resume_call`/`store_response` et `tests/test_recovery.py` : une part de 2.1 existe déjà
-(retraitement local d'une réponse stockée). **Attendre l'autorisation du PO pour ouvrir le lot 2.**
+**2.1 est fait** (2026-09-19), validé (ciblé puis porte complète) et commité (`feat: ... (2.1)`, voir
+`git log`). Limite à connaître : après un crash, « appel non lancé » ne peut pas être **prouvé**
+(`pid.txt` s'écrit après `Popen`) ; seul `LAUNCH_FAILED` (échec de `Popen` observé) l'est. Le reste est
+« inconnu », dit comme tel.
+
+**Ensuite : 2.2 — séparation des rôles** : paquet B minimal (demande, critères, non-objectifs, version
+examinée, sources autorisées, objections ouvertes), session reviewer fraîche, environnement transmis et
+injections de l'hôte contrôlés, **capacités effectives par profil d'adaptateur** ; un profil incapable
+de la protection requise est restreint ou déclaré non supporté. Essai sur dossier jetable. **Attendre
+l'autorisation du PO pour ouvrir 2.2.** Puis 2.3 (référence de plan PWF facultative). **Les garanties des
+CLI réelles ne sont pas acquises avant le lot 3.**
 
 Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la seule voie où
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 2 terminée — Phase 3 (lot 2) à ouvrir sur autorisation du PO
+Phase 3 (lot 2) — 2.1 fait, 2.2 à ouvrir
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -55,19 +61,19 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 - [x] 1.4 Résultat, réserves, prochaine action ; acceptation, réserve, correction ciblée, arrêt
 - [x] 1.4 Décision datée portant sur une version précise ; « terminé » n'est pas « accepté »
 - **Status:** complete — 1.1 à 1.4 faits
-- **Jalon :** J1 — version fonctionnelle avec faux agents. **Critères réunis le 2026-09-19, à constater par le PO** :
+- **Jalon :** J1 — version fonctionnelle avec faux agents. **Validé par le PO le 2026-09-19** (critères) :
   parcours complet sans copier-coller (`reference/cycle_sans_fournisseur.py`), cas sans objection,
   avec correction, avec désaccord (plafond) et avec question humaine couverts par les tests, garanties
   de reprise héritées toujours vertes.
 
 ### Phase 3: Lot 2 — Robustesse et liaison PWF du produit
-- [ ] 2.1 Reprise après résultat reçu non appliqué ; retraitement local de l'interprétation
-- [ ] 2.1 Distinguer réponse mal interprétée, appel non lancé, issue inconnue ; verrou non effacé
+- [x] 2.1 Reprise après résultat reçu non appliqué ; retraitement local de l'interprétation
+- [x] 2.1 Distinguer réponse mal interprétée, appel non lancé, issue inconnue ; verrou non effacé
 - [ ] 2.2 Paquet B minimal ; session reviewer fraîche ; capacités effectives par profil vérifiées
 - [ ] 2.2 Essai sur dossier jetable : sources non modifiées, journal de A non injecté chez B
 - [ ] 2.3 Référence de plan PWF facultative via les scripts publics ; sortie vide traitée
 - [ ] 2.3 Un seul propriétaire du plan ; fonctionnement documentaire vérifié sans liaison PWF
-- **Status:** pending
+- **Status:** in_progress — 2.1 fait (non commité), 2.2 et 2.3 restent
 - **Jalon :** J2 — version candidate aux essais réels.
 
 ### Phase 4: Lot 3 — Essais réels et première livraison
@@ -107,6 +113,10 @@ commit, ni déploiement automatique dans le moteur documentaire.
 | **Décision humaine = fichier daté, sur une version précise ; acceptation ≠ statut** (1.4, autorisé par le PO le 2026-09-19) | `decisions.json` (ajouté à chaque décision, rejouable : la même décision sur la même version n'est pas consignée deux fois) porte les empreintes du livrable, de la revue et de la demande. Accepter ne change pas le statut du moteur (« terminé » reste `AWAITING_APPROVAL`). Une décision dont la version a changé le dit. `Status.STOPPED` (arrêt humain) est ajouté |
 | **Correction ciblée = intervention du moteur** (`Correct`, 1.4) | Elle réutilise le chemin de `--answer` : sous verrou, préflight, rejouable après arrêt brutal, sans appel repayé. L'instruction complète `demande.md` (unique autorité), un tour de révision s'ouvre **au-delà du plafond**, la décision est consignée avant l'état. A repart du **corps** du livrable, sans l'en-tête |
 | Trois commandes ajoutées : `show`, `decide`, `list` (1.4) | La conception disait « quatre commandes » ; la validation de 1.4 (résultat lisible, décision utilisable, liste sans index) ne se tient pas avec `status` seul. Amendement daté dans `CONCEPTION_FINALE.md` §7. `list` calcule depuis les dossiers |
+| **`resume --reprocess` : retraitement local d'une réponse déjà payée** (2.1) | Sur `CONTRACT_ERROR`/`DECODE_FAILED`, la seule sortie était un nouvel appel payant. Le retraitement passe `ERROR` → `RUNNING` avec l'appel courant : le chemin de reprise ordinaire, qui confronte le dossier aux empreintes avant de relire. Motif humain exigé, opération tracée (`retraitements.jsonl`), données brutes intactes, un échec reste `ERROR` |
+| **Catalogue des incidents** (`incidents.py`, 2.1) | « Payé ? » ∈ non / peut-être / inconnu / oui, sens, options. Pour `CLI_FAILED`, le message de l'outil est cité tel quel ; aucun coût, aucune heure de reprise déduits |
+| **Ctrl+C à deux temps** (2.1) | Premier = pause à la frontière d'appel (`workflow.run(pause=…)`, `READY`, code 6) ; second = arrêt immédiat (`INTERRUPTED_BY_USER`). Pas de worker, pas de tâche planifiée : c'est le terminal de l'humain |
+| Verrou : rien de changé (2.1) | L'exclusion et le refus d'un verrou ambigu étaient déjà là ; ajout de tests au niveau CLI (détenteur vivant, verrou illisible : jamais effacé) |
 | `ruff format` hors de la porte de validation | Le projet ne l'a jamais utilisé ; reformater 26 fichiers brouillerait les diffs du lot 1 sans rien prouver |
 
 ## Errors Encountered
