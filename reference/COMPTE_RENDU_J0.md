@@ -201,6 +201,31 @@ et `project/NOTES.md`, `RECOLTE.md`, `DEPART.md` redeviennent la mémoire histor
 plus des tableaux de bord de reprise. Sans cela, le dépôt aurait imposé **deux** listes d'avancement
 concurrentes, ce que le plan interdit explicitement.
 
+### Qualification des hooks — état au 2026-09-19
+
+Essai en session neuve `ba8f9757-3248-43f2-9aa5-4ff1e359ae41` (Claude Code 2.1.278, cwd
+`C:\Projets\DialogForge_2`, branche `v2-socle`). Résultat : **aucune injection automatique**.
+
+Ce que le journal `--debug` de cette session établit, et qui invalide deux hypothèses successives :
+
+| Fait relevé | Conséquence |
+|---|---|
+| `Using bash path: "C:\Program Files\Gitinash.exe"` | L'hôte utilise bien Git Bash |
+| `Registered 5 hooks from skill 'planning-with-files'` | Les cinq hooks sont enregistrés, pas seulement déclarés |
+| `sh` se résout en `/usr/bin/sh` dans un Git Bash **non-login** | L'hypothèse « `sh` introuvable » est **fausse** |
+| Ligne de hook rejouée dans le shell et le dossier exacts de l'hôte | 654 ms, code 0, `hookSpecificOutput` valide avec l'injection |
+| Trace de session : un seul hook exécuté, `stop`, 88 ms, `hookErrors` vide | Les hooks `UserPromptSubmit` et `PreToolUse` n'ont pas produit d'injection |
+
+**Différence de protocole identifiée :** les hooks ont été enregistrés à 07:26:08, c'est-à-dire *au
+moment de l'invocation du skill*. La session s'est arrêtée sur ce même tour. `UserPromptSubmit` ne
+peut se déclencher qu'au tour **suivant**, et les hooks enregistrés en cours de tour n'ont pas
+couvert les appels d'outil de ce tour-là. L'essai est donc **non concluant**, et non négatif : il
+lui manque au moins un tour après l'invocation.
+
+Ce qui reste vrai sans réserve : la ligne de hook amont fonctionne dans l'environnement de l'hôte.
+Ce qui n'est pas établi : que l'hôte la déclenche effectivement sur `UserPromptSubmit` et
+`PreToolUse`. **Les hooks ne sont pas déclarés validés.**
+
 ## 6. Reste à faire pour déclarer J0
 
 Un seul point, et il exige une **nouvelle session** de l'hôte de développement — il ne peut pas être
