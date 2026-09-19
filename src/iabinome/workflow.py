@@ -30,7 +30,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import contracts, corpus, lock, objections, prompts, storage, transport
+from . import contracts, corpus, decisions, lock, objections, prompts, storage, transport
 from .adapters.base import AgentAdapter, CallSpec, ObservedCli
 from .contracts import ContractError, Finding
 from .demande import complete as complete_demande
@@ -67,6 +67,15 @@ class Answer:
 
 
 @dataclass(frozen=True)
+class Correct:
+    """`decide --correct` : une **correction ciblée** demandée par l'humain sur un
+    résultat livré. Le fichier complète la demande, comme une réponse ; un tour
+    supplémentaire s'ouvre ensuite, au-delà du plafond — explicite et tracé."""
+
+    path: Path
+
+
+@dataclass(frozen=True)
 class RetryCall:
     """`resume --retry-call` : l'appel à relancer et le fichier de motif."""
 
@@ -74,7 +83,7 @@ class RetryCall:
     reason_path: Path
 
 
-Intervention = Answer | RetryCall
+Intervention = Answer | Correct | RetryCall
 
 
 @dataclass(frozen=True)
@@ -102,7 +111,11 @@ _WAY_OUT = {
     Status.WAITING_HUMAN: "resume --answer <fichier>",
     Status.INTERRUPTED: "resume --retry-call <uuid> --reason-file <fichier>",
     Status.ERROR: "resume --retry-call <uuid> --reason-file <fichier>",
-    Status.AWAITING_APPROVAL: "aucune, le cycle est allé à son terme",
+    Status.AWAITING_APPROVAL: (
+        "aucune, le cycle est allé à son terme ; décision humaine :"
+        " decide --accept | --accept-with-reserves <texte> | --correct <fichier> | --stop"
+    ),
+    Status.STOPPED: "aucune, la collaboration a été arrêtée par décision humaine",
 }
 
 # Sortie de ERROR : **table fermée**, jamais héritée du statut (N-01). Toute
@@ -191,7 +204,9 @@ def _preflight(
         not adapters[config.agent_b.adapter_id].capabilities.supports_context_only
     ):
         raise WorkflowError(f"{config.agent_b.adapter_id} : profil CONTEXT_ONLY non supporté")
-    source = str(intervention.path.resolve()) if isinstance(intervention, Answer) else None
+    source = (
+        str(intervention.path.resolve()) if isinstance(intervention, Answer | Correct) else None
+    )
     return _Engine(
         collab, config, adapters, observed, text, timeout_seconds, answer, source, composed
     ), state
@@ -200,7 +215,7 @@ def _preflight(
 def _read_answer(intervention: Intervention | None) -> contracts.Normalized | None:
     """La réponse est lue **une fois**, au prévol : le moteur construit ses
     prompts avec elle, et la relecture sous verrou en tolère l'empreinte."""
-    if not isinstance(intervention, Answer):
+    if not isinstance(intervention, Answer | Correct):
         return None
     text, _ = storage.read_text(intervention.path)
     return contracts.normalize(text)
@@ -300,6 +315,8 @@ class _Engine:
         **sous le verrou**, avant la porte d'état (D-4)."""
         if isinstance(intervention, Answer):
             return self.apply_answer(state), None
+        if isinstance(intervention, Correct):
+            return self.apply_correction(state), None
         if isinstance(intervention, RetryCall):
             return self.apply_retry(state, intervention)
         return state, None
@@ -327,18 +344,49 @@ class _Engine:
             raise WorkflowError(
                 f"statut {state.status.value} : la collaboration n'attend pas de réponse humaine"
             )
-        path = self.collab / "demande.md"
-        current, _ = storage.read_text(path)
-        if contracts.normalize(current).sha256 != self.composed.sha256:
-            _archive(path, current)
-            storage.write_atomic_text(path, self.composed.text)
-        self.record_answer(state)
+        self.write_complement()
+        self.record_answer(state, "reponse")
         return self.publish(replace(
             state, status=Status.READY, phase=_RESUME_PHASE.get(state.phase, state.phase),
             demande_sha256=self.composed.sha256,
         ))
 
-    def record_answer(self, state: State) -> None:
+    def write_complement(self) -> None:
+        """Archive par copie l'ancienne demande, puis écrit la demande complétée —
+        et **ne fait rien** si `demande.md` la porte déjà (rejeu)."""
+        assert self.composed is not None
+        path = self.collab / "demande.md"
+        current, _ = storage.read_text(path)
+        if contracts.normalize(current).sha256 != self.composed.sha256:
+            _archive(path, current)
+            storage.write_atomic_text(path, self.composed.text)
+
+    def apply_correction(self, state: State) -> State:
+        """Correction ciblée demandée par l'humain sur un résultat **livré**.
+
+        Même ordre que `apply_answer` — archive, demande complétée, provenance —,
+        puis la **décision** consignée, puis l'état : un tour de révision de plus,
+        au-delà du plafond, ouvert par une décision qui le dit et le date. Chaque
+        écriture est rejouable : un arrêt brutal, puis la même commande, achève.
+        """
+        assert self.answer is not None and self.composed is not None  # prévol
+        if state.status is not Status.AWAITING_APPROVAL:
+            raise WorkflowError(
+                f"statut {state.status.value} : une correction ciblée se demande sur un résultat"
+                " livré (AWAITING_APPROVAL)"
+            )
+        self.write_complement()
+        self.record_answer(state, "correction")
+        decisions.record(
+            self.collab, decisions.TARGETED_CORRECTION, state,
+            instruction_sha256=self.answer.sha256, extra_round=state.revision + 1,
+        )
+        return self.publish(replace(
+            state, status=Status.READY, phase=Phase.REVISION_A, revision=state.revision + 1,
+            demande_sha256=self.composed.sha256,
+        ))
+
+    def record_answer(self, state: State, source: str) -> None:
         """Consigne d'où vient le complément, quelle version il prolonge et à
         quelle revue elle répondait — **après** `demande.md`, **avant** l'état,
         donc rejouable (`demande.record` ne réécrit pas une empreinte déjà
@@ -350,7 +398,7 @@ class _Engine:
         """
         assert self.answer is not None and self.composed is not None
         record_provenance(self.collab, {
-            "source": "reponse", "path": self.answer_source, "sha256": self.composed.sha256,
+            "source": source, "path": self.answer_source, "sha256": self.composed.sha256,
             "complement_sha256": self.answer.sha256, "replaces": state.demande_sha256,
             "archive": _archive_of(self.collab / "demande.md", state.demande_sha256),
             "phase": state.phase.value, "revision": state.revision,
@@ -643,6 +691,10 @@ class _Engine:
         if state.phase is Phase.PROPOSAL_A:
             return prompts.build_proposal(self.demande, self.config.mission_kind, date)
         document = self.read_relative(state.current_document)
+        if state.current_document == decisions.DELIVERED:
+            # Après une correction ciblée, A repart du livrable : son **corps**, sans
+            # la ligne d'en-tête que le programme y a écrite (elle n'est pas le texte).
+            document = _promoted_body(document)
         if state.phase is Phase.REVIEW_B:
             replies = self.replies_to(state)
             prior = "\n".join(
@@ -717,6 +769,7 @@ class _Engine:
                 self.collab, delivered=delivered, examined=examined,
                 review=state.latest_review, revisions=state.revision,
                 max_revisions=self.config.max_revisions, capped=capped,
+                corrections=decisions.corrections(self.collab),
             ),
         )
         return self.publish(replace(
@@ -817,6 +870,56 @@ def _archive(path: Path, text: str) -> None:
     storage.write_atomic_text(
         path.with_name(f"{path.name}.{(numbers[-1] if numbers else 0) + 1:03d}"), text
     )
+
+
+def _promoted_body(delivered: str) -> str:
+    """Le livrable sans son en-tête : le programme l'écrit en lignes `> ...`,
+    suivies d'une ligne vide — jamais de ligne vide à l'intérieur."""
+    return delivered.split("\n\n", 1)[1]
+
+
+_STOPPABLE = (
+    Status.READY, Status.RUNNING, Status.WAITING_HUMAN, Status.INTERRUPTED, Status.ERROR,
+    Status.AWAITING_APPROVAL,
+)
+
+
+def decide(
+    collab: Path, kind: str, *, reserves: str | None = None, reason: str | None = None
+) -> State:
+    """Une décision humaine **sans appel** : acceptation, acceptation avec réserves,
+    arrêt. (La correction ciblée passe par le moteur : `Correct`.)
+
+    Sous le verrou, comme toute mutation. Consignée **avant** l'état : un arrêt
+    brutal laisse une décision sans effet sur l'état, que la même commande achève
+    sans la consigner deux fois. Accepter ne change pas le statut : « terminé »
+    reste `AWAITING_APPROVAL`, l'acceptation est dans `decisions.json`.
+    """
+    with lock.acquire(collab / "verrou.json", "decide"):
+        state = State.from_dict(_read_json(collab / "etat.json"))
+        if kind in (decisions.ACCEPTED, decisions.ACCEPTED_WITH_RESERVES):
+            if state.status is not Status.AWAITING_APPROVAL:
+                raise WorkflowError(
+                    f"statut {state.status.value} : il n'y a rien à accepter tant que le cycle"
+                    " n'est pas allé à son terme (AWAITING_APPROVAL)"
+                )
+            current = decisions.latest(collab)
+            if decisions.is_acceptance(current) and current is not None and (
+                decisions.applies_to_current(collab, current, state)
+            ):
+                raise WorkflowError("ce résultat est déjà accepté : la décision ne se répète pas")
+            if kind == decisions.ACCEPTED_WITH_RESERVES and not (reserves or "").strip():
+                raise WorkflowError("l'acceptation avec réserves exige le texte des réserves")
+            decisions.record(collab, kind, state, reserves=(reserves or "").strip() or None)
+            return state
+        if kind == decisions.STOPPED:
+            if state.status not in _STOPPABLE:
+                raise WorkflowError(f"statut {state.status.value} : rien à arrêter")
+            decisions.record(collab, kind, state, reason=(reason or "").strip() or None)
+            stopped = replace(state, status=Status.STOPPED, updated_at=_now())
+            _write_json(collab / "etat.json", stopped.to_dict())
+            return stopped
+    raise WorkflowError(f"décision inconnue : {kind!r}")
 
 
 def _archive_of(path: Path, sha256: str) -> str | None:

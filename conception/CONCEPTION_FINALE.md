@@ -511,6 +511,8 @@ n'ajoute.***
 
 ## 7. Surface CLI
 
+**Amendé le 2026-09-19 (PO, V2 lot 1 point 1.4) : trois commandes s'ajoutent aux quatre ci-dessous** — `show` (lecture seule : décision, corrections, réserves, prochaine action, document), `decide` (`--accept`, `--accept-with-reserves`, `--correct`, `--stop`) et `list` (collaborations calculées depuis les dossiers). `decide --correct` passe par le moteur (intervention `Correct`, sous verrou, rejouable) ; les trois autres décisions ne font aucun appel. `AWAITING_APPROVAL` reste « terminé, pas accepté » : l'acceptation est une décision de l'humain dans `decisions.json`. Nouveau statut `STOPPED` (arrêt humain, définitif).
+
 ```text
 python -m iabinome new COLLAB
     --demande FICHIER

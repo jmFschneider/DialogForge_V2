@@ -29,6 +29,9 @@
 **Rien n'est livré que B n'ait examiné : le livrable est la version relue, promue telle quelle.**
 *Motif (1.3, confirmé sur pièce dans le moteur hérité) : un 5e appel `FINAL_A` réécrivait librement le document après la dernière revue de B. Le livrable n'était plus ce qui avait été critiqué, et l'appel coûtait un tour de A pour un texte que personne ne relisait. Supprimé, remplacé par la promotion et un bilan écrit sans modèle.*
 
+**Une décision humaine porte sur une version précise, et l'acceptation n'est jamais un statut du moteur.**
+*Motif (1.4) : « terminé » et « accepté » ne sont pas le même fait. Le cycle s'arrête en `AWAITING_APPROVAL` ; l'acceptation est une entrée datée de `decisions.json` avec les empreintes du livrable, de la revue et de la demande. Une décision dont l'empreinte ne correspond plus à ce qui est sur le disque le dit, au lieu de laisser croire que la nouvelle version est acceptée.*
+
 **Le livrable de la boucle est un document, jamais une exécution.**
 *Motif : l'exécution autonome n'a jamais mené une implémentation au bout — 1 tâche sur 7 sur FloraPi, 1 sur 10 sur DialogForge.*
 

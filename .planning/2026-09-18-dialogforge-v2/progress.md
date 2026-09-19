@@ -3,7 +3,7 @@
 ## Session: 2026-09-18 — mise en place du chantier
 
 ### Current Status
-- **Phase :** 1 terminée (J0 atteint le 2026-09-19) — phase 2 en cours, 1.1 à 1.3 faits
+- **Phase :** 1 terminée (J0 atteint le 2026-09-19) — phase 2 terminée, 1.1 à 1.4 faits ; J1 à constater par le PO
 - **Started :** 2026-09-18
 - **Reste pour J0 :** rien. Injection automatique prouvée avec le plugin local épinglé.
 
@@ -217,3 +217,50 @@ Autorisation du PO (« allons y ») après `2b5ae15`. **Non commité** : aucune 
 | Script de patch des tests : motif en CRLF non trouvé | Le script gère maintenant les fins de ligne ; un patch partiel avait déjà écrit 3 fichiers sur 4, repris fichier par fichier |
 | `cat >> fichier <<EOF` vide lancé par réflexe | Sans effet (rien ajouté) ; fonction ajoutée avec l'outil d'édition (`RULES.md` : pas de heredoc pour du code) |
 | Une assertion tautologique écrite (`hash == même hash`) | Remplacée par la vraie preuve : empreinte du corps livré = empreinte du document examiné |
+
+## Session: 2026-09-19 — lot 1, point 1.4 (résultat et décision utilisables)
+
+Autorisation du PO (« commites puis attaques le point suivant »). 1.3 commité (`25ab101`). **1.4 non
+commité** : aucune demande de commit.
+
+### Actions Taken
+- **`decisions.py`** (nouveau) : `decisions.json` (ajouté à chaque décision, rejouable), version précise
+  (empreintes du livrable, de la revue, de la demande), `describe`, `next_action`, `incident_line`, `render`.
+- **`workflow.decide`** : acceptation, acceptation avec réserves (texte exigé), arrêt — sous verrou, sans
+  appel. Accepter **ne change pas** le statut du moteur. `Status.STOPPED` ajouté.
+- **Correction ciblée = intervention du moteur** (`Correct`, réutilise le chemin de `--answer`) :
+  instruction complétée dans `demande.md`, décision consignée, un tour au-delà du plafond ; A repart du
+  **corps** du livrable (`_promoted_body`), sans l'en-tête du programme.
+- **CLI** : `show`, `decide` (`--accept`, `--accept-with-reserves`, `--correct`, `--stop [--reason]`), `list`
+  (calculée depuis les dossiers, sans index) ; `status` donne décision, incident et prochaine action.
+- `bilan.md` mentionne les corrections ciblées demandées.
+- Scénario de référence : `show` → `decide --accept` → `list`, et échec si la décision n'est pas consignée
+  ou si accepter change le statut du moteur.
+- README, `CONCEPTION_FINALE.md` §7 (amendement daté), `RULES.md`, plan à jour.
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `tests/test_decision.py` (nouveau) | verte | 39 tests | OK |
+| Contre-épreuve 1 : version non capturée | rouge | 3 échecs | OK, rétabli |
+| Contre-épreuve 2 : acceptation possible à tout statut | rouge | 3 échecs | OK, rétabli |
+| Contre-épreuve 3 : tour supplémentaire mal tracé | rouge | 1 échec | OK, rétabli |
+| Contre-épreuve 4 : en-tête du programme passé à A | rouge | 1 échec | OK, rétabli |
+| Contre-épreuve 5 : décision non rejouable | rouge | 1 échec | OK, rétabli |
+| Contre-épreuve 6 : changement de version inaperçu | rouge | 2 échecs | OK, rétabli |
+| `ruff check .` | aucun constat | All checks passed | OK |
+| `mypy` strict | aucun constat | no issues in 39 source files | OK |
+| `pytest tests` (porte complète) | suite verte | 429 passés, 2 ignorés, 67 sous-tests, 50 s | OK |
+| Scénario `reference/cycle_sans_fournisseur.py` | cycle, `show`, `decide --accept`, `list` | rc=0, décision consignée, statut inchangé | OK |
+
+### Errors
+| Error | Resolution |
+|-------|------------|
+| Cycle d'imports `decisions` ↔ `objections` (prévu) | `bilan` reçoit `corrections` en paramètre au lieu d'importer `decisions` |
+| 39 tests verts du premier coup, avec 2 assertions bâclées écrites par moi (`… if False else …`) | Remplacées par de vraies vérifications avant de compter ce lot comme prouvé ; puis 6 contre-épreuves |
+| 4 lignes trop longues et un import inutile (`ruff`) | Corrigés |
+| Motifs des scripts de patch multi-lignes contre des fichiers CRLF | Scripts qui gèrent les fins de ligne, motifs vérifiés un à un |
+
+### Reste ouvert
+- **Lot 2** non ouvert. **J1** : critères réunis, à constater par le PO.
+- `show` affiche le document en entier par défaut : à ajuster si le PO préfère le résumé seul.

@@ -44,6 +44,7 @@
 | Réponse accentuée du faux agent rendue en `DECODE_FAILED` | Encodage du tube Windows (cp1252) contre décodage UTF-8 des adaptateurs. **Corrigé à la source le 2026-09-19** (`tests/fakes.py` écrit des octets UTF-8) ; le lot 1 ajoutait justement des réponses accentuées. `PYTHONIOENCODING` reste posé dans le scénario, sans effet nécessaire |
 | B réécrit l'énoncé de ses constats au tour suivant (revue réelle du 2026-09-05, 7 sur 7) | Contrat v2 : énoncé initial immuable, justification à part (1.2). Rejoué dans `tests/test_objections.py` |
 | Le moteur hérité livrait une réécriture non relue (`FINAL_A`, 5e appel) | Supprimé le 2026-09-19 (1.3) : promotion de la version examinée + `bilan.md`. Un appel payant de moins par cycle |
+| Aucun moyen de lire un résultat, de décider, ni de retrouver une collaboration (moteur hérité) | 1.4 : `show`, `decide`, `list`, `decisions.json` ; « terminé » distinct d'« accepté » |
 | `reference/cycle_sans_fournisseur.py` rend rc=0 même en `ERROR` | Corrigé le 2026-09-19 : rc=1 hors de `AWAITING_APPROVAL` sans objection ouverte |
 | `ruff format --check` signale 26 fichiers | Laissé ouvert : `ruff format` n'appartient pas à la porte historique du projet. À trancher explicitement, pas à subir |
 

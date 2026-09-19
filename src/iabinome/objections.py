@@ -50,7 +50,7 @@ def ledger(collab: Path) -> list[dict[str, Any]]:
 
 def bilan(
     collab: Path, *, delivered: str, examined: str, review: str, revisions: int,
-    max_revisions: int, capped: bool,
+    max_revisions: int, capped: bool, corrections: int = 0,
 ) -> str:
     """Le bilan du cycle, écrit **par le programme, sans modèle** : ce qui est
     livré, ce qui l'a examiné, et ce qui reste en désaccord.
@@ -80,9 +80,14 @@ def bilan(
         f" — décision de B : {decision}.",
         f"- Demande : `demande.md` (sha256 `{_sha(collab / 'demande.md')}`,"
         f" {versions} version(s)).",
-        f"- Fin du cycle : {ending}.", "",
-        "## Objections", "",
+        f"- Fin du cycle : {ending}.",
     ]
+    if corrections:
+        lines.append(
+            f"- Corrections ciblées demandées par l'humain : {corrections} (tours au-delà du"
+            " plafond, chacun consigné dans `decisions.json`)."
+        )
+    lines += ["", "## Objections", ""]
     if entries:
         lines += ["| Id | Sévérité | Disposition | Dernière réponse de A | Justification de B |",
                   "|---|---|---|---|---|"]

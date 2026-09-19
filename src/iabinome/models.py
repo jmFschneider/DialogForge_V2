@@ -49,6 +49,7 @@ class Status(Enum):
     INTERRUPTED = "INTERRUPTED"
     ERROR = "ERROR"
     AWAITING_APPROVAL = "AWAITING_APPROVAL"
+    STOPPED = "STOPPED"  # arrêt décidé par l'humain (`decide --stop`) : définitif
 
 
 class Phase(Enum):

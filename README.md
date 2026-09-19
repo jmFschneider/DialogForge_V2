@@ -60,6 +60,9 @@ python -m iabinome new ./ma-collab --demande ./demande.md \
 python -m iabinome run ./ma-collab
 
 python -m iabinome status ./ma-collab
+
+python -m iabinome show ./ma-collab            # lire le résultat avant de décider
+python -m iabinome decide ./ma-collab --accept
 ```
 
 `demande.md` est votre texte : ce que vous voulez, et **à quoi vous reconnaîtrez que c'est fini**.
@@ -184,13 +187,39 @@ tour suivant, ce que A a répondu. Le registre par objection se relit dans `echa
 
 | Statut | Ce que ça veut dire | Ce que vous faites |
 |---|---|---|
-| `AWAITING_APPROVAL` | le cycle est allé à son terme | lire `livrables/version_finale.md` |
+| `AWAITING_APPROVAL` | le cycle est allé à son terme — **pas accepté** | `show`, puis `decide` (ci-dessous) |
 | `WAITING_HUMAN` | A a posé une question, ou une revue est incohérente | `resume --answer <fichier>` |
 | `INTERRUPTED` | l'appel n'a pas abouti — délai, quota, arrêt brutal | `resume --retry-call <uuid> --reason-file <fichier>` |
 | `ERROR` | la réponse est arrivée mais ne respecte pas le contrat | idem, si l'incident est relançable |
+| `STOPPED` | vous avez arrêté la collaboration (`decide --stop`) | rien : c'est définitif |
 
 Le message de refus **nomme toujours la commande** qui sort du statut : vous n'avez pas à
-retrouver ça ici.
+retrouver ça ici. `status` (et `show`) donnent aussi la **prochaine action**, l'incident et la
+décision en clair — sans ouvrir un journal : pour un appel interrompu, l'`uuid` à relancer et le
+fait qu'il a pu être payé ; pour une question, le fichier de la question.
+
+## Lire, décider
+
+**« Terminé » n'est pas « accepté ».** Le cycle s'arrête en `AWAITING_APPROVAL` sans rien
+approuver ; l'acceptation est **votre** décision, consignée dans `decisions.json` (lisible à l'œil,
+ajouté à chaque décision, pas de base). Chaque entrée est **datée et porte sur une version
+précise** — les empreintes du livrable, de la revue et de la demande. Si le livrable change
+ensuite, `status` le dit : la décision porte sur une version antérieure.
+
+`show` affiche ce qu'il faut lire avant de décider : la décision courante, les **corrections
+principales**, les **réserves** (les objections restées ouvertes, et les vôtres), la **prochaine
+action**, puis le document (`--no-document` pour le résumé seul). `decide` prend une seule
+décision par commande :
+
+| Commande | Effet |
+|---|---|
+| `decide <dossier> --accept` | consigne l'acceptation de **cette version** ; le statut du moteur ne bouge pas |
+| `decide <dossier> --accept-with-reserves "<texte>"` | idem, avec vos réserves (le texte est exigé) |
+| `decide <dossier> --correct <fichier>` | **correction ciblée** : le fichier complète la demande (comme une réponse), puis A révise et B relit en ciblé — un tour **au-delà du plafond**, explicite et tracé |
+| `decide <dossier> --stop [--reason "…"]` | arrête, définitivement (statut `STOPPED`) ; les preuves d'appel restent |
+
+`list <dossier>` énumère les collaborations d'un dossier, **calculées** depuis les dossiers : pas
+d'index, rien à garder à jour, et un dossier illisible est nommé plutôt que caché.
 
 Codes de sortie : `0` terminé · `1` refus avant toute modification · `2` erreur d'usage
 (`argparse`) · `3` interrompu · `4` erreur · `5` en attente de vous.
@@ -212,6 +241,7 @@ ma-collab/
 ├── corpus/fichiers/              les copies octet pour octet
 ├── echanges/                     propositions de A, revues de B, en clair
 ├── appels/NNNN-<role>-<uuid>/    prompt, flux bruts, resultat, incident
+├── decisions.json                vos décisions, datées, sur une version précise
 ├── livrables/version_finale.md   le document (la version que B a examinée)
 └── livrables/bilan.md            ce qui est livré, examiné, et resté en désaccord
 ```

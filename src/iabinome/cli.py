@@ -1,4 +1,4 @@
-"""Surface CLI — quatre commandes, rien d'autre (CONCEPTION_FINALE.md §7).
+"""Surface CLI — sept commandes (CONCEPTION_FINALE.md §7, étendue en V2 par 1.4).
 
 `new` fait tous ses prévols dans un répertoire temporaire frère puis publie
 par renommage ; `run` est l'unique moteur synchrone ; `resume` n'en contient
@@ -21,7 +21,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import contracts, corpus, demande, lock, settings, storage, transport, workflow
+from . import (
+    contracts,
+    corpus,
+    decisions,
+    demande,
+    lock,
+    settings,
+    storage,
+    transport,
+    workflow,
+)
 from .adapters.base import AdapterError, AgentAdapter
 from .adapters.claude import ClaudeAdapter
 from .adapters.codex import CodexAdapter
@@ -62,6 +72,7 @@ _SETTABLE = {
             "max_revisions"),
     "run": ("timeout",),
     "resume": ("timeout",),
+    "decide": ("timeout",),
 }
 
 # Défauts du programme, dernier maillon : drapeau CLI > fichier > ceci >
@@ -281,12 +292,75 @@ def _status(collab: Path, *, json_output: bool) -> int:
         "phase": state.phase.value, "revision": state.revision,
         "open_findings": len(state.open_finding_ids), "corpus_age_days": corpus_age_days,
         "last_incident": state.last_incident,
+        # Lisible sans ouvrir un journal : la décision, l'incident, la suite.
+        "decision": decisions.describe(collab, state),
+        "incident": decisions.incident_line(collab, state),
+        "next_action": decisions.next_action(collab, state),
     }
     if json_output:
         print(json.dumps(payload, ensure_ascii=False))
     else:
         for key, value in payload.items():
             print(f"{key} : {value}")
+    return 0
+
+
+def cmd_show(args: argparse.Namespace) -> int:
+    """Ce que l'humain lit avant de décider — strictement en lecture seule."""
+    collab = Path(args.collab)
+    try:
+        state = State.from_dict(_read_json(collab / "etat.json"))
+        print(decisions.render(collab, state, with_document=not args.no_document), end="")
+    except _BORDER_ERRORS as exc:
+        return _fail(_describe(exc))
+    return 0
+
+
+def cmd_decide(args: argparse.Namespace) -> int:
+    """Acceptation, acceptation avec réserves, arrêt : sans appel, sous verrou.
+    La correction ciblée passe par le moteur, comme une réponse (`Correct`)."""
+    collab = Path(args.collab)
+    if args.reason is not None and not args.stop:
+        return _fail("--reason ne vaut qu'avec --stop")
+    if args.correct:
+        return _drive(
+            collab, timeout_seconds=args.timeout, command_label="decide",
+            intervention=workflow.Correct(Path(args.correct)),
+        )
+    kind = (
+        decisions.ACCEPTED if args.accept else decisions.STOPPED if args.stop
+        else decisions.ACCEPTED_WITH_RESERVES
+    )
+    try:
+        state = workflow.decide(
+            collab, kind, reserves=args.accept_with_reserves, reason=args.reason
+        )
+    except _BORDER_ERRORS as exc:
+        return _fail(_describe(exc))
+    print(decisions.describe(collab, state))
+    return 0
+
+
+def cmd_list(args: argparse.Namespace) -> int:
+    """Les collaborations d'un dossier, **calculées** depuis les dossiers : pas de
+    base, pas d'index, rien à garder à jour."""
+    root = Path(args.root)
+    if not root.is_dir():
+        return _fail(f"{root} n'est pas un dossier")
+    found = False
+    for candidate in sorted(p for p in root.iterdir() if (p / "etat.json").is_file()):
+        found = True
+        try:
+            state = State.from_dict(_read_json(candidate / "etat.json"))
+        except _BORDER_ERRORS as exc:
+            print(f"{candidate.name}  illisible : {_describe(exc)}")
+            continue
+        print(
+            f"{candidate.name}  {state.status.value}  {state.phase.value}"
+            f"  révision {state.revision}  décision : {decisions.describe(candidate, state)}"
+        )
+    if not found:
+        print(f"aucune collaboration dans {root}")
     return 0
 
 
@@ -397,6 +471,29 @@ def build_parser() -> argparse.ArgumentParser:
     p_status.add_argument("collab")
     p_status.add_argument("--json", action="store_true")
     p_status.set_defaults(func=cmd_status)
+
+    p_show = sub.add_parser("show")
+    p_show.add_argument("collab")
+    p_show.add_argument("--no-document", action="store_true")
+    p_show.set_defaults(func=cmd_show)
+
+    # Une décision et une seule par commande. Trois ne touchent pas au moteur ;
+    # `--correct` l'utilise, donc accepte `--timeout` et `--config`.
+    p_decide = sub.add_parser("decide")
+    p_decide.add_argument("collab")
+    p_decide.add_argument("--config")
+    p_decide.add_argument("--timeout", type=_timeout)
+    choice = p_decide.add_mutually_exclusive_group(required=True)
+    choice.add_argument("--accept", action="store_true")
+    choice.add_argument("--accept-with-reserves", metavar="TEXTE")
+    choice.add_argument("--correct", metavar="FICHIER")
+    choice.add_argument("--stop", action="store_true")
+    p_decide.add_argument("--reason")
+    p_decide.set_defaults(func=cmd_decide)
+
+    p_list = sub.add_parser("list")
+    p_list.add_argument("root")
+    p_list.set_defaults(func=cmd_list)
 
     return parser
 

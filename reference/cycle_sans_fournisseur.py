@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # accentuees de ce scenario exigent donc de fixer l'encodage des enfants.
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
-from iabinome import cli, objections, settings  # noqa: E402
+from iabinome import cli, decisions, objections, settings  # noqa: E402
 from tests import fakes  # noqa: E402
 
 DEMANDE = """\
@@ -137,6 +137,14 @@ def main(argv: list[str]) -> int:
             return code
         code = cli.main(["run", str(collab)])
         cli.main(["status", str(collab)])
+        # Le parcours de l'humain, par les vraies commandes, sans rien recopier :
+        # lire le résultat, décider, retrouver la collaboration.
+        print("\n--- show ---")
+        cli.main(["show", str(collab), "--no-document"])
+        print("--- decide --accept ---")
+        decision_code = cli.main(["decide", str(collab), "--accept"])
+        print("--- list ---")
+        cli.main(["list", str(root)])
 
     etat = json.loads((collab / "etat.json").read_text(encoding="utf-8"))
     print("\n--- Bilan du scenario ---")
@@ -165,6 +173,17 @@ def main(argv: list[str]) -> int:
     # A serait une finalisation qui reecrit apres la derniere revue (1.3).
     if (agent_a.calls, agent_b.calls) != (2, 2):
         print(f"ECHEC : appels A={agent_a.calls} B={agent_b.calls}, attendu 2 et 2")
+        return 1
+    # « Terminé » n'est pas « accepté » : l'acceptation est une décision consignée,
+    # et le statut du moteur n'a pas bougé.
+    accepted = decisions.latest(collab)
+    if decision_code != 0 or accepted is None or accepted["decision"] != "ACCEPTE":
+        print("ECHEC : la decision d'acceptation n'est pas consignee")
+        return 1
+    if json.loads((collab / "etat.json").read_text(encoding="utf-8"))["status"] != (
+        "AWAITING_APPROVAL"
+    ):
+        print("ECHEC : accepter a change le statut du moteur")
         return 1
     return 0
 

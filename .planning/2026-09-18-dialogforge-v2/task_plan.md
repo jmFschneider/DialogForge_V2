@@ -6,23 +6,20 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**1.1 à 1.3 sont faits** (2026-09-19). 1.1 (`b0dc6a3`) et 1.2 (`2b5ae15`) commités ; 1.3 validé
-(ciblé puis porte complète), **non commité** : à committer sur demande du PO.
+**Le lot 1 est terminé** (1.1 à 1.4, 2026-09-19). 1.1 (`b0dc6a3`), 1.2 (`2b5ae15`), 1.3 (`25ab101`)
+commités ; **1.4 validé (ciblé puis porte complète) et commité** (commit `feat: ... (1.4)`, voir `git log`).
 
-Poursuivre par **1.4 — rendre le résultat et la décision utilisables** : afficher le document, les
-corrections principales, les réserves et la prochaine action ; permettre acceptation, acceptation
-avec réserves, **correction ciblée** et arrêt, depuis le même moteur ; conserver une décision
-**datée portant sur une version précise** (« terminé » n'est pas « accepté ») ; diagnostic de reprise
-lisible ; liste des collaborations calculée depuis les dossiers. Le **tour supplémentaire demandé
-après le plafond** (1.3) est la « correction ciblée » : décision humaine explicite et tracée, à
-écrire ici. Point d'appui : `objections.ledger()` et `livrables/bilan.md`. **Attendre l'autorisation
-du PO pour ouvrir 1.4.**
+**J1** : critères réunis, **à constater par le PO** (voir le jalon de la phase 2). Ensuite : **lot 2 —
+robustesse et liaison PWF du produit** (2.1 reprise après résultat reçu non appliqué, 2.2 paquet B
+minimal et session reviewer fraîche, 2.3 référence de plan PWF facultative). Avant de coder 2.1, relire
+`workflow.resume_call`/`store_response` et `tests/test_recovery.py` : une part de 2.1 existe déjà
+(retraitement local d'une réponse stockée). **Attendre l'autorisation du PO pour ouvrir le lot 2.**
 
 Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la seule voie où
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 2
+Phase 2 terminée — Phase 3 (lot 2) à ouvrir sur autorisation du PO
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -55,10 +52,13 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 - [x] 1.2 Réponse exigée pour chaque objection ouverte ; identifiants absents ou dupliqués détectés
 - [x] 1.3 Boucle : A → B → correction A → relecture ciblée B → décision humaine
 - [x] 1.3 Promotion de la version examinée à la place de la finalisation qui réécrit librement
-- [ ] 1.4 Résultat, réserves, prochaine action ; acceptation, réserve, correction ciblée, arrêt
-- [ ] 1.4 Décision datée portant sur une version précise ; « terminé » n'est pas « accepté »
-- **Status:** in_progress — 1.1 à 1.3 faits, 1.4 reste
-- **Jalon :** J1 — version fonctionnelle avec faux agents.
+- [x] 1.4 Résultat, réserves, prochaine action ; acceptation, réserve, correction ciblée, arrêt
+- [x] 1.4 Décision datée portant sur une version précise ; « terminé » n'est pas « accepté »
+- **Status:** complete — 1.1 à 1.4 faits
+- **Jalon :** J1 — version fonctionnelle avec faux agents. **Critères réunis le 2026-09-19, à constater par le PO** :
+  parcours complet sans copier-coller (`reference/cycle_sans_fournisseur.py`), cas sans objection,
+  avec correction, avec désaccord (plafond) et avec question humaine couverts par les tests, garanties
+  de reprise héritées toujours vertes.
 
 ### Phase 3: Lot 2 — Robustesse et liaison PWF du produit
 - [ ] 2.1 Reprise après résultat reçu non appliqué ; retraitement local de l'interprétation
@@ -104,6 +104,9 @@ commit, ni déploiement automatique dans le moteur documentaire.
 | **Promotion à la place de `FINAL_A`** (1.3, autorisé par le PO le 2026-09-19) | `ACCEPTER`, ou plafond atteint, mène directement à `CLOSED` : le document que B vient d'examiner est copié octet pour octet dans `livrables/version_finale.md`, et `livrables/bilan.md` (écrit par le programme, sans modèle) porte les empreintes de la demande, du livrable et de la revue et les désaccords restants. **Un appel payant de moins par cycle** (A=2, B=2 au lieu de A=3, B=2). `Phase.FINAL_A`, `build_final` et le gabarit sont supprimés : un état `FINAL_A` d'une collaboration ancienne est refusé au chargement (aucune collaboration V2 n'existe). « Correction substantielle non revue » ne peut plus naître du cycle : A n'a plus d'appel après B |
 | **Relecture ciblée** par le prompt, pas par le programme (1.3) | Dès `revision >= 1`, B ne relit que les objections traitées et les régressions ; une nouvelle observation se note en `NOTE`. Le programme ne juge pas si une remarque est « hors périmètre » (§6 : il ne décide pas sur les sévérités) : la transition reste `ACCEPTER`/`REVISER` de B et le plafond. **À mesurer au lot 3** : si B ouvre des tours pour des remarques nouvelles malgré la consigne |
 | Tour supplémentaire après le plafond **renvoyé à 1.4** | C'est une décision humaine (« correction ciblée »), pas une transition automatique. Le plafond présente les désaccords ; l'humain décide |
+| **Décision humaine = fichier daté, sur une version précise ; acceptation ≠ statut** (1.4, autorisé par le PO le 2026-09-19) | `decisions.json` (ajouté à chaque décision, rejouable : la même décision sur la même version n'est pas consignée deux fois) porte les empreintes du livrable, de la revue et de la demande. Accepter ne change pas le statut du moteur (« terminé » reste `AWAITING_APPROVAL`). Une décision dont la version a changé le dit. `Status.STOPPED` (arrêt humain) est ajouté |
+| **Correction ciblée = intervention du moteur** (`Correct`, 1.4) | Elle réutilise le chemin de `--answer` : sous verrou, préflight, rejouable après arrêt brutal, sans appel repayé. L'instruction complète `demande.md` (unique autorité), un tour de révision s'ouvre **au-delà du plafond**, la décision est consignée avant l'état. A repart du **corps** du livrable, sans l'en-tête |
+| Trois commandes ajoutées : `show`, `decide`, `list` (1.4) | La conception disait « quatre commandes » ; la validation de 1.4 (résultat lisible, décision utilisable, liste sans index) ne se tient pas avec `status` seul. Amendement daté dans `CONCEPTION_FINALE.md` §7. `list` calcule depuis les dossiers |
 | `ruff format` hors de la porte de validation | Le projet ne l'a jamais utilisé ; reformater 26 fichiers brouillerait les diffs du lot 1 sans rien prouver |
 
 ## Errors Encountered
