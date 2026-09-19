@@ -15,11 +15,17 @@ from .base import AdapterError, CallSpec, Capabilities, ObservedCli, probe_versi
 
 _EXECUTABLE = "claude"
 _DEFAULT_MODEL = {Role.A: "opus", Role.B: "fable"}
+_READ_TOOLS = "Read,Grep,Glob"
 
 
 class ClaudeAdapter:
     adapter_id = "claude"
-    capabilities = Capabilities(supports_context_only=True, supports_model_override=True)
+    capabilities = Capabilities(
+        supports_context_only=True,
+        supports_model_override=True,
+        enforces_read_only=True,
+        fresh_session=True,
+    )
 
     def default_model(self, role: Role) -> str:
         """Opus pour A, Fable pour B (CLAUDE.md §6) — reste surchargeable :
@@ -34,10 +40,16 @@ class ClaudeAdapter:
 
     def command(self, call: CallSpec) -> list[str]:
         exe = _resolve()
-        cmd = [exe, "-p", "--model", call.model]
-        if call.reviewer_access is ReviewerAccess.CONTEXT_ONLY:
-            cmd += ["--tools", ""]
-        return cmd
+        # 2.2 : lecture seule, session fraîche, rien de l'utilisateur ni de l'hôte
+        # (réglages, hooks, MCP, commandes). Formes lues dans `claude --help`
+        # 2.1.278, **non éprouvées sur un appel réel** avant le lot 3.
+        cmd = [
+            exe, "-p", "--model", call.model,
+            "--restricted", "--strict-mcp-config",
+            "--no-session-persistence", "--disable-slash-commands",
+        ]
+        tools = "" if call.reviewer_access is ReviewerAccess.CONTEXT_ONLY else _READ_TOOLS
+        return cmd + ["--tools", tools]
 
     def extract(self, stdout: bytes, stderr: bytes) -> str:
         return stdout.decode("utf-8")

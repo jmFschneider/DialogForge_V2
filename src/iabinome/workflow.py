@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
@@ -30,7 +31,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import contracts, corpus, decisions, lock, objections, prompts, storage, transport
+from . import (
+    contracts,
+    corpus,
+    decisions,
+    isolation,
+    lock,
+    objections,
+    prompts,
+    storage,
+    transport,
+)
 from .adapters.base import AgentAdapter, CallSpec, ObservedCli
 from .contracts import ContractError, Finding
 from .demande import complete as complete_demande
@@ -217,6 +228,7 @@ def _preflight(
             not adapter.capabilities.supports_model_override
         ):
             raise WorkflowError(f"{agent.adapter_id} : modèle non remplaçable")
+        _require_separation(agent.adapter_id, adapter)
         observed[agent.adapter_id] = seen
     if config.reviewer_access is ReviewerAccess.CONTEXT_ONLY and (
         not adapters[config.agent_b.adapter_id].capabilities.supports_context_only
@@ -228,6 +240,24 @@ def _preflight(
     return _Engine(
         collab, config, adapters, observed, text, timeout_seconds, answer, source, composed
     ), state
+
+
+def _require_separation(adapter_id: str, adapter: AgentAdapter) -> None:
+    """2.2 : un rôle ne se lance pas sans sa séparation. Un adaptateur qui ne
+    déclare ni la lecture seule ni la session fraîche est refusé **avant tout
+    appel** — déclaré non supporté, jamais lancé « en espérant »."""
+    missing = [
+        label
+        for label, present in (
+            ("lecture seule", adapter.capabilities.enforces_read_only),
+            ("session fraîche", adapter.capabilities.fresh_session),
+        )
+        if not present
+    ]
+    if missing:
+        raise WorkflowError(
+            f"{adapter_id} : séparation des rôles non supportée ({', '.join(missing)})"
+        )
 
 
 def _read_answer(intervention: Intervention | None) -> contracts.Normalized | None:
@@ -543,6 +573,10 @@ class _Engine:
             # être rouverte, et aucun futur adaptateur ne peut y déposer un
             # secret (D-6b).
             "invocation_args": list(argv[1:]),
+            # 2.2 : dossier de travail **neutre** (copie du corpus seule) et noms —
+            # jamais les valeurs — des variables de l'hôte retirées de l'environnement.
+            "workdir": "neutre",
+            "env_removed": isolation.refused_names(os.environ),
             "retries": None if retry is None else retry.call_id,
             "retry_reason": None if retry is None else retry.reason, "created_at": _now(),
         })
@@ -558,16 +592,29 @@ class _Engine:
         # qui voit `DEVNULL` sur son entrée la lit comme un flux vide et dégrade
         # sa réponse (`conception/CARACTERISATION_CLI.md`, point 1).
         try:
-            result = transport.run(
-                argv, cwd=self.collab, call_dir=self.collab / rel_dir,
-                timeout_seconds=self.timeout_seconds, stdin_text=prompt,
-            )
+            with isolation.neutral_workdir(self.collab) as workdir:
+                result = transport.run(
+                    argv, cwd=workdir, call_dir=self.collab / rel_dir,
+                    timeout_seconds=self.timeout_seconds, stdin_text=prompt,
+                    env=isolation.clean_env(os.environ),
+                )
         except transport.TransportError as exc:
             # `Popen` a échoué : l'appel **n'est pas parti**. Le déclarer
             # « possiblement payé » ferait payer au lancement suivant une
             # prudence que rien ne justifie.
             return self.incident(
                 state, rel_dir, "LAUNCH_FAILED", Status.INTERRUPTED, str(exc)
+            )
+        # 2.2 : les sources n'ont pas à bouger pendant un appel. Le contrôle passe
+        # **avant** toute lecture de la réponse : une réponse produite sur des
+        # sources changées n'est plus celle qu'on croyait examiner. Il constate, il
+        # n'empêche pas — voir `reference/FRONTIERE_ROLES.md`.
+        try:
+            self.check_corpus()
+        except WorkflowError as exc:
+            return self.incident(
+                state, rel_dir, "SOURCES_MODIFIED", Status.INTERRUPTED,
+                f"{exc} (issue de l'appel : {result.outcome.value})",
             )
         if result.outcome is not Outcome.COMPLETED:
             return self.incident(state, rel_dir, result.outcome.value, Status.INTERRUPTED)

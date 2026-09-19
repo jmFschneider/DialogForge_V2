@@ -245,6 +245,21 @@ pas deux fois par accident, et la réponse brute d'un appel refusé reste sur le
 un `INTERRUPTED` **ne repart pas seul** : il attend une relance que vous motivez par écrit. C'est
 volontaire.
 
+## Ce que voit chaque agent
+
+A et B tournent **hors du dossier de collaboration**, dans un dossier jetable qui ne contient
+qu'une **copie** du corpus (`corpus/fichiers/`) et disparaît après l'appel : ils ne voient ni
+`appels/`, ni le journal de l'autre, ni les anciennes versions de la demande. Ils héritent de
+votre environnement **moins** les variables que l'outil qui vous a lancé y dépose (identifiants de
+session, jeton de messagerie, racine de plan) ; `intention.json` nomme celles qui ont été retirées,
+jamais leurs valeurs. Chaque adaptateur demande à sa CLI la **lecture seule** et une **session
+fraîche** ; un adaptateur qui ne le déclare pas est refusé avant tout appel. Si le corpus change
+pendant un appel, la réponse n'est pas retenue (`SOURCES_MODIFIED`).
+
+**Ce n'est pas un confinement du système d'exploitation** : un agent qui écrit un chemin absolu
+n'est arrêté que par sa propre CLI, dont ces protections ne sont **pas encore mesurées** en réel.
+La frontière obtenue, ses limites et ce qui reste à vérifier : `reference/FRONTIERE_ROLES.md`.
+
 ## Ce qu'il y a dans une collaboration
 
 ```

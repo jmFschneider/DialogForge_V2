@@ -65,6 +65,7 @@ def command(
     child_marker: str | None = None,
     child_delay_seconds: float = 2.0,
     status_marker: str | None = None,
+    state_file: Path | None = None,
 ) -> list[str]:
     """Commande d'un faux agent.
 
@@ -74,19 +75,20 @@ def command(
     après `child_delay_seconds` (la preuve qu'un arbre a survécu, s'il
     apparaît), dort, puis sort avec `exit_code`.
 
-    `status_marker` fait relire `etat.json` **par le processus lancé** — le
-    transport le lance avec `cwd` = dossier de collaboration — et y déposer le
-    statut lu : c'est la seule preuve que `CALLING` a été publié avant `Popen`
-    qui ne dépende pas d'un point d'observation situé dans le programme.
+    `status_marker` fait relire `etat.json` **par le processus lancé** — par son
+    chemin absolu `state_file` : depuis 2.2 il tourne dans un dossier neutre, hors de
+    la collaboration — et y déposer le statut lu : c'est la seule preuve que `CALLING` a
+    été publié avant `Popen` qui ne dépende pas d'un point d'observation situé dans le programme.
 
     `stdout_bytes` et `stderr_bytes` doivent être divisibles par `rounds`.
     """
     lines = ["import sys, time"]
     if status_marker is not None:
+        assert state_file is not None
         lines.append(
             f"import json, pathlib; pathlib.Path({status_marker!r}).write_text("
-            "json.loads(pathlib.Path('etat.json').read_text(encoding='utf-8'))['status'],"
-            " encoding='utf-8')"
+            f"json.loads(pathlib.Path({str(state_file)!r}).read_text(encoding='utf-8'))"
+            "['status'], encoding='utf-8')"
         )
     if child_marker is not None:
         child = _CHILD.format(delay=child_delay_seconds, marker=child_marker)
@@ -130,6 +132,8 @@ class FakeAdapter:
         *,
         supports_context_only: bool = True,
         supports_model_override: bool = True,
+        enforces_read_only: bool = True,
+        fresh_session: bool = True,
         present: bool = True,
         version: str = "fake 0.1.0",
         sleep_seconds: float = 0.0,
@@ -137,7 +141,9 @@ class FakeAdapter:
         status_marker: str | None = None,
     ) -> None:
         self.adapter_id = adapter_id
-        self.capabilities = Capabilities(supports_context_only, supports_model_override)
+        self.capabilities = Capabilities(
+            supports_context_only, supports_model_override, enforces_read_only, fresh_session
+        )
         self.present = present
         self.version = version
         self.sleep_seconds = sleep_seconds
@@ -168,7 +174,7 @@ class FakeAdapter:
         exit_code = self.exit_codes.pop(0) if self.exit_codes else 0
         return command(
             stdout=reply, exit_code=exit_code, sleep_seconds=self.sleep_seconds,
-            status_marker=self.status_marker,
+            status_marker=self.status_marker, state_file=etat,
         )
 
     def extract(self, stdout: bytes, stderr: bytes) -> str:

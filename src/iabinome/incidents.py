@@ -72,6 +72,11 @@ _KINDS = {
         "un fichier de l'appel ne correspond plus à l'empreinte de l'état : il a été modifié"
         " depuis — rien n'est repris à partir d'une preuve contredite",
     ),
+    "SOURCES_MODIFIED": Kind(
+        "peut-être",
+        "le corpus a changé pendant l'appel : la réponse n'est pas retenue, elle a été produite"
+        " sur des sources qui ne sont plus celles du manifeste",
+    ),
     "CONTRACT_ERROR": Kind(
         "oui",
         "la réponse est arrivée mais ne respecte pas le contrat ; elle est conservée telle"
@@ -142,6 +147,12 @@ def action(collab: Path, state: State) -> str:
             f"{name}{who} : la réponse brute est conservée dans `appels/`. Gratuit et local :"
             " `resume <dossier> --reprocess <id> --reason-file <fichier>` (relit la réponse"
             f" conservée, sans appel — utile si la lecture a été corrigée) ; ou {retry} ; ou {stop}"
+        )
+    if name == "SOURCES_MODIFIED":
+        return (
+            f"{name}{who} : le corpus ne correspond plus à son manifeste. Le rétablir (le"
+            " contrôle avant chaque appel refuse sinon), puis "
+            f"{retry} ; sinon {stop}"
         )
     if kind is not None and kind.paid == "non":
         return (

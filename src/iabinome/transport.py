@@ -18,7 +18,7 @@ import os
 import subprocess
 import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
@@ -94,6 +94,7 @@ def run(
     timeout_seconds: float,
     stdin_text: str | None = None,
     limit_bytes: int = OUTPUT_LIMIT_BYTES,
+    env: Mapping[str, str] | None = None,
 ) -> CallResult:
     """Lance `command` dans `cwd`, écrit ses flux sous `call_dir`, et n'y écrit
     `resultat.json` que si le processus est sorti de lui-même.
@@ -103,6 +104,9 @@ def run(
     limite de 32 767 caractères de `CreateProcess` dès qu'un document réel y
     passe, et une CLI voyant `DEVNULL` sur son entrée la lit comme un flux
     canalisé vide, ce qui dégrade sa réponse.
+
+    `env` remplace l'environnement hérité (2.2) ; absent, le sous-processus hérite
+    de celui du parent, comme avant.
     """
     # Validé avant `Popen` : avec `nan`, `time.monotonic() >= deadline` reste
     # faux et le délai dur ne se déclencherait jamais (C-08).
@@ -112,6 +116,7 @@ def run(
         proc = subprocess.Popen(
             list(command),
             cwd=cwd,
+            env=None if env is None else dict(env),
             stdin=subprocess.PIPE if stdin_text is not None else subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

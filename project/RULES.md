@@ -245,5 +245,11 @@
 **Un texte dérivé qu'un rejeu doit retrouver à l'identique ne contient ni horloge ni compteur global.** Il se déduit du texte de base.
 *Motif : la demande complétée est reconnue au rejeu par son empreinte ; son numéro de « Précisions » vient du texte, sa date de la provenance. Avec une date dans le texte, un arrêt brutal suivi d'une reprise un autre jour aurait refusé une demande pourtant écrite.*
 
+**Un agent ne tourne pas dans le dossier qu'il ne doit pas lire.**
+*Motif (2.2) : B héritait de la collaboration comme dossier de travail — `appels/`, le journal du producteur, les anciennes demandes y étaient à portée d'un outil de lecture, sans qu'aucune règle ne l'ait voulu. Le dossier est désormais jetable, avec une **copie** du corpus (jamais un lien, même dur : écrire dedans atteindrait l'original) ; l'environnement est filtré par une liste de refus **nominative**, une liste d'autorisation cassant l'authentification de la première CLI dont on ignore les besoins.*
+
+**Une protection dit ce qu'elle obtient, ce qu'elle constate seulement, et ce qui n'est pas mesuré.**
+*Motif (2.2) : les drapeaux d'argv (`--restricted`, `--sandbox read-only`, `--ephemeral`…) sont lus dans `--help`, jamais éprouvés sur un appel réel ; `Capabilities` dit ce que l'adaptateur **demande**, pas ce que la CLI **fait**. Un chemin absolu n'est arrêté que par l'outil : le corpus modifié est donc constaté après l'appel (`SOURCES_MODIFIED`), pas empêché. Écrire « garanti » avant le lot 3 serait la promesse que ce projet s'interdit — voir `reference/FRONTIERE_ROLES.md`.*
+
 **Avant d'ajouter un garde-fou, vérifier qu'il compense un défaut encore réel.**
 *Motif : l'échafaudage compense la faiblesse des modèles ; les modèles récents en demandent moins, pas plus.*

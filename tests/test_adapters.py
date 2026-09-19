@@ -35,7 +35,7 @@ class TestClaudeAdapter(unittest.TestCase):
         with mock.patch.object(shutil, "which", return_value="C:/bin/claude.EXE"):
             cmd = self.adapter.command(_SPEC)
         self.assertNotIn("peu importe", cmd)
-        self.assertEqual(cmd, ["C:/bin/claude.EXE", "-p", "--model", "un-modele"])
+        self.assertEqual(cmd[:4], ["C:/bin/claude.EXE", "-p", "--model", "un-modele"])
 
     def test_context_only_adds_empty_tools_flag(self) -> None:
         spec = replace(_SPEC, reviewer_access=ReviewerAccess.CONTEXT_ONLY)
@@ -44,11 +44,32 @@ class TestClaudeAdapter(unittest.TestCase):
         self.assertIn("--tools", cmd)
         self.assertEqual(cmd[cmd.index("--tools") + 1], "")
 
-    def test_consult_omits_tools_flag(self) -> None:
-        spec = replace(_SPEC, reviewer_access=ReviewerAccess.CONSULT)
-        with mock.patch.object(shutil, "which", return_value="claude"):
-            cmd = self.adapter.command(spec)
-        self.assertNotIn("--tools", cmd)
+    def test_consult_offers_read_tools_only(self) -> None:
+        """2.2 : lire, chercher, lister — ni écrire ni exécuter — pour B en CONSULT
+        comme pour A. Sans `--tools`, la CLI offrait tout son jeu d'outils."""
+        for access in (ReviewerAccess.CONSULT, None):
+            spec = replace(_SPEC, reviewer_access=access)
+            with mock.patch.object(shutil, "which", return_value="claude"):
+                cmd = self.adapter.command(spec)
+            self.assertEqual(cmd[cmd.index("--tools") + 1], "Read,Grep,Glob")
+
+    def test_every_role_is_restricted_and_starts_a_fresh_session(self) -> None:
+        """2.2 : la séparation est dans l'argv, pour chaque rôle et chaque profil."""
+        for access in (None, ReviewerAccess.CONSULT, ReviewerAccess.CONTEXT_ONLY):
+            spec = replace(_SPEC, reviewer_access=access)
+            with mock.patch.object(shutil, "which", return_value="claude"):
+                cmd = self.adapter.command(spec)
+            for flag in (
+                "--restricted", "--strict-mcp-config", "--no-session-persistence",
+                "--disable-slash-commands",
+            ):
+                self.assertIn(flag, cmd, access)
+            for forbidden in ("--resume", "--continue", "-c", "-r", "--session-id"):
+                self.assertNotIn(forbidden, cmd, access)
+
+    def test_the_declared_capabilities_match_the_argv(self) -> None:
+        self.assertTrue(self.adapter.capabilities.enforces_read_only)
+        self.assertTrue(self.adapter.capabilities.fresh_session)
 
     def test_command_raises_when_executable_absent(self) -> None:
         with mock.patch.object(shutil, "which", return_value=None):
@@ -94,6 +115,20 @@ class TestCodexAdapter(unittest.TestCase):
             cmd = self.adapter.command(spec)
         self.assertIn("-c", cmd)
         self.assertEqual(cmd[cmd.index("-c") + 1], "features.shell_tool=false")
+
+    def test_every_role_is_read_only_ephemeral_and_ignores_user_config(self) -> None:
+        """2.2, côté Codex : le même résultat par d'autres moyens."""
+        for access in (None, ReviewerAccess.CONSULT, ReviewerAccess.CONTEXT_ONLY):
+            spec = replace(_SPEC, reviewer_access=access)
+            with mock.patch.object(shutil, "which", return_value="codex"):
+                cmd = self.adapter.command(spec)
+            self.assertEqual(cmd[cmd.index("--sandbox") + 1], "read-only", access)
+            for flag in ("--ephemeral", "--ignore-user-config", "--ignore-rules"):
+                self.assertIn(flag, cmd, access)
+            for forbidden in ("resume", "--last", "danger-full-access", "workspace-write"):
+                self.assertNotIn(forbidden, cmd, access)
+        self.assertTrue(self.adapter.capabilities.enforces_read_only)
+        self.assertTrue(self.adapter.capabilities.fresh_session)
 
     def test_consult_omits_the_disable_flag(self) -> None:
         spec = replace(_SPEC, reviewer_access=ReviewerAccess.CONSULT)

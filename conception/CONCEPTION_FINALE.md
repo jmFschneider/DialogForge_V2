@@ -595,6 +595,8 @@ indiscernabilité entre « il te faut répondre » et « c'est fini ». Un code 
 
 ## 8. Adaptateurs et permutations
 
+**Amendé le 2026-09-19 (PO, V2 lot 2 point 2.2) : séparation des rôles.** Les agents ne tournent plus dans le dossier de collaboration mais dans un dossier jetable qui ne contient qu'une copie du corpus (`isolation.py`) ; l'environnement transmis est celui du parent moins une liste de refus nominative des variables de l'hôte ; `Capabilities` déclare `enforces_read_only` et `fresh_session`, que le prévol exige de chaque adaptateur (« non supporté » sinon) ; un corpus modifié pendant un appel est l'incident `SOURCES_MODIFIED`. Les drapeaux de chaque CLI sont construits dans son adaptateur et **non mesurés en réel avant le lot 3** : `reference/FRONTIERE_ROLES.md`.
+
 ```python
 class AgentAdapter(Protocol):
     adapter_id: str

@@ -21,7 +21,12 @@ _DEFAULT_MODEL = "gpt-5.6-sol"
 
 class CodexAdapter:
     adapter_id = "codex"
-    capabilities = Capabilities(supports_context_only=True, supports_model_override=True)
+    capabilities = Capabilities(
+        supports_context_only=True,
+        supports_model_override=True,
+        enforces_read_only=True,
+        fresh_session=True,
+    )
 
     def default_model(self, role: Role) -> str:
         """CLAUDE.md §6 ne fixe de rôle que pour Claude : Codex garde son
@@ -36,7 +41,13 @@ class CodexAdapter:
 
     def command(self, call: CallSpec) -> list[str]:
         exe = _resolve()
-        cmd = [exe, "exec", "-m", call.model, "--sandbox", "read-only", "--skip-git-repo-check"]
+        # 2.2 : session éphémère, ni configuration ni règles de l'utilisateur (`auth`
+        # reste lue). Formes lues dans `codex exec --help` 0.155.0, **non éprouvées
+        # sur un appel réel** avant le lot 3.
+        cmd = [
+            exe, "exec", "-m", call.model, "--sandbox", "read-only", "--skip-git-repo-check",
+            "--ephemeral", "--ignore-user-config", "--ignore-rules",
+        ]
         if call.reviewer_access is ReviewerAccess.CONTEXT_ONLY:
             cmd += ["-c", "features.shell_tool=false"]
         cmd.append("-")

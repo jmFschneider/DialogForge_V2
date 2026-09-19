@@ -23,8 +23,19 @@ _VERSION_TIMEOUT_SECONDS = 5.0
 
 @dataclass(frozen=True)
 class Capabilities:
+    """Ce que l'adaptateur **impose dans l'argv qu'il construit** — jamais une
+    attestation de ce que la CLI fait réellement (à mesurer au lot 3).
+
+    `enforces_read_only` : aucun outil d'écriture ni d'exécution n'est offert à
+    l'agent. `fresh_session` : rien n'est repris d'une session précédente, rien
+    n'est conservé pour la suivante. Le prévol refuse un adaptateur qui ne les
+    déclare pas : on ne lance pas un rôle sans sa séparation (plan V2, 2.2).
+    """
+
     supports_context_only: bool
     supports_model_override: bool
+    enforces_read_only: bool = False
+    fresh_session: bool = False
 
 
 @dataclass(frozen=True)
