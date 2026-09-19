@@ -10,3 +10,7 @@ __pycache__/
 iabinome.toml
 .venv/
 .pytest_cache/
+
+# Copie locale complète de PWF : reconstruite depuis le commit épinglé, jamais
+# modifiée ni versionnée avec le code du produit.
+tools/planning-with-files/

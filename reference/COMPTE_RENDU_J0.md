@@ -298,3 +298,71 @@ Avant l'essai, le script rend 4 points verts et **le cinquième rouge** — c'es
 constitue la preuve, et non une impression de bon fonctionnement.
 
 Tant que cette vérification n'est pas faite, **J0 n'est pas atteint** et le lot 1 n'est pas ouvert.
+
+## 7. Plugin PWF local épinglé — préparation, sans qualification de session
+
+La route retenue pour le prochain essai est le **plugin local Claude Code**, et non le marketplace :
+la copie complète et inchangée de l'amont est dans
+`tools/planning-with-files/`. Elle provient de
+`https://github.com/OthmanAdi/planning-with-files`, commit
+`faf1a15a7dcc17a9e0f49760da0756d1a5d4609a` (tag `v3.20.1`).
+
+Elle contient notamment `.claude-plugin/plugin.json`, `hooks/hooks.json`, `commands/`, `skills/`,
+`scripts/`, les traductions, la documentation et les tests : **728 fichiers dans le checkout
+source et 728 dans la copie locale**, avec 0 divergence SHA-256 contrôlée contre le checkout détaché.
+La copie est ignorée par Git comme expliqué ci-dessous. Les scripts amont n'ont
+pas été adaptés. Le manifeste déclare bien `planning-with-files` version `3.20.1` et son JSON, ainsi
+que celui des hooks, ont été lus avec succès.
+
+La copie est volontairement exclue de Git par `tools/planning-with-files/` : elle reste complète
+localement sans mélanger l'amont aux fichiers du produit. Pour la reconstruire à l'identique, cloner
+l'URL ci-dessus, exécuter `git checkout --detach faf1a15a7dcc17a9e0f49760da0756d1a5d4609a`, puis
+extraire `git archive --format=tar faf1a15a7dcc17a9e0f49760da0756d1a5d4609a` dans
+`tools/planning-with-files/`. Ne jamais lancer une mise à jour implicite ni modifier cette copie.
+
+Le seul point d'entrée du dépôt est :
+
+```powershell
+.\tools\claude-pwf.ps1
+```
+
+Il ouvre la session interactive Claude demandée par l'utilisateur avec
+`--plugin-dir tools/planning-with-files`, depuis `C:\Projets\DialogForge_2`. Il épingle, **pour le
+processus enfant seulement**, `PLAN_ID=2026-09-18-dialogforge-v2`, `PWF_PLAN_ROOT` à la racine du
+dépôt, le répertoire Git Bash (`C:\Program Files\Git\bin`) dans `PATH`, et le Python `.venv` comme
+interpréteur PWF de confiance lorsqu'il est présent. Il ne modifie ni `PATH`, ni configuration Claude,
+ni plugin marketplace à l'échelle de la machine.
+
+Le skill autonome préexistant sous `~/.claude/skills/planning-with-files` est conservé. Son propre
+frontmatter amont contient une garde qui quitte dès que `CLAUDE_PLUGIN_ROOT` est défini ; le lanceur
+le définit sur la copie locale pour le processus enfant. Les hooks du standalone ne doivent donc pas
+dupliquer ceux du plugin dans cette session. Les deux surfaces de skill peuvent néanmoins rester
+découvrables ; les commandes du plugin sont namespacées. Cette isolation locale ne prouve pas encore
+le comportement du chargeur dans une vraie session.
+
+### Contrôles exécutés sans fournisseur
+
+- `tools\claude-pwf.ps1 --version` : Claude Code `2.1.278`, sortie 0 ; aucun prompt ni appel modèle.
+- Résolution par les scripts **copiés** : le sélecteur attendu retourne
+  `C:/Projets/DialogForge_2/.planning/2026-09-18-dialogforge-v2` ; le sélecteur inexistant retourne
+  une sortie vide, code 0.
+- `claude --help` ne contient pas `--init-only` dans cette CLI. Malgré la documentation officielle
+  actuelle, cet argument n'a pas été lancé sur ce binaire local.
+
+`reference/verifier_reprise_pwf.sh` n'est pas utilisé pour cette route : il cible explicitement
+`$HOME/.claude/skills/planning-with-files` et ne peut donc pas attester le plugin local. Aucune
+injection, aucun hook, aucune reprise après compactage n'est affirmé sur la seule base de ces
+contrôles hors session.
+
+### Essai interactif restant à l'utilisateur
+
+L'utilisateur peut lancer, dans un terminal PowerShell, la commande ci-dessus — ou, pour conserver
+une trace locale à inspecter :
+
+```powershell
+.\tools\claude-pwf.ps1 --debug-file .\pwf-plugin-debug.log
+```
+
+Dans cette nouvelle session, confirmer l'enregistrement et l'exécution effective des hooks du plugin
+sur au moins un tour suivant le démarrage, puis inspecter la trace. Tant que cet essai réel n'est pas
+fait, la réserve J0 demeure et le lot 1 reste fermé.
