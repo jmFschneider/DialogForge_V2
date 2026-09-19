@@ -2,15 +2,25 @@
 
 Analyse la trace d'une session Claude Code et rend compte **par evenement**.
 
+Ce que l'hote enregistre reellement, et qui sert de preuve. Il ecrit **deux**
+enregistrements `attachment` par hook :
+
+- `hook_success` / `hook_error` : l'execution — commande, `exitCode`,
+  `durationMs`, `stdout`, `stderr` ;
+- `hook_additional_context` : le contexte **effectivement livre au modele**,
+  rendu en `<system-reminder>`.
+
+Le second est la preuve de l'injection : il atteste que le plan est entre dans
+le contexte, pas seulement qu'un script a tourne.
+
 Regle de preuve, volontairement stricte :
 
-- une banniere `===BEGIN-PWF-DATA ... nonce=` trouvee dans un **resultat d'outil**
-  ne prouve rien : elle peut venir d'un appel manuel de l'injecteur ou de la
-  lecture d'un fichier qui la contient ;
-- une banniere trouvee **hors resultat d'outil** (contexte injecte, message
-  systeme) est la seule qui compte ;
-- l'execution d'un hook se lit dans les enregistrements de l'hote, jamais dans
-  une duree : une duree ne prouve ni n'infirme une execution.
+- seule compte une banniere `===BEGIN-PWF-DATA` presente dans le `stdout` d'un
+  enregistrement de hook de l'hote ;
+- une banniere citee dans un message (assistant ou utilisateur) ou apparaissant
+  dans un resultat d'outil ne prouve rien : elle peut venir d'un appel manuel de
+  l'injecteur, d'une lecture de fichier ou d'un copier-coller ;
+- aucune duree n'est utilisee pour affirmer ou nier une execution.
 
     python reference/preuve_injection.py [trace.jsonl]
 
@@ -27,14 +37,9 @@ from pathlib import Path
 
 BANNIERE = "BEGIN-PWF-DATA"
 EVENEMENTS = (
-    "session-start", "user-prompt-submit", "pre-tool-use",
-    "post-tool-use", "pre-compact", "stop",
+    "SessionStart", "UserPromptSubmit", "PreToolUse",
+    "PostToolUse", "PreCompact", "Stop",
 )
-# Le skill autonome nomme ses evenements autrement que le plugin.
-ALIAS = {
-    "userprompt": "user-prompt-submit", "pretool": "pre-tool-use",
-    "posttool": "post-tool-use", "precompact": "pre-compact", "stop": "stop",
-}
 
 
 def trace_par_defaut() -> Path:
@@ -53,20 +58,11 @@ def trace_par_defaut() -> Path:
     return traces[0]
 
 
-def evenement_de(texte: str) -> str | None:
-    for nom in EVENEMENTS:
-        if nom in texte:
-            return nom
-    for brut, nom in ALIAS.items():
-        if "--event=" + brut in texte:
-            return nom
-    return None
-
-
-def analyser(trace: Path) -> int:
-    executions: dict[str, list[dict[str, object]]] = {e: [] for e in EVENEMENTS}
-    injections_hors_outil: list[tuple[int, str]] = []
-    injections_dans_outil: list[tuple[int, str]] = []
+def collecter(trace: Path) -> tuple[list[dict[str, object]], list[int], dict[str, str]]:
+    """Rend les enregistrements de hooks de l'hote, les bannieres non probantes
+    (citees dans un message), et l'identite de la session."""
+    hooks: list[dict[str, object]] = []
+    citations: list[int] = []
     meta: dict[str, str] = {}
 
     for numero, ligne in enumerate(trace.open(encoding="utf-8", errors="replace"), 1):
@@ -78,61 +74,87 @@ def analyser(trace: Path) -> int:
             if cle in enregistrement and cle not in meta:
                 meta[cle] = str(enregistrement[cle])
 
-        def parcourir(noeud: object, numero: int = numero, dans_outil: bool = False) -> None:
-            if isinstance(noeud, dict):
-                sous_outil = dans_outil or noeud.get("type") == "tool_result" \
-                    or "toolUseResult" in noeud
-                for info in noeud.get("hookInfos") or []:
-                    texte = json.dumps(info, ensure_ascii=False)
-                    nom = evenement_de(texte)
-                    if nom:
-                        executions[nom].append({
-                            "ligne": numero,
-                            "duree": info.get("durationMs"),
-                            "erreurs": noeud.get("hookErrors") or [],
-                        })
-                for valeur in noeud.values():
-                    if isinstance(valeur, str):
-                        if BANNIERE in valeur:
-                            cible = injections_dans_outil if sous_outil else injections_hors_outil
-                            cible.append((numero, valeur[valeur.index(BANNIERE):][:70]))
-                    else:
-                        parcourir(valeur, numero, sous_outil)
-            elif isinstance(noeud, list):
-                for valeur in noeud:
-                    parcourir(valeur, numero, dans_outil)
+        piece = enregistrement.get("attachment")
+        if isinstance(piece, dict) and piece.get("hookEvent"):
+            stdout = piece.get("stdout") or ""
+            rendu = json.dumps(enregistrement.get("rendered") or "", ensure_ascii=False)
+            contenu = piece.get("content") or ""
+            livre = BANNIERE in rendu or BANNIERE in contenu
+            hooks.append({
+                "livre": livre,
+                "ligne": numero,
+                "evenement": str(piece.get("hookEvent")),
+                "nom": str(piece.get("hookName") or ""),
+                "type": str(piece.get("type") or ""),
+                "code": piece.get("exitCode"),
+                "duree": piece.get("durationMs"),
+                "stderr": (piece.get("stderr") or "").strip(),
+                "injecte": BANNIERE in stdout,
+                "octets": len(stdout),
+            })
+            continue
 
-        parcourir(enregistrement)
+        if enregistrement.get("type") in ("assistant", "user") and BANNIERE in ligne:
+            citations.append(numero)
+
+    return hooks, citations, meta
+
+
+def analyser(trace: Path) -> int:
+    hooks, citations, meta = collecter(trace)
 
     print(f"=== TRACE : {trace.name} ===")
     for cle, valeur in meta.items():
         print(f"  {cle:<10} : {valeur}")
 
-    print("\n=== EXECUTIONS DE HOOKS ENREGISTREES PAR L'HOTE ===")
-    for nom in EVENEMENTS:
-        lignes = executions[nom]
-        if not lignes:
-            print(f"  {nom:<18} : non observable (aucun enregistrement)")
+    print("\n=== RESULTAT PAR EVENEMENT (source : enregistrements de l'hote) ===")
+    prouves = 0
+    for evenement in EVENEMENTS:
+        concernes = [h for h in hooks if h["evenement"] == evenement]
+        if not concernes:
+            print(f"  {evenement:<17} : NON OBSERVABLE — aucun enregistrement")
+            continue
+        avec = [h for h in concernes if h["injecte"] or h["livre"]]
+        echecs = [h for h in concernes if h["code"] not in (0, None) or h["type"] == "hook_error"]
+        livres = [h for h in concernes if h["livre"]]
+        if livres:
+            etat = "PREUVE D'INJECTION AU CONTEXTE"
+        elif avec:
+            etat = "hook execute avec plan en sortie, livraison non observee"
         else:
-            durees = ", ".join(str(e["duree"]) for e in lignes)
-            erreurs = [e for e in lignes if e["erreurs"]]
-            print(f"  {nom:<18} : {len(lignes)} execution(s), durees {durees} ms"
-                  + (f", ERREURS {erreurs}" if erreurs else ""))
+            etat = "execute, SANS injection"
+        if avec:
+            prouves += 1
+        print(f"  {evenement:<17} : {etat} — {len(concernes)} execution(s),"
+              f" {len(avec)} avec plan")
+        for h in concernes:
+            if h["livre"]:
+                detail = "PLAN LIVRE AU CONTEXTE"
+            elif h["injecte"]:
+                detail = "plan en sortie du hook"
+            else:
+                detail = "pas de plan"
+            print(f"      ligne {h['ligne']:<4} {h['nom']:<24} code={h['code']}"
+                  f" {h['duree']} ms  {detail}")
+            if h["stderr"]:
+                print(f"         stderr : {h['stderr'][:120]}")
+        if echecs:
+            print(f"      ATTENTION : {len(echecs)} execution(s) en erreur")
 
-    print("\n=== INJECTIONS DU PLAN ===")
-    print(f"  hors resultat d'outil (PREUVE)      : {len(injections_hors_outil)}")
-    for numero, extrait in injections_hors_outil[:5]:
-        print(f"      ligne {numero} : {extrait}")
-    print(f"  dans un resultat d'outil (EXCLUES)  : {len(injections_dans_outil)}")
-    for numero, extrait in injections_dans_outil[:5]:
-        print(f"      ligne {numero} : {extrait}")
+    print("\n=== OCCURRENCES NON PROBANTES, EXCLUES ===")
+    if citations:
+        print(f"  bannieres citees dans un message (assistant/utilisateur) : {citations}")
+        print("  -> exclues : citation ou copier-coller, pas une injection de l'hote")
+    else:
+        print("  aucune")
 
     print()
-    if injections_hors_outil:
-        print("VERDICT : injection automatique PROUVEE sur cette trace.")
+    if prouves:
+        print(f"VERDICT : injection automatique PROUVEE pour {prouves} evenement(s) sur"
+              f" {len(EVENEMENTS)}.")
+        print("          Les evenements « NON OBSERVABLE » ne sont ni valides ni infirmes.")
         return 0
     print("VERDICT : aucune injection automatique prouvee sur cette trace.")
-    print("          (une execution de hook sans injection reste un echec du critere)")
     return 1
 
 

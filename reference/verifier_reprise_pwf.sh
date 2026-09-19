@@ -51,29 +51,15 @@ else
 fi
 
 # 5. Le critere : l'injection automatique a-t-elle eu lieu EN SESSION ?
-#    `===BEGIN-PWF-DATA ... nonce=` est forge a chaque execution de l'injecteur
-#    et ne figure dans AUCUN fichier de documentation du skill : sa presence
-#    dans une trace de session prouve que l'injecteur a ete execute par l'hote.
-#    Reserve : une session qui aurait LU les scripts du skill contiendrait le
-#    motif sans qu'aucun hook n'ait tourne. Ne pas lire scripts/ pendant l'essai.
-projet=$(pwd -W 2>/dev/null || pwd)
-cle=$(printf '%s' "$projet" | sed 's#[:/\_]#-#g')
-traces="$HOME/.claude/projects/$cle"
-derniere=$(ls -t "$traces"/*.jsonl 2>/dev/null | head -1)
-
-if [ -z "$derniere" ]; then
-    rouge "5. Injection automatique constatee en session" \
-        "aucune trace de session sous $traces"
+#    Delegue a reference/preuve_injection.py, qui lit les enregistrements de
+#    hooks de l'hote (attachment hook_success / hook_additional_context) plutot
+#    que de deviner. Aucune duree n'y sert de preuve.
+python=".venv/Scripts/python.exe"
+[ -x "$python" ] || python="python"
+if "$python" reference/preuve_injection.py >/dev/null 2>&1; then
+    vert "5. Injection automatique prouvee (voir preuve_injection.py)"
 else
-    injections=$(grep -o "BEGIN-PWF-DATA kind=plan nonce=[0-9a-f]\{8,\}" "$derniere" 2>/dev/null \
-        | sort -u | wc -l)
-    if [ "$injections" -gt 0 ]; then
-        vert "5. Injection automatique constatee ($injections injection(s) distincte(s))"
-    else
-        rouge "5. Injection automatique constatee en session" \
-            "aucune injection dans $(basename "$derniere")"
-    fi
-    printf '   trace examinee : %s\n' "$(basename "$derniere")"
+    rouge "5. Injection automatique prouvee"         "aucune injection prouvee — detail : $python reference/preuve_injection.py"
 fi
 
 echo

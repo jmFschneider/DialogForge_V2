@@ -210,7 +210,7 @@ Ce que le journal `--debug` de cette session établit, et qui invalide deux hypo
 
 | Fait relevé | Conséquence |
 |---|---|
-| `Using bash path: "C:\Program Files\Gitinash.exe"` | L'hôte utilise bien Git Bash |
+| `Using bash path: "C:\Program Files\Git\bin\bash.exe"` | L'hôte utilise bien Git Bash |
 | `Registered 5 hooks from skill 'planning-with-files'` | Les cinq hooks sont enregistrés, pas seulement déclarés |
 | `sh` se résout en `/usr/bin/sh` dans un Git Bash **non-login** | L'hypothèse « `sh` introuvable » est **fausse** |
 | Ligne de hook rejouée dans le shell et le dossier exacts de l'hôte | 654 ms, code 0, `hookSpecificOutput` valide avec l'injection |
@@ -366,3 +366,64 @@ une trace locale à inspecter :
 Dans cette nouvelle session, confirmer l'enregistrement et l'exécution effective des hooks du plugin
 sur au moins un tour suivant le démarrage, puis inspecter la trace. Tant que cet essai réel n'est pas
 fait, la réserve J0 demeure et le lot 1 reste fermé.
+
+
+## 8. Qualification avec le plugin local épinglé — 2026-09-19
+
+Intégration changée depuis le §5 : le lanceur `tools/claude-pwf.ps1` charge le **plugin officiel
+local** par `--plugin-dir`, au lieu du skill autonome. Les conclusions du §5 ne s'y appliquent pas.
+
+### L'intégration elle-même
+
+| Point | Constat |
+|---|---|
+| Copie embarquée | `tools/planning-with-files/`, **728 fichiers, aucune divergence** avec le commit épinglé `faf1a15a…` (`diff -r` contre un checkout détaché) |
+| Manifeste | `planning-with-files` version `3.20.1` |
+| Événements déclarés | 6 : `SessionStart` (`startup\|resume\|clear\|compact`), `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, `Stop` |
+| Double activation | Écartée : le `SKILL.md` autonome commence chacun de ses hooks par `[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && exit 0`, et le lanceur définit cette variable |
+| Portée de l'environnement | `PATH`, `PLAN_ID`, `PWF_PLAN_ROOT`, `PWF_TRUSTED_PYTHON` posés sur le seul processus fils et restaurés en `finally` |
+
+### Ce que l'hôte enregistre, et qui sert de preuve
+
+Claude Code écrit **deux** enregistrements `attachment` par hook :
+
+- `hook_success` / `hook_error` : l'exécution — commande, `exitCode`, `durationMs`, `stdout` ;
+- `hook_additional_context` : le contexte **effectivement livré au modèle**, rendu en
+  `<system-reminder>`.
+
+Le second est la preuve recherchée : il atteste que le plan est entré dans le contexte, et non
+qu'un script a tourné. `reference/preuve_injection.py` s'appuie sur ces enregistrements. Il exclut
+explicitement toute bannière citée dans un message ou issue d'un résultat d'outil, et n'utilise
+aucune durée comme preuve.
+
+### Résultats par événement — session `ecc5d2e1-5fea-4930-a674-35d68e1ef5c6`
+
+| Événement | Résultat | Preuve |
+|---|---|---|
+| `SessionStart:startup` | **Injection prouvée** | ligne 5, `exitCode=0`, 902 ms ; plan livré au contexte ligne 6 |
+| `SessionStart:compact` | **Injection prouvée** | ligne 100, `exitCode=0`, 251 ms ; plan livré ligne 101 |
+| `UserPromptSubmit` | **Injection prouvée** | 3 livraisons au contexte, lignes 15, 63, 109 |
+| `PreToolUse` | **Injection prouvée** | 6 exécutions `exitCode=0` (Bash, Read), 6 livraisons appariées |
+| `PostToolUse` | **Non observable** | son filtre est `Write\|Edit` ; aucune écriture pendant l'essai |
+| `PreCompact` | **Non observable** | aucun enregistrement, bien que `/compact` ait été lancé |
+| `Stop` | Exécuté, sans injection | 6 exécutions `exitCode=0` (620-657 ms) ; cet événement porte la porte de fin, pas l'injection |
+
+### Récupération après compactage
+
+Après `/compact`, à la question « quelle est la prochaine étape du projet ? », la session a rendu le
+`## Next Step` exact du plan et déclaré de lui-même que le plan lui avait été **fourni
+automatiquement**. Les enregistrements de l'hôte le confirment indépendamment de cette déclaration :
+`SessionStart:compact` puis `UserPromptSubmit` ont tous deux livré le plan au contexte.
+
+### Réserve : levée pour ce qui est prouvé, maintenue pour le reste
+
+**Levé.** L'injection automatique du plan est établie au démarrage, à chaque message utilisateur,
+avant les appels d'outil couverts, et après compactage — y compris la récupération de la bonne
+prochaine étape. La réserve du §5 ne vaut plus pour la route plugin local.
+
+**Maintenu.** `PostToolUse` et `PreCompact` restent **non observés** : ni validés ni infirmés. Les
+qualifier demanderait un essai comportant une écriture de fichier et un examen du compactage côté
+`PreCompact`. Ils ne sont pas nécessaires à la reprise, qui repose sur les quatre événements prouvés.
+
+**Limite de portée.** Ce résultat vaut pour une session lancée par `tools/claude-pwf.ps1`. Une
+session `claude` ordinaire dans ce dépôt ne charge pas le plugin et retombe sur le constat du §5.

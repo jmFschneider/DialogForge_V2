@@ -6,11 +6,12 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-Lot 0.3, dernier point : ouvrir une **nouvelle** session dans `C:\Projets\DialogForge_2` épinglée
-par `PLAN_ID=2026-09-18-dialogforge-v2`, y faire invoquer le skill, puis lancer depuis Git Bash
-`sh reference/verifier_reprise_pwf.sh`. Les cinq points doivent être verts — le cinquième (hooks
-déclenchés en session) est rouge tant que l'essai n'a pas eu lieu. Ensuite seulement : consigner J0
-et ouvrir le lot 1.
+Ouvrir le **lot 1**, phase 2 : commencer par 1.1, le format court de demande — objectif,
+livrable, sources, contraintes, non-objectifs et critères de fin. Réemployer la logique utile de
+`DialogForge/src/dialogforge/framing.py` sans importer la plateforme DialogForge.
+
+Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la seule voie où
+l'injection automatique du plan est qualifiée.
 
 ## Current Phase
 Phase 1
@@ -32,11 +33,13 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 - [x] 0.3 Plan nommé créé avec les scripts amont, lots 0 à 3 inscrits
 - [x] 0.3 Racine et plan sélectionnés explicitement, résolution et ambiguïté éprouvées
 - [x] 0.3 Reprise vérifiée **en session** : bonne prochaine étape retrouvée, sélection erronée refusée
-- [!] 0.3 Injection automatique par les hooks : **qualifiée négativement**, réserve consignée
-- **Status:** in_progress
-- **Jalon :** J0 — chantier prêt, **sous réserve** : l'injection automatique par les hooks n'est
-  pas qualifiée sur cet hôte (voir `reference/COMPTE_RENDU_J0.md` §5). La reprise repose sur
-  `CLAUDE.md` et la résolution explicite, tous deux vérifiés en session.
+- [x] 0.3 Injection automatique par les hooks : **prouvée** avec le plugin local épinglé
+      (`SessionStart` au démarrage et après `/compact`, `UserPromptSubmit`, `PreToolUse`)
+- **Status:** complete
+- **Jalon :** **J0 atteint** le 2026-09-19. Injection automatique prouvée par les enregistrements
+  de l'hôte (`reference/COMPTE_RENDU_J0.md` §8), récupération après compactage comprise.
+  Limites résiduelles, ni validées ni infirmées : `PostToolUse` et `PreCompact` non observés.
+  Portée : vaut pour une session lancée par `tools/claude-pwf.ps1`, pas pour un `claude` ordinaire.
 
 ### Phase 2: Lot 1 — Parcours documentaire complet
 - [ ] 1.1 Format court de demande, fichier direct ou cadrage guidé, provenance conservée
