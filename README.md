@@ -260,6 +260,20 @@ pendant un appel, la réponse n'est pas retenue (`SOURCES_MODIFIED`).
 n'est arrêté que par sa propre CLI, dont ces protections ne sont **pas encore mesurées** en réel.
 La frontière obtenue, ses limites et ce qui reste à vérifier : `reference/FRONTIERE_ROLES.md`.
 
+## Relier une collaboration à un plan PWF (facultatif)
+
+`plan <dossier> --link <id-du-plan> [--plan-root <racine du projet>]` résout le plan par le script
+public de PWF **avant** d'écrire quoi que ce soit, puis enregistre la référence dans `plan.json` —
+l'identifiant et la racine, jamais une phase. `plan <dossier>` (sans option) imprime le **résumé à
+reporter à la main** dans le plan : statut, décision, prochaine action, chemins du dossier, du
+document et de la dernière revue. `plan <dossier> --unlink` retire la liaison.
+
+**Le plan reste seul propriétaire de l'avancement** : l'outil n'y écrit jamais, et ne synchronise
+aucune case. Le cycle ne lit pas `plan.json` : sans liaison, avec une liaison cassée ou après
+`--unlink`, le livrable reste lisible, `run`/`decide` fonctionnent, et aucun appel n'est déclenché.
+Le résolveur public rend **toujours 0** ; un identifiant inexistant, mal formé ou ambigu y donne une
+**sortie vide**, que l'outil traite comme un refus — jamais comme un succès.
+
 ## Ce qu'il y a dans une collaboration
 
 ```

@@ -245,6 +245,12 @@
 **Un texte dérivé qu'un rejeu doit retrouver à l'identique ne contient ni horloge ni compteur global.** Il se déduit du texte de base.
 *Motif : la demande complétée est reconnue au rejeu par son empreinte ; son numéro de « Précisions » vient du texte, sa date de la provenance. Avec une date dans le texte, un arrêt brutal suivi d'une reprise un autre jour aurait refusé une demande pourtant écrite.*
 
+**Une sortie vide avec un code 0 n'est pas un succès — pour le résolveur de plan PWF, c'est le refus lui-même.**
+*Motif (2.3) : `resolve-plan-dir.sh` rend toujours 0 (« never errors out the agent loop ») ; identifiant inexistant, mal formé, sélection ambiguë et racine invalide y passent par une sortie vide (mesuré). Se fier au code de retour ferait prendre un refus pour un plan. À l'inverse, un identifiant épinglé sans `task_plan.md` est rendu tel quel : l'outil le vérifie lui-même, ainsi que le nom du dossier rendu (jamais un autre plan que celui demandé), et épingle `PLAN_ID` et `PWF_PLAN_ROOT` sans hériter de ceux de la session.*
+
+**La liaison à un plan est un fichier à part, que le cycle ne lit pas ; le plan reste seul propriétaire de l'avancement.**
+*Motif (2.3) : `configuration.json` a un schéma strict (clés exactes) et le cycle en dépend ; y loger une référence facultative faisait de sa suppression une opération sur un fichier d'état. `plan.json` se supprime sans rien toucher, une liaison cassée ne bloque rien, et l'outil n'écrit jamais dans un plan ni ne copie ses phases : une seconde liste à cocher est exactement ce que CLAUDE.md §0 interdit.*
+
 **Un agent ne tourne pas dans le dossier qu'il ne doit pas lire.**
 *Motif (2.2) : B héritait de la collaboration comme dossier de travail — `appels/`, le journal du producteur, les anciennes demandes y étaient à portée d'un outil de lecture, sans qu'aucune règle ne l'ait voulu. Le dossier est désormais jetable, avec une **copie** du corpus (jamais un lien, même dur : écrire dedans atteindrait l'original) ; l'environnement est filtré par une liste de refus **nominative**, une liste d'autorisation cassant l'authentification de la première CLI dont on ignore les besoins.*
 

@@ -511,6 +511,8 @@ n'ajoute.***
 
 ## 7. Surface CLI
 
+**Amendé le 2026-09-19 (PO, V2 lot 2 point 2.3) : `plan <dossier> [--link ID [--plan-root DIR] | --unlink]`.** Liaison **facultative** à un plan PWF, dans un fichier à part (`plan.json`, jamais lu par le cycle, hors de `configuration.json` dont le schéma est strict). Résolution par le script public de PWF, qui rend toujours 0 : la sortie vide est un refus. Sans option, la commande imprime le résumé à reporter à la main dans le plan. Le plan reste seul propriétaire de l'avancement ; l'outil n'y écrit pas.
+
 **Amendé le 2026-09-19 (PO, V2 lot 2 point 2.1) : `resume --reprocess <uuid> --reason-file <fichier>`** relit localement la réponse brute d'un appel en `ERROR` (`CONTRACT_ERROR`, `DECODE_FAILED` — la table fermée de N-01), sans appel ; l'opération est tracée dans `appels/<appel>/retraitements.jsonl`. **Ctrl+C à deux temps** : pause à la frontière d'appel (code de sortie `6`, `READY`), puis arrêt immédiat (`INTERRUPTED_BY_USER`, possiblement payé). Les incidents sont expliqués par `incidents.py`, sans jamais déduire un coût ni une heure de reprise.
 
 **Amendé le 2026-09-19 (PO, V2 lot 1 point 1.4) : trois commandes s'ajoutent aux quatre ci-dessous** — `show` (lecture seule : décision, corrections, réserves, prochaine action, document), `decide` (`--accept`, `--accept-with-reserves`, `--correct`, `--stop`) et `list` (collaborations calculées depuis les dossiers). `decide --correct` passe par le moteur (intervention `Correct`, sous verrou, rejouable) ; les trois autres décisions ne font aucun appel. `AWAITING_APPROVAL` reste « terminé, pas accepté » : l'acceptation est une décision de l'humain dans `decisions.json`. Nouveau statut `STOPPED` (arrêt humain, définitif).

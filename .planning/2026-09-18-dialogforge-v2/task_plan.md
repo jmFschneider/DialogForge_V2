@@ -14,18 +14,34 @@ avec reprise après incident sans rejouer un appel ambigu.
 (`pid.txt` s'écrit après `Popen`) ; seul `LAUNCH_FAILED` (échec de `Popen` observé) l'est. Le reste est
 « inconnu », dit comme tel.
 
-**Ensuite : 2.2 — séparation des rôles** : paquet B minimal (demande, critères, non-objectifs, version
-examinée, sources autorisées, objections ouvertes), session reviewer fraîche, environnement transmis et
-injections de l'hôte contrôlés, **capacités effectives par profil d'adaptateur** ; un profil incapable
-de la protection requise est restreint ou déclaré non supporté. Essai sur dossier jetable. **Attendre
-l'autorisation du PO pour ouvrir 2.2.** Puis 2.3 (référence de plan PWF facultative). **Les garanties des
-CLI réelles ne sont pas acquises avant le lot 3.**
+**2.2 est fait** (rouvert le 2026-09-19 : la validation du PO a trouvé une fuite réelle — l'hôte
+Codex transmet `CODEX_SESSION_ID`, `CODEX_THREAD_ID`, `CODEX_PERMISSION_PROFILE`, que `clean_env`
+ne filtrait pas ; corrigé, 9 contre-épreuves, 483 tests). Le PO a enchaîné (« on continue avec le
+point suivant ») : **pris comme re-validation de la correction — à infirmer si ce n'en était pas
+une.** **Commité** (`feat: ... (2.2)`, voir `git log`). Agents dans un
+**dossier jetable hors de la collaboration** (copie du corpus seule), **environnement filtré**
+(liste de refus nominative), `Capabilities.enforces_read_only`/`fresh_session` exigées au prévol,
+corpus modifié pendant l'appel = `SOURCES_MODIFIED`. **Aucune garantie de CLI réelle** : les
+drapeaux sont lus dans `--help`, jamais éprouvés — `reference/FRONTIERE_ROLES.md` liste ce qui est
+obtenu, constaté seulement, et à vérifier au lot 3.
+
+**2.3 est fait** (2026-09-19, « on continue avec le point suivant »), **commité** (`feat: ... (2.3)`,
+voir `git log`) : `planlink.py`,
+commande `plan <dossier> [--link ID [--plan-root DIR] | --unlink]`, liaison dans `plan.json` (fichier
+à part, jamais lu par le cycle). Le résolveur public rend **toujours 0** : sortie vide = refus
+(mesuré). Le plan reste seul propriétaire ; l'outil imprime un résumé à reporter **à la main**.
+
+**Le lot 2 est complet** (2.1, 2.2, 2.3). **Écart au plan à faire valider** : la liaison est dans
+`plan.json`, pas dans `configuration.json` (schéma strict, dont dépend le cycle). **J2 : à constater
+par le PO** ; « les profils à vérifier avec les CLI réelles sont identifiés » = `FRONTIERE_ROLES.md`.
+**Ensuite : lot 3 (essais réels, qui consomment du quota) — à n'ouvrir que sur autorisation du PO ;
+avant, faire constater J2 et trancher l'écart `plan.json` / `configuration.json`.** Les garanties des CLI réelles ne sont pas acquises avant le lot 3.
 
 Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la seule voie où
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 3 (lot 2) — 2.1 fait, 2.2 à ouvrir
+Phase 3 (lot 2) — 2.1, 2.2 (fuite Codex corrigée) et 2.3 faits ; J2 à constater par le PO
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -69,11 +85,11 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 ### Phase 3: Lot 2 — Robustesse et liaison PWF du produit
 - [x] 2.1 Reprise après résultat reçu non appliqué ; retraitement local de l'interprétation
 - [x] 2.1 Distinguer réponse mal interprétée, appel non lancé, issue inconnue ; verrou non effacé
-- [ ] 2.2 Paquet B minimal ; session reviewer fraîche ; capacités effectives par profil vérifiées
-- [ ] 2.2 Essai sur dossier jetable : sources non modifiées, journal de A non injecté chez B
-- [ ] 2.3 Référence de plan PWF facultative via les scripts publics ; sortie vide traitée
-- [ ] 2.3 Un seul propriétaire du plan ; fonctionnement documentaire vérifié sans liaison PWF
-- **Status:** in_progress — 2.1 fait (non commité), 2.2 et 2.3 restent
+- [x] 2.2 Paquet B minimal ; session reviewer fraîche ; capacités effectives par profil vérifiées
+- [x] 2.2 Essai sur dossier jetable : sources non modifiées, journal de A non injecté chez B
+- [x] 2.3 Référence de plan PWF facultative via les scripts publics ; sortie vide traitée
+- [x] 2.3 Un seul propriétaire du plan ; fonctionnement documentaire vérifié sans liaison PWF
+- **Status:** in_progress — 2.1, 2.2 et 2.3 faits et commités ; J2 à constater par le PO
 - **Jalon :** J2 — version candidate aux essais réels.
 
 ### Phase 4: Lot 3 — Essais réels et première livraison

@@ -47,6 +47,12 @@
 | Aucun moyen de lire un résultat, de décider, ni de retrouver une collaboration (moteur hérité) | 1.4 : `show`, `decide`, `list`, `decisions.json` ; « terminé » distinct d'« accepté » |
 | Sur `CONTRACT_ERROR`/`DECODE_FAILED`, seule sortie = nouvel appel payant, alors que la réponse est sur disque | 2.1 : `--reprocess`, retraitement local tracé |
 | Un incident n'était pas expliqué à l'humain (payé ? cause ? suite ?) | 2.1 : `incidents.py`, sans coût ni heure déduits |
+| Les agents tournaient dans le dossier de collaboration (journal de A, `appels/`, anciennes demandes à portée de B) | 2.2 : dossier jetable, copie du corpus seule |
+| L'environnement complet du parent (session, jeton de messagerie, racine de plan) passait aux agents | 2.2 : liste de refus nominative, noms tracés dans `intention.json` |
+| La liste de refus d'environnement était bâtie sur le seul hôte de la session (Claude) : un agent lancé depuis Codex héritait de `CODEX_SESSION_ID`/`CODEX_THREAD_ID`/`CODEX_PERMISSION_PROFILE` | 2.2 corrigé : noms ajoutés, pas de refus global ; `KEPT_ON_PURPOSE` justifie `CODEX_HOME` et `CODEX_MANAGED_PACKAGE_ROOT`. La liste reste incomplète par construction |
+| Le résolveur public de plan PWF rend toujours 0 ; tout refus (inexistant, mal formé, ambigu) est une **sortie vide**, et un plan épinglé sans `task_plan.md` est rendu quand même | 2.3 : `planlink.resolve` traite le vide comme un refus, vérifie le nom rendu et `task_plan.md` |
+| `configuration.json` a un schéma à clés exactes : y ajouter une référence facultative en ferait un fichier d'état à modifier pour la retirer | 2.3 : liaison dans `plan.json`, écart au plan à faire valider par le PO |
+| Le `python`/`pytest` global résout `iabinome` vers l'ancien projet | Toujours `.venv/Scripts/python.exe -m pytest tests` |
 | `reference/cycle_sans_fournisseur.py` rend rc=0 même en `ERROR` | Corrigé le 2026-09-19 : rc=1 hors de `AWAITING_APPROVAL` sans objection ouverte |
 | `ruff format --check` signale 26 fichiers | Laissé ouvert : `ruff format` n'appartient pas à la porte historique du projet. À trancher explicitement, pas à subir |
 

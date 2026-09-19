@@ -316,3 +316,123 @@ commité** : aucune demande de commit.
 - **2.2** (séparation des rôles) et **2.3** (liaison PWF) non ouverts.
 - Le double Ctrl+C est testé avec `_thread.interrupt_main` (ce que fait le signal) : le vrai clavier
   Windows n'est pas simulé.
+
+## Session: 2026-09-19 — lot 2, point 2.2 (séparation des rôles)
+
+2.1 commité (`4e9a3cd`). « oui commites et continues » : 2.2 ouvert. **2.2 non commité** : aucune
+demande de commit.
+
+### Actions Taken
+- **Mesuré avant de coder** : A et B tournaient avec `cwd` = dossier de collaboration (le reviewer
+  atteignait `appels/`, `echanges/`, les anciennes demandes) ; `transport.run` héritait de
+  l'environnement complet du parent (identifiants de session, jeton de messagerie, racine de plan) ;
+  Claude ne restreignait ses outils qu'en `CONTEXT_ONLY`.
+- **`isolation.py`** (nouveau) : `neutral_workdir` (dossier jetable, **copie** de `corpus/fichiers/`
+  seule, supprimé après l'appel), `clean_env` (liste de refus **nominative**, insensible à la casse,
+  `PWF_*`), `refused_names` (noms seuls, tracés dans `intention.json`).
+- **`transport.run(env=)`** ; `workflow.new_call` lance dans le dossier neutre avec l'environnement filtré.
+- **`Capabilities.enforces_read_only` / `fresh_session`** ; prévol `_require_separation` : un adaptateur
+  qui ne les déclare pas est refusé avant tout appel, sans mutation, pour A comme pour B.
+- **Adaptateurs** : Claude `--restricted --strict-mcp-config --no-session-persistence
+  --disable-slash-commands --tools "Read,Grep,Glob"` (`""` en `CONTEXT_ONLY`) ; Codex `--sandbox
+  read-only --ephemeral --ignore-user-config --ignore-rules`. Formes lues dans `--help`, **non éprouvées**.
+- **`SOURCES_MODIFIED`** : contrôle complet du corpus après l'appel, avant toute lecture de la
+  réponse ; réponse non retenue, `INTERRUPTED`, jamais relancé seul ; catalogué dans `incidents.py`.
+- `reference/FRONTIERE_ROLES.md`, README, `CONCEPTION_FINALE.md` §8, `RULES.md` (2 règles).
+- **Non fait, volontairement** : aucun confinement du système d'exploitation ; aucun essai avec une
+  CLI réelle (lot 3) ; `demande.md`/`etat.json` non contrôlés *pendant* l'appel.
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `tests/test_isolation.py` (nouveau) + `test_adapters.py` | verts | 40 tests | OK |
+| 13 contre-épreuves (cwd = collaboration, env non filtré, liens durs, pas de contrôle post-appel, prévol neutralisé, Claude sans `--restricted` / sans `--no-session-persistence` / CONSULT tous outils, Codex sans `--ephemeral` / `--ignore-user-config`, filtre sensible à la casse, `PWF_` oublié, noms non tracés) | rouges | 13 rouges, chacune rétablie | OK |
+| `ruff check .` | aucun constat | All checks passed | OK |
+| `mypy` strict | aucun constat | no issues in 43 source files | OK |
+| `pytest tests` (porte complète) | suite verte | 479 passés, 2 ignorés, 71 sous-tests, 58 s | OK |
+| Scénario `reference/cycle_sans_fournisseur.py` | rc=0 | rc=0 | OK |
+
+### Errors
+| Error | Resolution |
+|-------|------------|
+| `pytest` lancé avec le Python global : `iabinome` résolu vers l'ancien projet (`C:\Projets\IAbinome`) | Toujours `.venv/Scripts/python.exe -m pytest tests` |
+| Faux agent `status_marker` relisait `etat.json` en relatif : cassé par le dossier neutre | Chemin absolu `state_file` |
+| E501 (docstring) et 3 erreurs mypy (`**dict[str, bool]`) | Corrigés |
+| Une assertion vacue (`{"PATH","SYSTEMROOT"} & names or "PATH" in names`) | Remplacée par `assertIn("PATH", names)` |
+
+### Reste ouvert
+- **2.3** (liaison PWF facultative) non ouvert : attendre l'autorisation du PO.
+- Toutes les protections sont **à mesurer avec de vraies CLI au lot 3** (liste dans `FRONTIERE_ROLES.md`).
+
+### Correction de 2.2 — fuite Codex trouvée par la validation du PO (2026-09-19)
+2.2 est **rouvert** : un agent lancé depuis un hôte Codex héritait de `CODEX_SESSION_ID`,
+`CODEX_THREAD_ID` et `CODEX_PERMISSION_PROFILE`, que `clean_env` ne filtrait pas (la liste ne
+couvrait que Claude, `PLAN_ID`, `PWF_*`). Ma liste venait du seul environnement de **cette**
+session (un hôte Claude) : elle ne pouvait pas connaître l'autre hôte.
+- **Corrigé** : les trois noms ajoutés à la liste **nominative** ; **aucun** refus global `CODEX_*`.
+- **Examiné séparément, conservé** (`isolation.KEPT_ON_PURPOSE`, raison par variable) : `CODEX_HOME`
+  (authentification, même sous `--ignore-user-config`), `CODEX_MANAGED_PACKAGE_ROOT` (réécrite par le
+  lanceur npm — `bin/codex.js` lu ; garder ou retirer est sans effet, gardée par prudence),
+  `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_GIT_BASH_PATH`.
+- **Non observé directement** : cette session n'a aucune variable `CODEX_*` ; les noms viennent du
+  signalement du PO. Dit dans `FRONTIERE_ROLES.md`.
+- **Tests** : hôte Codex simulé dans `_HOST_ENV` (absence dans le processus agent, noms — jamais
+  valeurs — dans `intention.json`), conservation explicite des variables d'authentification et de
+  lancement, pas de refus global, insensibilité à la casse. 9 contre-épreuves rouges (chacun des
+  trois noms retiré, refus global `CODEX_*`, `CODEX_HOME` refusé, `CODEX_MANAGED_PACKAGE_ROOT`
+  refusé, casse, noms non tracés, valeurs tracées), chacune rétablie.
+- **Résultats** : `test_isolation.py` + `test_adapters.py` 43 passés ; 9 contre-épreuves rouges ;
+  `ruff` OK ; `mypy` strict OK (43 fichiers) ; `pytest tests` 483 passés, 2 ignorés, 71 sous-tests,
+  57 s ; scénario de référence rc=0. **2.2 reste en cours** jusqu'à re-validation par le PO.
+
+## Session: 2026-09-19 — lot 2, point 2.3 (liaison facultative à un plan PWF)
+
+« on continue avec le point suivant » : 2.3 ouvert (2.2 pris comme re-validé, voir `task_plan.md`).
+**2.3 non commité** : aucune demande de commit.
+
+### Actions Taken
+- **Mesuré avant de coder** le vrai `resolve-plan-dir.sh` sur des projets jetables : il rend
+  **toujours 0** ; identifiant inexistant, mal formé (`../x`), ambigu (deux plans, sans épinglage),
+  racine invalide → **sortie vide**. Un identifiant épinglé **sans `task_plan.md`** est rendu tel
+  quel. `--check-ambiguity` imprime `PWF_PLAN_AMBIGUOUS_V1`. Hors racine explicite (`PWF_PLAN_ROOT`
+  absolu) il ne résout rien sous un dossier quelconque.
+- **`planlink.py`** (nouveau) : `resolve` (épingle `PLAN_ID` et `PWF_PLAN_ROOT`, sortie vide = refus,
+  autre plan que demandé = refus, `task_plan.md` exigé), `link` (résout **avant** d'écrire),
+  `unlink`, `read`, `summary`.
+- **Commande `plan <dossier> [--link ID [--plan-root DIR] | --unlink]`** ; sans option, le résumé à
+  reporter **à la main** (statut, décision, prochaine action, chemins). Lisible sans liaison.
+- **Écart au plan, à faire valider** : la liaison est dans `plan.json`, **pas** dans
+  `configuration.json` — schéma à clés exactes dont dépend le cycle ; un fichier à part se supprime
+  sans toucher à rien. Le cycle ne lit jamais `plan.json`.
+- **Environnement par rôle** : déjà couvert par 2.2 (`clean_env` retire `PLAN_ID`/`PWF_*` pour A **et**
+  B) ; test ajouté pour B. Plus strict que « selon le rôle » : aucun rôle n'a besoin du plan.
+- README, `CONCEPTION_FINALE.md` §7, `RULES.md` (2 règles), `FRONTIERE_ROLES.md`.
+- **Non fait, volontairement** : aucune écriture dans un plan ; aucune synchronisation d'état ;
+  `--check-ambiguity` non utilisé (l'identifiant est toujours épinglé, l'ambiguïté n'a pas lieu d'être).
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `tests/test_planlink.py` (nouveau) | verts | 33 tests, dont 6 sur le **vrai** script | OK |
+| 10 contre-épreuves (sortie vide acceptée, `PLAN_ID` / `PWF_PLAN_ROOT` non épinglés, autre plan accepté, `task_plan.md` non exigé, code de retour ignoré, liaison écrite avant résolution, résumé bloqué par une liaison morte, `unlink` qui touche l'état, résumé sans dossier) | rouges | 10 rouges, chacune rétablie | OK |
+| `ruff check .` | aucun constat | All checks passed | OK |
+| `mypy` strict | aucun constat | no issues in 45 source files | OK |
+| `pytest tests` (porte complète) | suite verte | 517 passés, 2 ignorés, 71 sous-tests, 62 s | OK |
+| Scénario `reference/cycle_sans_fournisseur.py` | rc=0 | rc=0 | OK |
+
+### Commits
+Sur demande du PO (« fais les commites »), **deux commits** : `feat: ... (2.2)` (code, tests,
+docs de 2.2) puis `feat: ... (2.3)` (code, tests, docs de 2.3, plan PWF). Les docs partagés
+(README, `CONCEPTION_FINALE.md`, `RULES.md`, `FRONTIERE_ROLES.md`) ont été réduits à la part 2.2
+pour le premier commit. **Le commit 2.2 seul a passé la porte complète** dans un worktree jetable :
+ruff OK, mypy OK (43 fichiers), 484 tests passés, 2 ignorés, scénario rc=0. Le plan PWF (les trois
+fichiers) est dans le second commit.
+
+### Errors
+| Error | Resolution |
+|-------|------------|
+| Ma première sonde du résolveur donnait « vide, code 0 » partout | Mon montage : sans `PWF_PLAN_ROOT` absolu, rien à résoudre hors du projet ; refait avec la racine explicite |
+| Script Python passé en heredoc : `\n` devenu vrai saut de ligne, `é` mal décodé (cp1252) | Encore la règle RULES « pas de heredoc pour du code » : Edit/Write |
+| Contre-épreuve « résumé sans dossier » **verte** | Un autre ligne (« Document : <dossier>/… ») satisfaisait l'assertion : test resserré sur la ligne exacte, redevenue rouge |
+| Une « contre-épreuve » rouge par **erreur de collecte** (fichier de test cassé par mon heredoc) | Non comptée ; refaite après réparation |
+| Patch des tests abandonné (motif absent) | Cause : décodage du heredoc ; refait par fichier |

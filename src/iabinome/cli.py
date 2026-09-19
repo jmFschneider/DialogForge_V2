@@ -28,6 +28,7 @@ from . import (
     decisions,
     demande,
     lock,
+    planlink,
     settings,
     storage,
     transport,
@@ -405,6 +406,32 @@ def cmd_decide(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_plan(args: argparse.Namespace) -> int:
+    """La liaison **facultative** à un plan PWF (2.3), et le résumé à y reporter à la main.
+
+    Sans option : le résumé — il se lit aussi sans aucune liaison. `--link` résout le plan
+    par les scripts publics de PWF *avant* d'écrire quoi que ce soit ; `--unlink` retire
+    la liaison et rien d'autre. Aucun de ces gestes n'appelle un agent ni n'écrit dans un plan."""
+    collab = Path(args.collab)
+    try:
+        State.from_dict(_read_json(collab / "etat.json"))  # une collaboration, ou un refus
+        if args.unlink:
+            print("liaison retirée." if planlink.unlink(collab) else "aucune liaison à retirer.")
+            return 0
+        if args.link is not None:
+            where = planlink.link(collab, args.link, Path(args.plan_root or Path.cwd()))
+            print(f"lié au plan {args.link} ({where}). Le plan reste seul propriétaire de"
+                  " l'avancement : rien n'y est écrit.")
+            return 0
+        for line in planlink.summary(collab):
+            print(line)
+        return 0
+    except planlink.PlanLinkError as exc:
+        return _fail(str(exc))
+    except _BORDER_ERRORS as exc:
+        return _fail(_describe(exc))
+
+
 def cmd_list(args: argparse.Namespace) -> int:
     """Les collaborations d'un dossier, **calculées** depuis les dossiers : pas de
     base, pas d'index, rien à garder à jour."""
@@ -555,6 +582,14 @@ def build_parser() -> argparse.ArgumentParser:
     choice.add_argument("--stop", action="store_true")
     p_decide.add_argument("--reason")
     p_decide.set_defaults(func=cmd_decide)
+
+    p_plan = sub.add_parser("plan")
+    p_plan.add_argument("collab")
+    which = p_plan.add_mutually_exclusive_group()
+    which.add_argument("--link", metavar="ID_DU_PLAN")
+    which.add_argument("--unlink", action="store_true")
+    p_plan.add_argument("--plan-root", help="racine du projet qui porte `.planning/`")
+    p_plan.set_defaults(func=cmd_plan)
 
     p_list = sub.add_parser("list")
     p_list.add_argument("root")
