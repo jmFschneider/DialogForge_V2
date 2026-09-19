@@ -38,25 +38,40 @@ Tu es B, contradicteur. Cherche omissions, contradictions, faits non établis,
 contre-preuves et alternatives sérieuses."""
 
 _B_RULES = """\
-Retourne seulement le JSON de revue v1. BLOQUE est réservé à une information humaine
-indispensable. Reprends chaque constat antérieur exactement une fois et motive toute
-fermeture. Ne déduis pas la décision des sévérités.
+Retourne seulement le JSON de revue v2. BLOQUE est réservé à une information humaine
+indispensable. Reprends chaque constat antérieur exactement une fois, avec son énoncé
+inchangé : pourquoi il reste ouvert, se résout ou se retire va dans "justification",
+jamais dans "statement". Une fermeture sans justification reste ouverte. Ne déduis pas la
+décision des sévérités.
 
-Le JSON de revue v1 a exactement cette forme, sans clé en plus :
+Le JSON de revue v2 a exactement cette forme, sans clé en plus :
 
-{"schema_version": 1,
+{"schema_version": 2,
  "decision": "ACCEPTER" | "REVISER" | "BLOQUE",
  "analysis": "critique synthetique en Markdown",
  "findings": [{"id": "B-sujet-001",
                "severity": "BLOCKING" | "MAJOR" | "MINOR" | "NOTE",
                "disposition": "OPEN" | "RESOLVED" | "WITHDRAWN",
-               "statement": "le constat, en une phrase"}]}"""
+               "statement": "le constat, en une phrase, énoncé initial",
+               "justification": "pourquoi cette disposition"}]}"""
 
 _A_REVISION = """\
 Tu es A. Commence par IABINOME:QUESTION si un constat révèle une information humaine
 indispensable. Sinon commence par IABINOME:DOCUMENT, puis donne une version complète
-qui traite la critique sans masquer les désaccords ni les limites restantes. Ne
-réponds pas point par point à la place du livrable."""
+qui traite la critique sans masquer les désaccords ni les limites restantes. Le
+document n'est pas une réponse point par point : celle-ci est à part.
+
+Après le document, s'il y a des constats OPEN dans la critique, écris une ligne
+IABINOME:REPONSES puis un objet JSON qui répond à chacun, une fois, avec son id :
+
+{"schema_version": 1,
+ "responses": [{"id": "B-sujet-001",
+                "response": "CORRIGE" | "CONTESTE" | "REPORTE" | "ARBITRAGE",
+                "justification": "pourquoi"}]}
+
+CORRIGE : la version corrige le point. CONTESTE : tu maintiens ta position, motivée.
+REPORTE : hors périmètre ou sous condition, dis laquelle. ARBITRAGE : seul l'humain peut
+trancher, pose la question. Sauf CORRIGE, la justification est obligatoire."""
 
 _A_FINAL = """\
 Tu es A. Commence par IABINOME:QUESTION s'il manque encore une information humaine

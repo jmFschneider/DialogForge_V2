@@ -3,7 +3,7 @@
 ## Session: 2026-09-18 — mise en place du chantier
 
 ### Current Status
-- **Phase :** 1 terminée (J0 atteint le 2026-09-19) — phase 2 en cours, 1.1 fait (revalidé)
+- **Phase :** 1 terminée (J0 atteint le 2026-09-19) — phase 2 en cours, 1.1 et 1.2 faits
 - **Started :** 2026-09-18
 - **Reste pour J0 :** rien. Injection automatique prouvée avec le plugin local épinglé.
 
@@ -124,3 +124,54 @@ après une seconde réponse (`Précisions n°1` et `n°2`, archives `.001` et `.
 | Anciens tests `dropped` / `sections_retirees` | Supprimés avec le code qu'ils éprouvaient |
 | Sous-tests des points d'arrêt s'empilant dans un même dossier | `tearDown_collaboration` repart d'une collaboration neuve entre deux sous-tests |
 | `task_plan.md`, `README.md`, `RULES.md`, `CONCEPTION_FINALE.md` en CRLF | Édités ligne à ligne ou par script, puis normalisés en CRLF (les éditions multi-lignes échouent sur CRLF) |
+
+## Session: 2026-09-19 — lot 1, point 1.2 (objections et dispositions)
+
+Autorisation du PO : « commiter puis attaquer le lot suivant ». 1.1 commité (`b0dc6a3`). « Lot suivant »
+lu comme le prochain point du plan, **1.2** ; 1.3 non ouvert.
+
+### Actions Taken
+- **Contrat confronté à des revues réelles** (`conception/essais/`, mission du 2026-09-05). Défaut
+  mesuré : au tour 2, B a **réécrit l'énoncé de ses 7 constats** pour y dire « désormais résolu ».
+- `contracts.py` : revue **v2** (`justification` distincte) ; v1 toujours lue. Énoncé initial immuable
+  (la réécriture devient la justification, sans nouvel appel) ; fermeture sans justification = reste
+  ouverte. Nouveau : `ObjectionResponse`, `split_responses`, `parse_objection_responses` — une réponse par
+  objection ouverte, absente/dupliquée/inconnue refusée, justification exigée sauf `CORRIGE`, bloc
+  récupéré s'il est entouré de prose.
+- `models.py` : `ResponseKind` (`CORRIGE`, `CONTESTE`, `REPORTE`, `ARBITRAGE`).
+- `workflow.py` : `apply_a` exige les réponses en `REVISION_A` **avant** toute écriture, écrit
+  `NNNN-reponses-A.json` et le document sans le bloc ; `apply_b` passe les énoncés initiaux ; le prompt de
+  B montre la réponse de A à chaque constat.
+- `prompts.py` : format du bloc dans le gabarit de révision, schéma v2 dans celui de B.
+- `objections.py` (nouveau) : `ledger()` relit le registre par objection dans `echanges/`.
+- `tests/fakes.py` : `revision()` ; le faux agent écrit maintenant des **octets UTF-8** (défaut du lot 0).
+- `reference/cycle_sans_fournisseur.py` : A répond, B en v2, demande au format court, registre affiché,
+  et **rc≠0 si le cycle n'aboutit pas**.
+- **Non fait, volontairement :** `FINAL_A` (1.3) ; un préambule avant `IABINOME:DOCUMENT` reste refusé
+  (règle mesurée du 2026-09-04) ; pas de réponse de A exigée hors révision.
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `tests/test_objections.py` (nouveau) | verte | 32 tests, 12 sous-tests | OK |
+| `tests/test_prompts.py` (format des réponses nommé dans le gabarit) | verte | verte | OK |
+| Contre-épreuve 1 : énoncé initial non gardé | rouge | 10 échecs | OK, rétabli |
+| Contre-épreuve 2 : fermeture sans justification ferme | rouge | 3 échecs | OK, rétabli |
+| Contre-épreuve 3 : réponse manquante tolérée | rouge | 2 échecs | OK, rétabli |
+| Contre-épreuve 4 : réponse dupliquée tolérée | rouge | 1 échec | OK, rétabli |
+| Contre-épreuve 5 : réponse à un constat inconnu tolérée | rouge | 1 échec | OK, rétabli |
+| Contre-épreuve du scénario : A ne répond pas | rc≠0 | rc=1, `ECHEC` affiché | OK |
+| `ruff check .` | aucun constat | All checks passed | OK |
+| `mypy` strict | aucun constat | no issues in 36 source files | OK |
+| `pytest tests` (porte complète) | suite verte | 372 passés, 2 ignorés, 71 sous-tests, 53 s | OK |
+| Scénario `reference/cycle_sans_fournisseur.py` | `AWAITING_APPROVAL`, 0 objection ouverte | rc=0, registre `B-001 : RESOLVED` | OK |
+
+### Errors
+| Error | Resolution |
+|-------|------------|
+| **Le scénario de référence sortait en rc=0 avec `statut : ERROR`** | Il n'échouait jamais : mes « rc=0 » des tours précédents ne prouvaient pas que le cycle allait à son terme. Il rend `1` hors de `AWAITING_APPROVAL` sans objection ouverte. Le rc=0 de 1.1 reste vrai mais faible ; le cycle de 1.1 était bien achevé (statut relu à l'époque) |
+| 4 tests à deux tours en `ERROR` | Réponse simulée accentuée : `DECODE_FAILED` du faux agent (findings, lot 0). Corrigé à la source (`sys.stdout.buffer`) plutôt que contourné |
+| `test_future_schema_version_rejected` rouge | Il prenait `2` pour « futur » ; la v2 existe. Il prend `3` |
+| `test_exchange_artifacts_are_named_and_ordered` rouge | Il attendait 4 artefacts ; `0003-reponses-A.json` s'y ajoute |
+| Motifs de mutation en heredoc, `SyntaxError` sur une apostrophe | Réécrits avec l'outil d'édition (règle déjà consignée, étendue aux scripts jetables) |
+| `cd conception/essais` pour lire des essais | Le répertoire de travail a persisté ; revenu à la racine. À ne pas refaire (`RULES.md`) |

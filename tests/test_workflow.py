@@ -16,7 +16,9 @@ from iabinome.workflow import WorkflowError
 from tests import fakes
 
 _DOC = "IABINOME:DOCUMENT\n# Proposition\nCorps du document."
-_DOC2 = "IABINOME:DOCUMENT\n# Revision\nCorps revise."
+# Depuis 1.2, une révision répond à chaque objection ouverte : `fakes.review()`
+# en ouvre une, `B-001`.
+_DOC2 = fakes.revision()
 _FINAL = "IABINOME:DOCUMENT\n# Final\nCorps final."
 _QUESTION = "IABINOME:QUESTION\nQuel est le critere de fin ?"
 
@@ -74,6 +76,7 @@ class TestFullCycle(WorkflowCase):
         self.assertEqual(names, [
             "0001-proposition-A.md",
             "0002-critique-B.json",
+            "0003-reponses-A.json",
             "0003-revision-1-A.md",
             "0004-critique-B.json",
         ])

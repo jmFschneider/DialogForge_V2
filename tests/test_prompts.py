@@ -16,10 +16,11 @@ prompt ne se teste qu'en le lisant.
 
 from __future__ import annotations
 
+import json
 import unittest
 
 from iabinome import contracts, prompts
-from iabinome.models import MissionKind, ReviewerAccess
+from iabinome.models import MissionKind, ResponseKind, ReviewerAccess
 
 _TAGS = ("IABINOME:DOCUMENT", "IABINOME:QUESTION")
 
@@ -111,6 +112,64 @@ class TestReviewerPromptCarriesItsSchema(unittest.TestCase):
         for value in ("ACCEPTER", "REVISER", "BLOQUE", "BLOCKING", "OPEN"):
             with self.subTest(valeur=value):
                 self.assertIn(value, prompt)
+
+    def test_the_prompt_of_b_asks_for_v2_and_a_justification_apart_from_the_statement(
+        self,
+    ) -> None:
+        """Le contrat lit la v1 et la v2, mais c'est la v2 qu'on demande : c'est
+        elle qui distingue l'énoncé de la justification (1.2)."""
+        prompt = prompts.build_review(
+            "La demande.", "# Doc", "Aucun.", ReviewerAccess.CONSULT, None
+        )
+        self.assertIn('"schema_version": 2', prompt)
+        self.assertIn('"justification"', prompt)
+        self.assertIn("jamais dans \"statement\"", prompt)
+        self.assertIn("reste ouverte", prompt)
+
+
+class TestRevisionPromptCarriesTheResponseFormat(unittest.TestCase):
+    """Un prompt qui exige un format porte le format — et la règle vaut pour
+    *chaque* prompt (`RULES.md`). La révision exige désormais une réponse par
+    objection ouverte : sans le marqueur ni le schéma dans le gabarit, A ne peut
+    pas les deviner, et **aucune révision** n'irait au bout."""
+
+    def prompt(self) -> str:
+        return prompts.build_revision("La demande.", "# Doc", "{}", MissionKind.CONCEPTION, None)
+
+    def test_the_marker_the_contract_reads_is_the_marker_the_prompt_names(self) -> None:
+        self.assertIn(contracts.TAG_RESPONSES, self.prompt())
+
+    def test_every_kind_of_response_is_spelled_out(self) -> None:
+        for kind in ResponseKind:
+            with self.subTest(kind=kind.value):
+                self.assertIn(kind.value, self.prompt())
+
+    def test_the_schema_keys_are_shown(self) -> None:
+        for key in ('"schema_version": 1', '"responses"', '"id"', '"response"', '"justification"'):
+            with self.subTest(cle=key):
+                self.assertIn(key, self.prompt())
+
+    def test_the_example_in_the_prompt_is_something_the_contract_accepts(self) -> None:
+        """Contre-épreuve : nommer les clés ne suffit pas si l'exemple donné
+        n'est pas lui-même analysable."""
+        example = {"schema_version": 1, "responses": [
+            {"id": "B-sujet-001", "response": "CORRIGE", "justification": "pourquoi"}
+        ]}
+        got = contracts.parse_objection_responses(json.dumps(example), ["B-sujet-001"])
+        self.assertEqual(got[0].kind, ResponseKind.CORRIGE)
+        self.assertIn('"id": "B-sujet-001"', self.prompt())
+
+    def test_only_the_revision_asks_for_it(self) -> None:
+        """La proposition n'a rien à répondre, et la finalisation garde son
+        périmètre (1.3) : ils ne réclament pas le bloc."""
+        demande = "La demande."
+        for name, prompt in (
+            ("proposition", prompts.build_proposal(demande, MissionKind.CONCEPTION, None)),
+            ("finalisation",
+             prompts.build_final(demande, "# Doc", "{}", MissionKind.CONCEPTION, None)),
+        ):
+            with self.subTest(prompt=name):
+                self.assertNotIn(contracts.TAG_RESPONSES, prompt)
 
 
 if __name__ == "__main__":

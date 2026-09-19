@@ -89,6 +89,16 @@ class Disposition(Enum):
     WITHDRAWN = "WITHDRAWN"
 
 
+class ResponseKind(Enum):
+    """Ce que A répond à une objection ouverte — jamais à la place de B, qui
+    seul dispose du constat (`Disposition`)."""
+
+    CORRIGE = "CORRIGE"
+    CONTESTE = "CONTESTE"
+    REPORTE = "REPORTE"
+    ARBITRAGE = "ARBITRAGE"
+
+
 # -- Décodage/encodage strict, partagé par les structures ci-dessous --
 
 def _require_exact_keys(d: Any, keys: set[str], where: str) -> None:

@@ -43,6 +43,9 @@
 **Une relecture externe et une suite de tests ne couvrent pas le même espace : la verdeur de l'une ne justifie pas de suspendre l'autre.**
 *Motif mesuré le 2026-09-05 : 262 tests verts, et une lecture statique a trouvé six défauts réels — une lecture rompue prise pour une fin de flux, une branche de reprise contournant l'intégrité, un séparateur de chemin rendant toute collaboration inutilisable dès sa création. Tous vivaient dans des fenêtres qu'un cycle nominal ne traverse jamais.*
 
+**Avant de figer un contrat de revue, le rejouer sur des revues réelles conservées.**
+*Motif mesuré le 2026-09-19 (1.2) : les revues du 2026-09-05 sous `conception/essais/` montrent B réécrivant l'énoncé de ses sept constats pour y dire « désormais résolu ». Aucun test à faux agent ne pouvait le voir ; le contrat garde maintenant l'énoncé initial et récupère la réécriture comme justification, sans nouvel appel. `tests/test_objections.py` rejoue ces revues.*
+
 **Une consigne de relecture se fait relire avant d'être envoyée.**
 *Motif mesuré le 2026-09-05 : cinq corrections sur la mienne, toutes justes. Deux étaient graves — « n'exécute rien » aurait privé le relecteur de ses outils de recherche, et rien n'empêchait qu'une documentation périmée soit présentée comme un défaut du code. Le coût est un appel ; le bénéfice, une passe qui porte.*
 
@@ -120,6 +123,7 @@
 
 **Écrire un fichier de code par l'outil Write, jamais par un `heredoc` shell.** Un document long à guillemets multiples est mutilé au passage.
 *Motif mesuré le 2026-09-03 : `cat > transport.py <<'EOF'` a rendu `unexpected EOF while looking for matching quote` sur 240 lignes valides.*
+*Vaut aussi pour un script jetable, un correctif de script ou un patron de mutation : le 2026-09-19, une apostrophe d'un motif écrit en heredoc a été mutilée et le script est tombé en `SyntaxError`.*
 
 **Une branche écrite pour un OS non testé ne doit jamais casser l'outillage de l'OS testé.** Ne pas nommer un symbole absent de la plateforme de développement — `signal.SIGKILL`, `os.killpg`, `os.getpgid` — même dans du code qui n'y tournera pas.
 *Motif : `typeshed` les déclare absents sous `win32`, donc `mypy --strict` échoue sur le poste. Contournement retenu dans `transport.py` : `os.kill(-pid, 9)`, où le PID négatif désigne le groupe.*
@@ -176,6 +180,9 @@
 **`Path.glob` est insensible à la casse sous Windows : ne jamais s'en servir pour sélectionner par un champ.**
 *Motif mesuré le 2026-09-04 : un test cherchait le dossier d'appel de B par `glob("*B*")`. Les dossiers s'appellent `NNNN-<role>-<uuid>`, et `*B*` a désigné celui de **A** dès que son UUID contenait un `b`. Découper le nom et comparer le champ est exact ; le glob ne l'est pas.*
 
+**Un faux agent écrit des octets UTF-8 sur le tampon binaire, jamais `write(str)`.** Sous Windows, le flux texte d'un tube encode en cp1252 alors que les adaptateurs décodent en UTF-8 : toute réponse simulée accentuée rend `DECODE_FAILED`.
+*Motif mesuré le 2026-09-19 (1.2) : un cycle à deux tours s'arrêtait en `ERROR` sans rapport avec le moteur, pour un « Désormais » dans une revue simulée. Le défaut était consigné depuis le lot 0 comme « à retenir » ; corrigé à la source dans `tests/fakes.py` plutôt que contourné par une variable d'environnement.*
+
 **Sous Windows, résoudre l'exécutable avec `shutil.which()` avant `Popen`.**
 *Motif : une entrée de PATH installée par npm est un script sans extension ; `CreateProcess` rend `WinError 2`. `shutil.which` rend le `.CMD` qui, lui, se lance.*
 
@@ -196,6 +203,9 @@
 
 **`mock.patch.object(module, "nom_importe", …)` échoue sous `mypy --strict`** (`--no-implicit-reexport` refuse l'accès à un attribut simplement importé). Patcher le module d'origine de l'attribut (`shutil.which`, pas `adaptateur.shutil.which`) le contourne sans rien désactiver.
 *Motif : mesuré au palier 4, 2026-09-04, sur `tests/test_adapters.py`.*
+
+**Un scénario de référence qui n'échoue jamais ne prouve rien : son code de sortie doit dire si le cycle est allé à son terme.**
+*Motif mesuré le 2026-09-19 : `reference/cycle_sans_fournisseur.py` a affiché `statut : ERROR` et sorti en code `0`. Mes « scénario rc=0 » du jour prouvaient donc seulement qu'il s'exécutait. Il rend désormais `1` hors de `AWAITING_APPROVAL` sans objection ouverte, et la contre-épreuve (A qui ne répond pas) le fait échouer.*
 
 ---
 

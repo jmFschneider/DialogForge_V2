@@ -6,15 +6,16 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**1.1 est revalidé** (2026-09-19) après la correction demandée par le PO : `--answer` **complète**
-`demande.md` (texte existant intact en préfixe, réponse sous « Précisions n°K »), il ne le remplace
-plus. Validation ciblée puis porte complète vertes ; contre-épreuves faites. Non commité : en attente
-de la demande du PO.
+**1.1 et 1.2 sont faits** (2026-09-19). 1.1 commité (`b0dc6a3`) ; 1.2 validé (ciblé puis porte
+complète), commité à la demande du PO.
 
-**Ne pas commencer 1.2 sans autorisation du PO.** Puis : 1.2, objections et dispositions — énoncé,
-réponse de A, disposition et justification distincts ; réponse exigée pour chaque objection ouverte ;
-identifiants absents ou dupliqués détectés. Avant de coder, relire `contracts.py` : les constats y
-ont déjà un identifiant, une sévérité et une disposition `OPEN/RESOLVED/WITHDRAWN` côté B.
+Poursuivre par **1.3 — la boucle et la version livrée** : proposition A → revue B → correction A
+→ relecture ciblée B → décision humaine, et **promotion de la version examinée** à la place de
+`FINAL_A`, qui réécrit librement. Le moteur consomme encore ce 5e appel ; `FINAL_A` ne demande pas
+de réponses aux objections restées ouvertes (limite connue de 1.2, à traiter ici). Au plafond,
+présenter les désaccords ; un tour de plus est explicite et tracé. Avant de coder, relire
+`workflow.py` (`apply_b`, `Phase.FINAL_A`, `write_final`) et ce que `1.4` attend du bilan.
+**Attendre l'autorisation du PO pour ouvrir 1.3** : elle change le nombre d'appels d'un cycle.
 
 Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la seule voie où
 l'injection automatique du plan est qualifiée.
@@ -49,13 +50,13 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 
 ### Phase 2: Lot 1 — Parcours documentaire complet
 - [x] 1.1 Format court de demande, fichier direct ou cadrage guidé, provenance conservée
-- [ ] 1.2 Objections et dispositions : énoncé, réponse de A, disposition et justification distincts
-- [ ] 1.2 Réponse exigée pour chaque objection ouverte ; identifiants absents ou dupliqués détectés
+- [x] 1.2 Objections et dispositions : énoncé, réponse de A, disposition et justification distincts
+- [x] 1.2 Réponse exigée pour chaque objection ouverte ; identifiants absents ou dupliqués détectés
 - [ ] 1.3 Boucle : A → B → correction A → relecture ciblée B → décision humaine
 - [ ] 1.3 Promotion de la version examinée à la place de la finalisation qui réécrit librement
 - [ ] 1.4 Résultat, réserves, prochaine action ; acceptation, réserve, correction ciblée, arrêt
 - [ ] 1.4 Décision datée portant sur une version précise ; « terminé » n'est pas « accepté »
-- **Status:** in_progress — 1.1 fait (revalidé), 1.2 à 1.4 restent
+- **Status:** in_progress — 1.1 et 1.2 faits, 1.3 et 1.4 restent
 - **Jalon :** J1 — version fonctionnelle avec faux agents.
 
 ### Phase 3: Lot 2 — Robustesse et liaison PWF du produit
@@ -96,6 +97,9 @@ commit, ni déploiement automatique dans le moteur documentaire.
 | Cadrage guidé = questionnaire de terminal, **sans appel de modèle** (1.1, 2026-09-19) | « Ne pas ajouter d'appel de cadrage quand les informations suffisent » : le plus sûr est de n'en ajouter aucun. La « question utile » sur ambiguïté existe déjà — A rend `IABINOME:QUESTION`, `resume --answer` reprend. **Condition de réouverture** : des essais réels (lot 3) où le questionnaire laisse passer des demandes que A doit ensuite questionner systématiquement |
 | Le format court est un repère, pas une porte (1.1) | Une demande libre reste acceptée ; `new` nomme les sections manquantes sur `stderr`. Refuser ajouterait un contrôle qui ne compense aucun défaut mesuré (`POURQUOI.md` règles 2 et 3) |
 | `--answer` **complète** la demande, il ne la remplace pas (1.1, décision du PO le 2026-09-19) | Consigner `sections_retirees` constatait une perte sans l'empêcher. Désormais `demande.md` reprend le texte existant **intact** puis la réponse sous « Précisions n°K » : une version complète, unique autorité (motif « pas de seconde autorité » préservé), ancienne version archivée, provenance consignée. Le numéro se déduit du texte, pas de l'horloge, pour que le rejeu retrouve la même empreinte. **Remplacement intégral : hors de ce changement**, à rendre plus tard explicite et distinct. Conception amendée dans `CONCEPTION_FINALE.md` §2 |
+| Revue B **v2** : `justification` distincte, énoncé initial immuable, fermeture non justifiée = reste ouverte (1.2) | Mesuré sur la revue réelle du 2026-09-05 : B réécrit l'énoncé de ses 7 constats pour y dire « désormais résolu ». Le programme garde l'initial et reprend la réécriture comme justification (sans nouvel appel). La v1 reste lisible (revues historiques). Le sens sûr seulement : une omission laisse ouvert, ne ferme jamais |
+| A **répond** à chaque objection ouverte, en révision (1.2) | Bloc `IABINOME:REPONSES` après le document libre ; `CORRIGE`/`CONTESTE`/`REPORTE`/`ARBITRAGE`, justification exigée sauf `CORRIGE`. Réponse absente, dupliquée ou inconnue = `CONTRACT_ERROR` (relançable). **Choix rigoureux, à mesurer au lot 3** : il peut coûter un appel payé si A oublie le bloc ; le préambule autour du JSON, lui, est récupéré sans appel. `FINAL_A` non touché (1.3) |
+| Registre des objections **relu**, pas stocké (1.2) | `objections.ledger()` assemble `critique-B.json` et `reponses-A.json` : aucune seconde vérité. Servira le bilan de 1.4 |
 | `ruff format` hors de la porte de validation | Le projet ne l'a jamais utilisé ; reformater 26 fichiers brouillerait les diffs du lot 1 sans rien prouver |
 
 ## Errors Encountered

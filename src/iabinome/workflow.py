@@ -590,22 +590,35 @@ class _Engine:
                 state, status=Status.AWAITING_APPROVAL, phase=Phase.CLOSED,
                 current_document=path, current_call=None,
             ))
+        body = response.body
+        if state.phase is Phase.REVISION_A:
+            # Une réponse par objection ouverte, **avant** toute écriture : un
+            # bloc absent ou incomplet est un échec de contrat, la réponse brute
+            # restant dans `appels/`. Le document, lui, reste du texte libre.
+            body, block = contracts.split_responses(body)
+            responses = contracts.parse_objection_responses(block, state.open_finding_ids)
+            self.write_exchange(
+                call.sequence, "reponses-A.json", _json_text(contracts.responses_to_dict(responses))
+            )
         name = (
             "proposition-A.md" if state.phase is Phase.PROPOSAL_A
             else f"revision-{state.revision}-A.md"
         )
         return self.publish(replace(
             state, status=Status.READY, phase=Phase.REVIEW_B, current_call=None,
-            current_document=self.write_exchange(call.sequence, name, response.body),
+            current_document=self.write_exchange(call.sequence, name, body),
         ))
 
     def apply_b(self, state: State, call: CallState, text: str) -> State:
-        review = contracts.parse_review(text, state.open_finding_ids)
+        review = contracts.parse_review(
+            text, state.open_finding_ids,
+            {f.id: f.statement for f in self.open_findings(state)},
+        )
         # La **forme canonique**, pas le texte de B : c'est ce fichier que le
         # programme relit comme registre des constats, et un bloc clôturé ou une
         # `severity` omise le rendaient illisible par `json.loads`. La preuve
         # exacte reste `reponse_brute.txt` (D-8).
-        canonical = json.dumps(review.to_dict(), ensure_ascii=False, indent=2) + "\n"
+        canonical = _json_text(review.to_dict())
         state = replace(
             state, current_call=None,
             latest_review=self.write_exchange(call.sequence, "critique-B.json", canonical),
@@ -636,9 +649,9 @@ class _Engine:
             return prompts.build_proposal(self.demande, self.config.mission_kind, date)
         document = self.read_relative(state.current_document)
         if state.phase is Phase.REVIEW_B:
-            findings = self.open_findings(state)
+            replies = self.replies_to(state)
             prior = "\n".join(
-                f"- {f.id} [{f.severity.value}] {f.statement}" for f in findings
+                _prior_line(f, replies.get(f.id)) for f in self.open_findings(state)
             ) or "Aucun."
             return prompts.build_review(
                 self.demande, document, prior, self.config.reviewer_access, date
@@ -648,6 +661,18 @@ class _Engine:
             prompts.build_revision if state.phase is Phase.REVISION_A else prompts.build_final
         )
         return build(self.demande, document, review, self.config.mission_kind, date)
+
+    def replies_to(self, state: State) -> dict[str, contracts.ObjectionResponse]:
+        """Les réponses de A à la revue précédente, par identifiant — vides pour
+        la première revue. Le fichier partage le numéro d'appel du document :
+        `0003-revision-1-A.md` a pour réponses `0003-reponses-A.json`."""
+        assert state.current_document is not None
+        document = Path(state.current_document)
+        path = self.collab / document.parent / f"{document.name[:4]}-reponses-A.json"
+        if not path.exists():
+            return {}
+        text, _ = storage.read_text(path)
+        return {r.id: r for r in contracts.responses_from_dict(json.loads(text))}
 
     def open_findings(self, state: State) -> list[Finding]:
         """Le registre unique fait foi : les constats ouverts se relisent dans la
@@ -795,8 +820,21 @@ def _read_json(path: Path) -> Any:
     return json.loads(text)
 
 
+def _json_text(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    storage.write_atomic_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    storage.write_atomic_text(path, _json_text(payload))
+
+
+def _prior_line(finding: Finding, reply: contracts.ObjectionResponse | None) -> str:
+    """Le constat antérieur tel que B le relit : l'énoncé initial, puis ce que A
+    y a répondu — c'est ce que B doit juger, pas sa propre mémoire."""
+    line = f"- {finding.id} [{finding.severity.value}] {finding.statement}"
+    if reply is None:
+        return line
+    return f"{line}\n  Réponse de A : {reply.kind.value} — {reply.justification or '(sans détail)'}"
 
 
 def _now() -> str:

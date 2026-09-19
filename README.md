@@ -154,6 +154,18 @@ B reprend **exactement une fois** chaque constat resté ouvert dans sa revue pr�
 qui disparaît ou qui se dédouble fait échouer le contrat : c'est ce qui empêche une critique
 gênante de s'évaporer d'un tour à l'autre.
 
+**Les objections ne s'écrasent pas.** L'énoncé d'un constat est celui de son premier tour : si B le
+réécrit pour dire « désormais résolu » (mesuré sur une revue réelle), le programme garde l'énoncé
+et récupère la réécriture comme justification. La justification d'une disposition est un champ
+à part, et **une fermeture sans justification reste ouverte** : une absence ne clôture jamais.
+
+**A répond à chaque objection ouverte.** Après son document, A écrit une ligne `IABINOME:REPONSES`
+puis un objet JSON : une réponse par constat — `CORRIGE`, `CONTESTE`, `REPORTE` ou `ARBITRAGE` —,
+motivée sauf pour `CORRIGE`. Le document reste du texte libre. Une réponse absente, dupliquée ou
+à un constat inconnu est un échec de contrat (la réponse brute reste dans `appels/`). B voit, au
+tour suivant, ce que A a répondu. Le registre par objection se relit dans `echanges/`
+(`NNNN-critique-B.json`, `NNNN-reponses-A.json`) ; `objections.ledger()` l'assemble.
+
 ## Quand ça s'arrête
 
 `status` dit toujours où vous en êtes. Chaque statut a une sortie, et une seule :

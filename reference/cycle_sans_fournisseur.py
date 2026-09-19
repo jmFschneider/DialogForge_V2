@@ -28,16 +28,29 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # accentuees de ce scenario exigent donc de fixer l'encodage des enfants.
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
-from iabinome import cli, settings  # noqa: E402
+from iabinome import cli, objections, settings  # noqa: E402
 from tests import fakes  # noqa: E402
 
 DEMANDE = """\
 # Demande
 
-Objectif : décrire le cache local de FloraPi.
-Livrable : une note de conception d'une page.
-Critère de fin : la note énonce la politique d'invalidation et ses limites.
-Non-objectif : aucune implémentation.
+## Objectif
+Décrire le cache local de FloraPi.
+
+## Livrable
+Une note de conception d'une page.
+
+## Sources
+Aucune : le cache est décrit à partir de la demande seule.
+
+## Contraintes
+Une page au plus.
+
+## Non-objectifs
+Aucune implémentation.
+
+## Critères de fin
+La note énonce la politique d'invalidation et ses limites.
 """
 
 DOCUMENT_A = """\
@@ -58,25 +71,32 @@ Invalidation : à l'échéance, et à la main via `floracli cache purge`.
 ## Limites
 Aucune invalidation par événement amont : une donnée changée à la source reste
 servie jusqu'à l'échéance. C'est la réserve soulevée par B (B-001).
-"""
+IABINOME:REPONSES
+""" + json.dumps({"schema_version": 1, "responses": [{
+    "id": "B-001", "response": "CORRIGE",
+    "justification": "Section « Limites » ajoutée.",
+}]}, ensure_ascii=False)
 
-REVUE_REVISER = fakes.review(
-    decision="REVISER",
-    findings=({
-        "id": "B-001", "severity": "MAJOR", "disposition": "OPEN",
-        "statement": "Les limites de l'invalidation ne sont pas énoncées.",
-    },),
-    analysis="La note tient, mais le critère de fin n'est pas atteint.",
-)
+ENONCE = "Les limites de l'invalidation ne sont pas énoncées."
 
-REVUE_ACCEPTER = fakes.review(
-    decision="ACCEPTER",
-    findings=({
-        "id": "B-001", "severity": "MAJOR", "disposition": "RESOLVED",
-        "statement": "Les limites de l'invalidation ne sont pas énoncées.",
-    },),
-    analysis="La réserve est traitée, sans régression sur le reste.",
-)
+# Revue v2 : l'énoncé reste celui du premier tour, la raison va dans `justification`.
+REVUE_REVISER = json.dumps({
+    "schema_version": 2, "decision": "REVISER",
+    "analysis": "La note tient, mais le critère de fin n'est pas atteint.",
+    "findings": [{
+        "id": "B-001", "severity": "MAJOR", "disposition": "OPEN", "statement": ENONCE,
+        "justification": "Aucune section ne dit ce que le cache ne sait pas invalider.",
+    }],
+}, ensure_ascii=False)
+
+REVUE_ACCEPTER = json.dumps({
+    "schema_version": 2, "decision": "ACCEPTER",
+    "analysis": "La réserve est traitée, sans régression sur le reste.",
+    "findings": [{
+        "id": "B-001", "severity": "MAJOR", "disposition": "RESOLVED", "statement": ENONCE,
+        "justification": "La section « Limites » énonce l'invalidation par événement absente.",
+    }],
+}, ensure_ascii=False)
 
 
 class ScenarioAdapter(fakes.FakeAdapter):
@@ -129,7 +149,18 @@ def main(argv: list[str]) -> int:
     for path in sorted(collab.rglob("*")):
         if path.is_file():
             print(f"  {path.relative_to(collab).as_posix()}")
+    print("\nobjections (registre) :")
+    for objection in objections.ledger(collab):
+        print(f"  {objection['id']} : {objection['disposition']} — {objection['statement']}")
+        for event in objection["history"]:
+            what = event.get("response") or event.get("disposition")
+            print(f"      {event['call']} {event['by']} {what} : {event['justification']}")
     print(f"\ncollaboration conservee ici : {collab}")
+    # Un scénario de référence qui n'échoue jamais ne prouve rien : le cycle doit
+    # aller à son terme, sans objection ouverte.
+    if etat["status"] != "AWAITING_APPROVAL" or etat["open_finding_ids"]:
+        print("ECHEC : le cycle n'est pas arrive a AWAITING_APPROVAL sans objection ouverte")
+        return 1
     return 0
 
 

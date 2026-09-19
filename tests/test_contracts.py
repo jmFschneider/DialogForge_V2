@@ -200,7 +200,7 @@ class TestParseReviewSchema(unittest.TestCase):
             parse_review(json.dumps(data))
 
     def test_future_schema_version_rejected(self) -> None:
-        data = {**_VALID_REVIEW, "schema_version": 2}
+        data = {**_VALID_REVIEW, "schema_version": 3}
         with self.assertRaises(ContractError):
             parse_review(json.dumps(data))
 

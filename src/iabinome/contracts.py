@@ -10,18 +10,23 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Collection
-from dataclasses import dataclass
+from collections.abc import Collection, Mapping
+from dataclasses import dataclass, replace
 from typing import Any, Literal
 
-from .models import SCHEMA_VERSION, Decision, Disposition, Severity
+from .models import SCHEMA_VERSION, Decision, Disposition, ResponseKind, Severity
 
 _TAG_DOCUMENT = "IABINOME:DOCUMENT"
 _TAG_QUESTION = "IABINOME:QUESTION"
+TAG_RESPONSES = "IABINOME:REPONSES"
 
+# Revue v1 : sans `justification`. Revue v2 (1.2) : la justification d'une
+# disposition est un champ à part, et une fermeture sans elle reste ouverte.
+# Les deux se lisent — une revue historique v1 reste rejouable.
+_REVIEW_VERSIONS = (1, 2)
 _REVIEW_KEYS = {"schema_version", "decision", "analysis", "findings"}
 _FINDING_REQUIRED = {"id", "disposition", "statement"}
-_FINDING_OPTIONAL = {"severity"}
+_FINDING_OPTIONAL = {"severity", "justification"}
 
 
 class ContractError(ValueError):
@@ -85,10 +90,15 @@ def parse_agent_response(text: str) -> AgentResponse:
 
 @dataclass(frozen=True)
 class Finding:
+    """Une objection de B. `statement` est l'**énoncé initial** : il ne change
+    jamais une fois le constat ouvert. Pourquoi il reste ouvert, se résout ou se
+    retire est dans `justification`."""
+
     id: str
     severity: Severity
     disposition: Disposition
     statement: str
+    justification: str = ""
 
 
 @dataclass(frozen=True)
@@ -120,29 +130,149 @@ class Review:
                     "severity": f.severity.value,
                     "disposition": f.disposition.value,
                     "statement": f.statement,
+                    "justification": f.justification,
                 }
                 for f in self.findings
             ],
         }
 
 
-def parse_review(text: str, prior_open_finding_ids: Collection[str] = ()) -> Review:
+def parse_review(
+    text: str,
+    prior_open_finding_ids: Collection[str] = (),
+    prior_statements: Mapping[str, str] | None = None,
+) -> Review:
     """JSON nu, ou un bloc JSON clôturé — la prose qui l'entoure est ignorée.
     Chaque constat antérieurement ouvert doit être repris exactement une
-    fois."""
+    fois.
+
+    **L'énoncé initial ne s'écrase pas** (`prior_statements`, id → énoncé). Mesuré
+    sur la revue réelle du 2026-09-05 : B a réécrit l'énoncé de ses sept constats
+    pour y dire « désormais résolu ». Le programme garde l'énoncé initial ; le
+    texte réécrit devient la justification si B n'en a pas donné — récupéré sans
+    nouvel appel, et la preuve brute reste intacte.
+
+    En revue v2, **une fermeture sans justification reste ouverte** : une absence
+    ne clôture jamais un constat. Le maintien ne va que dans le sens sûr.
+    """
     raw = _parse_sole_json_object(text)
     _require_keys(raw, _REVIEW_KEYS, set(), "revue")
-    if raw["schema_version"] != SCHEMA_VERSION:
-        raise ContractError(f"schema_version: {raw['schema_version']!r} inattendu")
+    version = raw["schema_version"]
+    if version not in _REVIEW_VERSIONS:
+        raise ContractError(f"schema_version: {version!r} inattendu")
     decision = _decode_enum(Decision, raw["decision"], "decision")
     analysis = _require_str(raw["analysis"], "analysis")
     if not isinstance(raw["findings"], list):
         raise ContractError("findings: liste attendue")
     findings = [_parse_finding(f) for f in raw["findings"]]
     _check_ids(findings, prior_open_finding_ids)
+    findings = [
+        _keep_initial_statement(
+            f, prior_statements or {}, version == 2, f.id in set(prior_open_finding_ids)
+        )
+        for f in findings
+    ]
     return Review(
-        schema_version=SCHEMA_VERSION, decision=decision, analysis=analysis,
+        schema_version=version, decision=decision, analysis=analysis,
         findings=tuple(findings),
+    )
+
+
+def _keep_initial_statement(
+    f: Finding, initial: Mapping[str, str], justified_closures: bool, was_open: bool
+) -> Finding:
+    if f.id in initial and f.statement != initial[f.id]:
+        f = replace(f, statement=initial[f.id], justification=f.justification or f.statement)
+    if (
+        justified_closures and was_open and f.disposition is not Disposition.OPEN
+        and not f.justification.strip()
+    ):
+        f = replace(f, disposition=Disposition.OPEN)
+    return f
+
+
+@dataclass(frozen=True)
+class ObjectionResponse:
+    """La réponse de A à une objection ouverte. `justification` est du texte
+    libre ; seuls l'identifiant et le genre sont exploités par le programme."""
+
+    id: str
+    kind: ResponseKind
+    justification: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {"id": self.id, "response": self.kind.value, "justification": self.justification}
+
+
+def split_responses(body: str) -> tuple[str, str | None]:
+    """Sépare le document du bloc de réponses, introduit par une ligne
+    `IABINOME:REPONSES` — la **dernière**, pour que le document puisse la citer.
+    Le document reste du texte libre ; le bloc seul est structuré."""
+    lines = body.split("\n")
+    for index in range(len(lines) - 1, -1, -1):
+        if lines[index].strip() == TAG_RESPONSES:
+            return "\n".join(lines[:index]).rstrip() + "\n", "\n".join(lines[index + 1:])
+    return body, None
+
+
+def parse_objection_responses(
+    block: str | None, open_ids: Collection[str]
+) -> tuple[ObjectionResponse, ...]:
+    """Chaque objection ouverte reçoit **exactement une** réponse. Identifiant
+    absent, dupliqué ou inconnu : échec de contrat, jamais un avis par défaut.
+
+    Le bloc se lit comme la revue : JSON nu ou clôturé, prose alentour ignorée —
+    un préambule n'est pas une raison de repayer un appel.
+    """
+    if block is None:
+        if open_ids:
+            raise ContractError(
+                f"bloc {TAG_RESPONSES} absent : réponse attendue pour {sorted(open_ids)}"
+            )
+        return ()
+    raw = _parse_sole_json_object(block)
+    _require_keys(raw, {"schema_version", "responses"}, set(), "réponses")
+    if raw["schema_version"] != SCHEMA_VERSION:
+        raise ContractError(f"schema_version: {raw['schema_version']!r} inattendu")
+    if not isinstance(raw["responses"], list):
+        raise ContractError("responses: liste attendue")
+    responses: list[ObjectionResponse] = []
+    for entry in raw["responses"]:
+        _require_keys(entry, {"id", "response"}, {"justification"}, "réponse")
+        kind = _decode_enum(ResponseKind, entry["response"], "response")
+        justification = _require_str(entry.get("justification", ""), "justification")
+        if kind is not ResponseKind.CORRIGE and not justification.strip():
+            raise ContractError(
+                f"{entry['id']!r} : {kind.value} exige une justification"
+            )
+        responses.append(ObjectionResponse(_require_str(entry["id"], "id"), kind, justification))
+    ids = [r.id for r in responses]
+    duplicated = sorted({i for i in ids if ids.count(i) > 1})
+    if duplicated:
+        raise ContractError(f"réponse dupliquée pour : {duplicated}")
+    unknown = sorted(set(ids) - set(open_ids))
+    if unknown:
+        raise ContractError(f"réponse à un constat qui n'est pas ouvert : {unknown}")
+    missing = sorted(set(open_ids) - set(ids))
+    if missing:
+        raise ContractError(f"objection(s) ouverte(s) sans réponse : {missing}")
+    return tuple(responses)
+
+
+def responses_to_dict(responses: tuple[ObjectionResponse, ...]) -> dict[str, Any]:
+    return {"schema_version": SCHEMA_VERSION, "responses": [r.to_dict() for r in responses]}
+
+
+def responses_from_dict(raw: Any) -> tuple[ObjectionResponse, ...]:
+    """Relit la forme canonique écrite par `responses_to_dict`."""
+    _require_keys(raw, {"schema_version", "responses"}, set(), "réponses")
+    return tuple(
+        ObjectionResponse(
+            _require_str(e["id"], "id"),
+            _decode_enum(ResponseKind, e["response"], "response"),
+            _require_str(e["justification"], "justification"),
+        )
+        for e in raw["responses"]
     )
 
 
@@ -180,6 +310,7 @@ def _parse_finding(raw: Any) -> Finding:
         ),
         disposition=Disposition.OPEN if omitted else given,
         statement=_require_str(raw["statement"], "statement"),
+        justification=_require_str(raw.get("justification", ""), "justification"),
     )
 
 

@@ -91,10 +91,14 @@ def command(
     if child_marker is not None:
         child = _CHILD.format(delay=child_delay_seconds, marker=child_marker)
         lines.append(f"import subprocess; subprocess.Popen([sys.executable, '-c', {child!r}])")
+    # Octets UTF-8 sur le tampon binaire, jamais `write(str)` : sous Windows, le
+    # flux texte d'un tube encode en cp1252 et les adaptateurs décodent en UTF-8,
+    # d'où un `DECODE_FAILED` sur toute réponse accentuée (défaut du faux agent,
+    # pas du moteur — consigné dans `findings.md`).
     if stdout:
-        lines.append(f"sys.stdout.write({stdout!r}); sys.stdout.flush()")
+        lines.append(f"sys.stdout.buffer.write({stdout.encode('utf-8')!r}); sys.stdout.flush()")
     if stderr:
-        lines.append(f"sys.stderr.write({stderr!r}); sys.stderr.flush()")
+        lines.append(f"sys.stderr.buffer.write({stderr.encode('utf-8')!r}); sys.stderr.flush()")
     if stdout_bytes or stderr_bytes:
         lines.append(f"for _ in range({rounds}):")
         lines.append(f"    sys.stdout.write('x' * {stdout_bytes // rounds}); sys.stdout.flush()")
@@ -235,6 +239,22 @@ def collaboration(
         "last_incident": None, "updated_at": "2026-09-03T00:00:00Z",
     })
     return collab
+
+
+def revision(
+    *ids: str,
+    response: str = "CORRIGE",
+    justification: str = "",
+    body: str = "# Revision\nCorps revise.",
+) -> str:
+    """Une révision de A, avec la réponse exigée à chaque objection ouverte.
+
+    Par défaut, la seule objection que `review()` ouvre : `B-001`."""
+    replies = [
+        {"id": i, "response": response, "justification": justification} for i in (ids or ("B-001",))
+    ]
+    block = json.dumps({"schema_version": SCHEMA_VERSION, "responses": replies}, ensure_ascii=False)
+    return f"IABINOME:DOCUMENT\n{body}\nIABINOME:REPONSES\n{block}"
 
 
 def launched_calls(collab: Path) -> int:
