@@ -78,6 +78,59 @@ fi
 
 echo
 echo "--- Diagnostic (informatif, ne compte pas dans le verdict) ---"
+
+# Telemetrie de hooks laissee par l'hote dans la trace : evenement, duree,
+# erreurs. Une duree de l'ordre de 60-100 ms signe une ligne de hook qui n'a
+# PAS execute le script (sh introuvable, echec avale par son « ; exit 0 ») ;
+# le script reellement execute coute plus de 1000 ms sur cette machine.
+if [ -n "$derniere" ] && command -v python >/dev/null 2>&1; then
+    python - "$derniere" <<'PY'
+import json
+import sys
+
+vus = []
+for ligne in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    if "hookInfos" not in ligne:
+        continue
+    try:
+        objet = json.loads(ligne)
+    except ValueError:
+        continue
+
+    def parcourir(noeud):
+        if isinstance(noeud, dict):
+            if "hookInfos" in noeud:
+                for info in noeud.get("hookInfos") or []:
+                    commande = info.get("command", "")
+                    evenement = "?"
+                    for marque in ("userprompt", "pretool", "posttool", "stop", "precompact"):
+                        if "--event=" + marque in commande:
+                            evenement = marque
+                            break
+                    vus.append((evenement, info.get("durationMs"), noeud.get("hookErrors") or []))
+            for valeur in noeud.values():
+                parcourir(valeur)
+        elif isinstance(noeud, list):
+            for valeur in noeud:
+                parcourir(valeur)
+
+    parcourir(objet)
+
+if not vus:
+    print("   hooks declenches par l hote : AUCUN (skill non invoque, ou hooks non enregistres)")
+else:
+    print("   hooks declenches par l hote :")
+    for evenement, duree, erreurs in vus:
+        if isinstance(duree, int) and duree < 200:
+            verdict = "script NON execute (sh introuvable ?)"
+        else:
+            verdict = "script execute"
+        print(f"     {evenement:<11} {duree} ms  -> {verdict}")
+        if erreurs:
+            print(f"       erreurs rapportees : {erreurs}")
+PY
+fi
+
 printf '   sh resolvable ici          : %s\n' "$(command -v sh || echo NON)"
 printf '   CLAUDE_CODE_GIT_BASH_PATH  : %s\n' "${CLAUDE_CODE_GIT_BASH_PATH:-non defini}"
 
