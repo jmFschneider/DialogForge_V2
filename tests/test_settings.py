@@ -22,7 +22,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from iabinome import cli, settings
+from iabinome import cli, demande, settings
 from iabinome.models import Role
 from tests import fakes
 
@@ -253,6 +253,11 @@ class TestVisibility(SettingsCase):
         self.assertIn("max_revisions", note)
 
     def test_nothing_is_said_when_no_file_is_found(self) -> None:
+        # Une demande complète : la note de format (lot 1, 1.1) parle aussi sur
+        # `stderr`, et ce test porte sur le silence de la **configuration**.
+        self.demande.write_text(
+            "".join(f"## {name}\nx\n" for name in demande.SECTIONS), encoding="utf-8"
+        )
         with redirect_stderr(io.StringIO()) as err:
             cli.main([
                 "new", str(self.collab), "--demande", str(self.demande),

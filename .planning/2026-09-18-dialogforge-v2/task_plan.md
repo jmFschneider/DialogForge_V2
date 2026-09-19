@@ -6,15 +6,21 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-Ouvrir le **lot 1**, phase 2 : commencer par 1.1, le format court de demande — objectif,
-livrable, sources, contraintes, non-objectifs et critères de fin. Réemployer la logique utile de
-`DialogForge/src/dialogforge/framing.py` sans importer la plateforme DialogForge.
+**1.1 est revalidé** (2026-09-19) après la correction demandée par le PO : `--answer` **complète**
+`demande.md` (texte existant intact en préfixe, réponse sous « Précisions n°K »), il ne le remplace
+plus. Validation ciblée puis porte complète vertes ; contre-épreuves faites. Non commité : en attente
+de la demande du PO.
+
+**Ne pas commencer 1.2 sans autorisation du PO.** Puis : 1.2, objections et dispositions — énoncé,
+réponse de A, disposition et justification distincts ; réponse exigée pour chaque objection ouverte ;
+identifiants absents ou dupliqués détectés. Avant de coder, relire `contracts.py` : les constats y
+ont déjà un identifiant, une sévérité et une disposition `OPEN/RESOLVED/WITHDRAWN` côté B.
 
 Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la seule voie où
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 1
+Phase 2
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -42,14 +48,14 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
   Portée : vaut pour une session lancée par `tools/claude-pwf.ps1`, pas pour un `claude` ordinaire.
 
 ### Phase 2: Lot 1 — Parcours documentaire complet
-- [ ] 1.1 Format court de demande, fichier direct ou cadrage guidé, provenance conservée
+- [x] 1.1 Format court de demande, fichier direct ou cadrage guidé, provenance conservée
 - [ ] 1.2 Objections et dispositions : énoncé, réponse de A, disposition et justification distincts
 - [ ] 1.2 Réponse exigée pour chaque objection ouverte ; identifiants absents ou dupliqués détectés
 - [ ] 1.3 Boucle : A → B → correction A → relecture ciblée B → décision humaine
 - [ ] 1.3 Promotion de la version examinée à la place de la finalisation qui réécrit librement
 - [ ] 1.4 Résultat, réserves, prochaine action ; acceptation, réserve, correction ciblée, arrêt
 - [ ] 1.4 Décision datée portant sur une version précise ; « terminé » n'est pas « accepté »
-- **Status:** pending
+- **Status:** in_progress — 1.1 fait (revalidé), 1.2 à 1.4 restent
 - **Jalon :** J1 — version fonctionnelle avec faux agents.
 
 ### Phase 3: Lot 2 — Robustesse et liaison PWF du produit
@@ -87,6 +93,9 @@ commit, ni déploiement automatique dans le moteur documentaire.
 | Remote `origin` retiré du clone | Rend impossible une écriture accidentelle vers IAbinome ; aucune publication distante n'est utile au lot 0 |
 | Package encore nommé `iabinome` | Lot 0 vérifie le réemploi ; renommer maintenant mélangerait changement fonctionnel et renommage |
 | PWF en skill autonome épinglé, pas en plugin marketplace | Le plan exige une version consignée ; la route marketplace suit `master` et mettrait à jour toute seule. Contrepartie acceptée : pas de hook `SessionStart`, pas de commandes `/plan-*` |
+| Cadrage guidé = questionnaire de terminal, **sans appel de modèle** (1.1, 2026-09-19) | « Ne pas ajouter d'appel de cadrage quand les informations suffisent » : le plus sûr est de n'en ajouter aucun. La « question utile » sur ambiguïté existe déjà — A rend `IABINOME:QUESTION`, `resume --answer` reprend. **Condition de réouverture** : des essais réels (lot 3) où le questionnaire laisse passer des demandes que A doit ensuite questionner systématiquement |
+| Le format court est un repère, pas une porte (1.1) | Une demande libre reste acceptée ; `new` nomme les sections manquantes sur `stderr`. Refuser ajouterait un contrôle qui ne compense aucun défaut mesuré (`POURQUOI.md` règles 2 et 3) |
+| `--answer` **complète** la demande, il ne la remplace pas (1.1, décision du PO le 2026-09-19) | Consigner `sections_retirees` constatait une perte sans l'empêcher. Désormais `demande.md` reprend le texte existant **intact** puis la réponse sous « Précisions n°K » : une version complète, unique autorité (motif « pas de seconde autorité » préservé), ancienne version archivée, provenance consignée. Le numéro se déduit du texte, pas de l'horloge, pour que le rejeu retrouve la même empreinte. **Remplacement intégral : hors de ce changement**, à rendre plus tard explicite et distinct. Conception amendée dans `CONCEPTION_FINALE.md` §2 |
 | `ruff format` hors de la porte de validation | Le projet ne l'a jamais utilisé ; reformater 26 fichiers brouillerait les diffs du lot 1 sans rien prouver |
 
 ## Errors Encountered

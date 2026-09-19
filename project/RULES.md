@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-09-05 (bloc clôturé, voie B)
+> Dernière mise à jour : 2026-09-19 (lot 1, point 1.1)
 
 ## Index
 
@@ -106,6 +106,9 @@
 ## Outils et commandes
 
 **`ruff check .` et `mypy` avant tout commit.**
+
+**Lancer la suite par `pytest tests`, jamais `pytest` nu.** Sans chemin, il ramasse aussi les tests du plugin PWF embarqué sous `tools/` et s'arrête sur `ModuleNotFoundError: yaml` — une erreur de collecte qui ressemble à une suite cassée.
+*Motif mesuré le 2026-09-19, en ouvrant le lot 1 : la référence verte (302 passés, 2 ignorés) n'est celle de `tests/` qu'à cette condition.*
 
 **Aucun appel fournisseur dans la suite de tests** — l'agent `fake` est obligatoire.
 *Motif : une suite de tests qui appelle un modèle payant n'est plus une suite de tests.*
@@ -213,6 +216,12 @@
 
 **Métrique de garde : l'outil ne dépasse jamais le projet qu'il sert.**
 *Motif : DialogForge pesait 87 382 lignes pour un FloraPi de 58 894. Voir `POURQUOI.md`.*
+
+**Une garantie qui se contente de consigner une perte ne la garantit pas : la rendre impossible par construction.**
+*Motif mesuré le 2026-09-19 (1.1) : `--answer` remplaçait la demande et je n'y ai ajouté que `sections_retirees`, qui constate. Le PO l'a refusé, et le test qui montrait la section « Sources » retirée en était la preuve. Corrigé en faisant de la réponse un complément dont le texte existant est un préfixe intact : plus rien à constater.*
+
+**Un texte dérivé qu'un rejeu doit retrouver à l'identique ne contient ni horloge ni compteur global.** Il se déduit du texte de base.
+*Motif : la demande complétée est reconnue au rejeu par son empreinte ; son numéro de « Précisions » vient du texte, sa date de la provenance. Avec une date dans le texte, un arrêt brutal suivi d'une reprise un autre jour aurait refusé une demande pourtant écrite.*
 
 **Avant d'ajouter un garde-fou, vérifier qu'il compense un défaut encore réel.**
 *Motif : l'échafaudage compense la faiblesse des modèles ; les modèles récents en demandent moins, pas plus.*

@@ -146,6 +146,7 @@ patch ou une instruction d'outil **reste du texte**.
 Après `QUESTION` de A ou `BLOQUE` de B, l'humain fournit une **nouvelle demande complète**. L'ancienne
 est archivée en `demande.md.001`, la nouvelle devient `demande.md`, son empreinte est republiée dans
 l'état. *Motif : une réponse partielle créerait une seconde autorité — `C35` l'interdit.*
+**Amendé le 2026-09-19 (PO, V2 lot 1 point 1.1) : la réponse *complète* la demande, elle ne la remplace plus.** `demande.md.001` garde l'ancienne ; la nouvelle version reprend le texte existant **intact**, puis la réponse sous « Précisions n°K ». `demande.md` reste l'unique autorité — le motif ci-dessus tient toujours, aucune seconde autorité n'apparaît — et rien de ce qu'elle disait ne peut disparaître. Un remplacement intégral n'est plus une réponse : il devra être une commande explicite et distincte. Chaque version est consignée dans `provenance_demande.json`.
 Une question née en `PROPOSAL_A` y retourne ; une née en `REVISION_A` ou un `BLOQUE` reprennent en
 `REVISION_A`, avec le document courant et les constats déjà ouverts.
 
@@ -231,7 +232,7 @@ chaque fichier son chemin logique, sa taille et son SHA-256. **Aucun chemin abso
 **Le corpus est figé.** Il n'existe pas de `refresh` : le changer en cours de cycle détruirait la
 référence commune de A et B. Pour une référence plus récente, on crée une collaboration.
 
-**Conséquence sur `--answer` : il remplace la demande, jamais le corpus.** Si la réponse humaine à une
+**Conséquence sur `--answer` : il complète la demande (amendé le 2026-09-19, voir §2), jamais le corpus.** Si la réponse humaine à une
 `QUESTION` exige d'autres sources, la collaboration est devenue le mauvais contenant — on en crée une
 neuve, la demande peut être reprise telle quelle.
 `status` affiche son âge ; les prompts disent sa date. *Motif : `P13` — une affirmation peut avoir

@@ -34,6 +34,8 @@
 | Python 3.12.5, venv local au dépôt | `requires-python >= 3.12` ; venv hors Git (`.gitignore`) |
 | ruff 0.16.8, mypy 2.3.1, pytest 9.1.1 | Versions réellement installées. mypy 2.x est une majeure au-delà des relevés historiques du projet (1.x) : elle passe sans modifier le code |
 | PWF copié dans `~/.claude/skills/planning-with-files` | Route « standalone » de `docs/installation.md`, appliquée depuis un clone détaché sur le commit épinglé ; contenu vérifié identique byte à byte |
+| Cadrage guidé sans modèle ; format = repère (1.1, 2026-09-19) | Décisions et condition de réouverture dans `task_plan.md`. `framing.py` du prédécesseur réemployé pour l'idée (fichier direct ou cadrage, provenance), pas pour le code : il portait sessions, verrou, preuves d'usage et budget, tout ce que `CLAUDE.md` §2 interdit |
+| Provenance = `provenance_demande.json`, lisible à l'œil | Un fichier, pas de base ; écrit entre `demande.md` et `etat.json` pour rester rejouable après un arrêt brutal |
 | Plan nommé `2026-09-18-dialogforge-v2` | Créé par `init-session.ps1` amont, mode par défaut (ni `-Autonomous` ni `-Gated`) |
 
 ## Issues Encountered

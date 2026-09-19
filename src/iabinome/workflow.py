@@ -33,6 +33,8 @@ from typing import Any
 from . import contracts, corpus, lock, prompts, storage, transport
 from .adapters.base import AgentAdapter, CallSpec, ObservedCli
 from .contracts import ContractError, Finding
+from .demande import complete as complete_demande
+from .demande import record as record_provenance
 from .models import (
     SCHEMA_VERSION,
     CallState,
@@ -58,7 +60,8 @@ class WorkflowError(RuntimeError):
 
 @dataclass(frozen=True)
 class Answer:
-    """`resume --answer` : le fichier portant la réponse humaine."""
+    """`resume --answer` : le fichier portant la réponse humaine, qui **complète**
+    la demande — jamais ne la remplace."""
 
     path: Path
 
@@ -169,7 +172,7 @@ def _preflight(
     config = Configuration.from_dict(_read_json(collab / "configuration.json"))
     state = State.from_dict(_read_json(collab / "etat.json"))
     answer = _read_answer(intervention)
-    demande = _check_demande(collab, state, answer, "au prévol")
+    text, composed = _check_demande(collab, state, answer, "au prévol")
     observed: dict[str, ObservedCli] = {}
     for role, agent in ((Role.A, config.agent_a), (Role.B, config.agent_b)):
         adapter = adapters.get(agent.adapter_id)
@@ -187,7 +190,10 @@ def _preflight(
         not adapters[config.agent_b.adapter_id].capabilities.supports_context_only
     ):
         raise WorkflowError(f"{config.agent_b.adapter_id} : profil CONTEXT_ONLY non supporté")
-    return _Engine(collab, config, adapters, observed, demande, timeout_seconds, answer), state
+    source = str(intervention.path.resolve()) if isinstance(intervention, Answer) else None
+    return _Engine(
+        collab, config, adapters, observed, text, timeout_seconds, answer, source, composed
+    ), state
 
 
 def _read_answer(intervention: Intervention | None) -> contracts.Normalized | None:
@@ -201,18 +207,34 @@ def _read_answer(intervention: Intervention | None) -> contracts.Normalized | No
 
 def _check_demande(
     collab: Path, state: State, answer: contracts.Normalized | None, where: str
-) -> str:
+) -> tuple[str, contracts.Normalized | None]:
     """`demande.md` porte l'empreinte de l'état — ou, quand une réponse est
-    fournie, déjà la sienne. Ce second cas est l'intervention interrompue entre
-    l'écriture de la demande et la publication de l'état : la reprise doit
-    pouvoir l'achever, et non la refuser ici avant d'avoir pu réparer."""
-    text, _ = storage.read_text(collab / "demande.md")
+    fournie, celle de la demande **complétée** par cette réponse. Ce second cas
+    est l'intervention interrompue entre l'écriture de la demande et la
+    publication de l'état : la reprise doit pouvoir l'achever, et non la refuser
+    ici avant d'avoir pu réparer.
+
+    La demande complétée se recalcule depuis la version que l'état désigne : le
+    `demande.md` courant, ou — s'il est déjà complété — son archive. `complete`
+    étant déterministe, c'est le même texte, donc la même empreinte, à chaque rejeu.
+
+    Rend le texte **en vigueur** pour les prompts, et la demande complétée.
+    """
+    path = collab / "demande.md"
+    text, _ = storage.read_text(path)
+    current = contracts.normalize(text)
     accepted = {state.demande_sha256}
+    composed: contracts.Normalized | None = None
     if answer is not None:
-        accepted.add(answer.sha256)
-    if contracts.normalize(text).sha256 not in accepted:
+        base = current.text if current.sha256 == state.demande_sha256 else _archived_text(
+            path, state.demande_sha256
+        )
+        if base is not None:
+            composed = contracts.normalize(complete_demande(base, answer.text))
+            accepted.add(composed.sha256)
+    if current.sha256 not in accepted:
         raise WorkflowError(f"demande.md ne correspond plus à l'empreinte de l'état ({where})")
-    return text if answer is None else answer.text
+    return (text if composed is None else composed.text), composed
 
 
 @dataclass(frozen=True)
@@ -224,6 +246,8 @@ class _Engine:
     demande: str
     timeout_seconds: float
     answer: contracts.Normalized | None = None
+    answer_source: str | None = None
+    composed: contracts.Normalized | None = None
 
     # -- Prévol et relecture sous verrou --
 
@@ -280,29 +304,57 @@ class _Engine:
         return state, None
 
     def apply_answer(self, state: State) -> State:
-        """Archive **par copie**, écrit `demande.md`, publie l'état — dans cet
-        ordre, si bien que `demande.md` n'est jamais absent, fût-ce une seconde.
+        """La réponse **complète** la demande : archive de l'ancienne **par copie**,
+        écriture de la nouvelle version complète, provenance, publication de
+        l'état — dans cet ordre, si bien que `demande.md` n'est jamais absent,
+        fût-ce une seconde, et reste l'unique autorité.
+
+        Rien de ce qui figurait dans la demande ne disparaît : `complete` garde
+        le texte existant en préfixe. Un remplacement intégral n'est **pas** une
+        réponse ; s'il devient nécessaire, ce sera une commande explicite et
+        distincte.
 
         Un arrêt après l'archive laisse la demande d'origine : le rejeu
         réarchive un texte déjà archivé, donc ne réarchive pas. Un arrêt après
         l'écriture laisse l'unique cas particulier reconnu — l'état dit encore
         `WAITING_HUMAN` avec l'ancienne empreinte alors que `demande.md` porte
-        déjà celle de la réponse : il ne reste qu'à publier l'état.
+        déjà celle de la demande complétée : il reste à consigner (une seule
+        fois) et à publier l'état.
         """
-        assert self.answer is not None  # lu au prévol, avec la demande
+        assert self.answer is not None and self.composed is not None  # prévol
         if state.status is not Status.WAITING_HUMAN:
             raise WorkflowError(
                 f"statut {state.status.value} : la collaboration n'attend pas de réponse humaine"
             )
         path = self.collab / "demande.md"
         current, _ = storage.read_text(path)
-        if contracts.normalize(current).sha256 != self.answer.sha256:
+        if contracts.normalize(current).sha256 != self.composed.sha256:
             _archive(path, current)
-            storage.write_atomic_text(path, self.answer.text)
+            storage.write_atomic_text(path, self.composed.text)
+        self.record_answer(state)
         return self.publish(replace(
             state, status=Status.READY, phase=_RESUME_PHASE.get(state.phase, state.phase),
-            demande_sha256=self.answer.sha256,
+            demande_sha256=self.composed.sha256,
         ))
+
+    def record_answer(self, state: State) -> None:
+        """Consigne d'où vient le complément, quelle version il prolonge et à
+        quelle revue elle répondait — **après** `demande.md`, **avant** l'état,
+        donc rejouable (`demande.record` ne réécrit pas une empreinte déjà
+        consignée).
+
+        L'archive est retrouvée par son empreinte, pas par son rang : au rejeu,
+        c'est la seule façon de désigner celle de la version **prolongée**, et
+        non une plus ancienne.
+        """
+        assert self.answer is not None and self.composed is not None
+        record_provenance(self.collab, {
+            "source": "reponse", "path": self.answer_source, "sha256": self.composed.sha256,
+            "complement_sha256": self.answer.sha256, "replaces": state.demande_sha256,
+            "archive": _archive_of(self.collab / "demande.md", state.demande_sha256),
+            "phase": state.phase.value, "revision": state.revision,
+            "latest_review": state.latest_review,
+        })
 
     def apply_retry(self, state: State, request: RetryCall) -> tuple[State, _Retry]:
         """Valide la relance et rend l'état remis en phase **en mémoire**.
@@ -715,6 +767,21 @@ def _archive(path: Path, text: str) -> None:
     storage.write_atomic_text(
         path.with_name(f"{path.name}.{(numbers[-1] if numbers else 0) + 1:03d}"), text
     )
+
+
+def _archive_of(path: Path, sha256: str) -> str | None:
+    """Le nom de la dernière archive de `path` dont le texte porte cette empreinte."""
+    for candidate in sorted(path.parent.glob(f"{path.name}.*"), reverse=True):
+        if candidate.name.rsplit(".", 1)[-1].isdigit() and (
+            contracts.normalize(storage.read_text(candidate)[0]).sha256 == sha256
+        ):
+            return candidate.name
+    return None
+
+
+def _archived_text(path: Path, sha256: str) -> str | None:
+    name = _archive_of(path, sha256)
+    return None if name is None else storage.read_text(path.parent / name)[0]
 
 
 def _current(state: State) -> CallState:

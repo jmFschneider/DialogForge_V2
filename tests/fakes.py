@@ -22,6 +22,30 @@ from iabinome import contracts, storage
 from iabinome.adapters.base import CallSpec, Capabilities, ObservedCli
 from iabinome.models import SCHEMA_VERSION, Role
 
+# Une demande aux six sections du format court, pour prouver qu'aucune ne
+# disparaît quand `--answer` la complète.
+DEMANDE_COMPLETE = """\
+# Cache de FloraPi
+
+## Objectif
+Décider de la stratégie de cache.
+
+## Livrable
+Une note de conception.
+
+## Sources
+Le dossier `docs/`.
+
+## Contraintes
+Python seul.
+
+## Non-objectifs
+Aucune implémentation.
+
+## Critères de fin
+Une stratégie retenue et ses réserves.
+"""
+
 _CHILD = (
     "import pathlib, time\n"
     "time.sleep({delay!r})\n"

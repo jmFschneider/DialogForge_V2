@@ -65,6 +65,32 @@ python -m iabinome status ./ma-collab
 `demande.md` est votre texte : ce que vous voulez, et **à quoi vous reconnaîtrez que c'est fini**.
 Ce second point est ce qui fait la différence entre une critique utile et une critique polie.
 
+**Format court.** Six sections, dans l'ordre que vous voulez, en titres `##` : *Objectif*,
+*Livrable*, *Sources*, *Contraintes*, *Non-objectifs*, *Critères de fin*. C'est un repère, pas
+une porte : une demande libre est acceptée, `new` dit sur la sortie d'erreur quelles sections
+manquent, et A pose une question si ce manque change le résultat.
+
+**Pas de fichier prêt ?** `--cadrer` remplace `--demande` par un questionnaire de terminal, une
+réponse par section (fermée par une ligne vide). Il n'appelle aucun modèle, et n'écrit rien si
+vous l'interrompez :
+
+```
+python -m iabinome new ./ma-collab --cadrer --kind conception --reviewer-access consult \
+    --agent-a codex --agent-b claude
+```
+
+**Provenance.** `provenance_demande.json` consigne chaque version de la demande : d'où elle vient
+(fichier, cadrage, complément apporté par une réponse), la version qu'elle prolonge, la revue à
+laquelle l'ancienne répondait. Chaque ancienne version reste lisible en
+`demande.md.001`, `.002`…
+
+**Répondre à une question.** `resume --answer <fichier>` **complète** la demande, il ne la remplace
+pas : le texte existant reste en place, intact, et la réponse s'y ajoute sous « Précisions n°1 »,
+« n°2 »… dans une nouvelle version complète de `demande.md`, qui reste l'unique autorité. Une
+réponse courte suffit donc : aucune section ni exigence existante ne peut disparaître. Remplacer
+la demande en entier n'est pas une réponse ; ce sera, le jour où le besoin se présente, une
+commande explicite et distincte.
+
 Pour une mission de recherche, un corpus est **obligatoire**. Il se déclare par un fichier qui
 liste des chemins, un par ligne, relatifs à `--source-root` :
 

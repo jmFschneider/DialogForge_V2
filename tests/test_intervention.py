@@ -20,13 +20,14 @@ tout entière : la porte ne la ferme pas, et un test le redit ici.
 from __future__ import annotations
 
 import os
+import shutil
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 from unittest import mock
 
-from iabinome import lock, storage, workflow
+from iabinome import contracts, demande, lock, storage, workflow
 from iabinome.models import Status
 from tests import fakes
 
@@ -208,12 +209,30 @@ class TestAnswerUnderLock(InterventionCase):
 
 
 class TestAnswerIsReplayable(InterventionCase):
-    """Arrêt injecté après chacune des trois écritures de `--answer`.
+    """Arrêt injecté après chacune des quatre écritures de `--answer`.
 
-    L'ordre — archive par **copie**, `demande.md`, puis `etat.json` — est ce qui
-    rend le rejeu possible : `demande.md` n'est jamais absent, et aucune des
-    trois interruptions ne laisse la collaboration inexploitable.
+    L'ordre — archive par **copie**, `demande.md`, provenance, puis `etat.json` —
+    est ce qui rend le rejeu possible : `demande.md` n'est jamais absent, et
+    aucune des quatre interruptions ne laisse la collaboration inexploitable.
+    La provenance (lot 1, point 1.1) s'est glissée avant l'état : elle ne se
+    rejoue qu'une fois, quel que soit l'endroit de l'arrêt.
     """
+
+    def versions(self) -> list[dict[str, Any]]:
+        raw = fakes.read_json(self.collab / "provenance_demande.json")
+        assert isinstance(raw, dict)
+        versions: list[dict[str, Any]] = raw["versions"]
+        return versions
+
+    def assert_one_version_recorded(self, answer: Path) -> None:
+        """Une seule version consignée, et c'est bien la bonne : la réponse, qui
+        remplace la demande d'origine archivée en `demande.md.001`."""
+        (only,) = self.versions()
+        self.assertEqual(only["source"], "reponse")
+        self.assertEqual(only["path"], str(answer.resolve()))
+        self.assertEqual(only["archive"], "demande.md.001")
+        self.assertEqual(only["phase"], "PROPOSAL_A")
+        self.assertNotEqual(only["replaces"], only["sha256"])
 
     def question(self) -> None:
         # Trois réponses pour deux appels attendus : l'arrêt injecté après la
@@ -241,17 +260,19 @@ class TestAnswerIsReplayable(InterventionCase):
         )
         self.assertEqual(self.archives(), ["demande.md.001"])
         self.assertEqual(self.a.calls, 2)
+        self.assert_one_version_recorded(answer)
 
     def test_stopped_after_the_demande_the_replay_only_publishes_the_state(self) -> None:
         """L'unique cas particulier reconnu : l'état dit encore `WAITING_HUMAN`
-        avec l'ancienne empreinte, `demande.md` porte déjà celle de la réponse.
-        Le contrôle d'intégrité du prévol doit le laisser passer, sans quoi la
-        reprise serait refusée avant d'avoir pu réparer."""
+        avec l'ancienne empreinte, `demande.md` porte déjà celle de la demande
+        **complétée**. Le contrôle d'intégrité du prévol doit le laisser passer,
+        sans quoi la reprise serait refusée avant d'avoir pu réparer."""
         self.question()
         answer = self.stop_after(2)
+        original = (self.collab / "demande.md.001").read_text(encoding="utf-8")
         self.assertEqual(
             (self.collab / "demande.md").read_text(encoding="utf-8"),
-            answer.read_text(encoding="utf-8"),
+            demande.complete(original, answer.read_text(encoding="utf-8")),
         )
         self.assertEqual(self.etat()["status"], "WAITING_HUMAN")
         self.assertIs(
@@ -260,13 +281,26 @@ class TestAnswerIsReplayable(InterventionCase):
         )
         self.assertEqual(self.archives(), ["demande.md.001"])
         self.assertEqual(self.a.calls, 2)
+        self.assert_one_version_recorded(answer)
+
+    def test_stopped_after_the_provenance_the_replay_does_not_record_twice(self) -> None:
+        self.question()
+        answer = self.stop_after(3)
+        self.assert_one_version_recorded(answer)
+        self.assertEqual(self.etat()["status"], "WAITING_HUMAN")
+        self.assertIs(
+            self.drive(command_label="resume", intervention=workflow.Answer(answer)),
+            Status.WAITING_HUMAN,
+        )
+        self.assertEqual(self.archives(), ["demande.md.001"])
+        self.assert_one_version_recorded(answer)
 
     def test_stopped_after_the_state_the_intervention_is_already_applied(self) -> None:
-        """La troisième écriture close l'intervention : il n'y a plus rien à
+        """La quatrième écriture close l'intervention : il n'y a plus rien à
         rejouer, et `resume` seul enchaîne le cycle. Rejouer `--answer` est un
         refus explicite, jamais une seconde archive."""
         self.question()
-        answer = self.stop_after(3)
+        answer = self.stop_after(4)
         etat = self.etat()
         self.assertEqual(etat["status"], "READY")
         # Mesure sur le disque, pas sur le compteur de résolutions : l'arrêt
@@ -279,6 +313,161 @@ class TestAnswerIsReplayable(InterventionCase):
         self.assertIs(self.drive(command_label="resume"), Status.WAITING_HUMAN)
         self.assertEqual(self.archives(), ["demande.md.001"])
         self.assertEqual(fakes.launched_calls(self.collab), 2)
+
+
+class TestAnswerKeepsTheDemande(InterventionCase):
+    """Lot 1, point 1.1 : `--answer` **complète** la demande, il ne la remplace pas.
+
+    Objectif, livrable, sources, contraintes, non-objectifs et critères de fin
+    existants doivent survivre à une réponse courte — sur le chemin nominal,
+    après un arrêt brutal à chacune des quatre écritures, et après un incident
+    suivi d'une reprise. `demande.md` reste l'unique autorité : une version
+    complète, dont l'ancienne est archivée et la provenance consignée.
+    """
+
+    SHORT = "Le critere de fin est la couverture complete."
+
+    def setUp(self) -> None:
+        super().setUp()
+        fakes.collaboration(self.root, demande=fakes.DEMANDE_COMPLETE)
+
+    def question(self) -> None:
+        self.a.responses = [_QUESTION, _QUESTION, _QUESTION]
+        self.assertIs(self.drive(), Status.WAITING_HUMAN)
+
+    def answer(self) -> workflow.Answer:
+        return workflow.Answer(self.answer_file(self.SHORT))
+
+    def stop_after(self, writes: int, answer: workflow.Answer) -> Path:
+        """Arrêt injecté après `writes` écritures atomiques de `--answer`."""
+        with mock.patch.object(storage, "write_atomic_text", _StopAfter(writes)):
+            with self.assertRaises(_Stop):
+                self.drive(command_label="resume", intervention=answer)
+        return answer.path
+
+    def assert_nothing_lost(self) -> None:
+        text = (self.collab / "demande.md").read_text(encoding="utf-8")
+        original = demande.sections(fakes.DEMANDE_COMPLETE)
+        found = demande.sections(text)
+        self.assertEqual(sorted(original), sorted(demande.SECTIONS), "la base est complète")
+        for name, body in original.items():
+            self.assertEqual(found[name], body, f"« {name} » a change")
+        self.assertTrue(text.startswith(fakes.DEMANDE_COMPLETE.rstrip()))
+        self.assertIn("## Précisions n°1", text)
+        self.assertEqual(
+            (self.collab / "demande.md.001").read_text(encoding="utf-8"), fakes.DEMANDE_COMPLETE
+        )
+        self.assertEqual(self.etat()["demande_sha256"], contracts.normalize(text).sha256)
+
+    def test_a_short_answer_leaves_every_existing_section_and_reaches_the_agent(self) -> None:
+        self.question()
+        self.drive(command_label="resume", intervention=self.answer())
+        self.assert_nothing_lost()
+        for name, body in demande.sections(fakes.DEMANDE_COMPLETE).items():
+            self.assertIn(body, self.a.prompts[1], name)
+        self.assertIn("couverture complete", self.a.prompts[1])
+
+    def test_a_stop_at_each_of_the_four_writes_still_keeps_every_section(self) -> None:
+        """Chaque arrêt est une reprise **distincte** : la demande complétée doit
+        se recalculer à l'identique — depuis `demande.md`, ou depuis son archive
+        quand il est déjà complété — sans quoi l'empreinte ne serait plus reconnue."""
+        for stop in (1, 2, 3, 4):
+            with self.subTest(stopped_after_write=stop):
+                self.tearDown_collaboration()
+                self.question()
+                answer = self.stop_after(stop, self.answer())
+                if stop < 4:
+                    self.assertIs(
+                        self.drive(command_label="resume", intervention=workflow.Answer(answer)),
+                        Status.WAITING_HUMAN,
+                    )
+                else:
+                    self.assertIs(self.drive(command_label="resume"), Status.WAITING_HUMAN)
+                self.assert_nothing_lost()
+                self.assertEqual(self.archives(), ["demande.md.001"])
+
+    def test_an_interrupted_call_then_a_retry_still_keeps_every_section(self) -> None:
+        self.question()
+        self.a.sleep_seconds = 5.0
+        state = workflow.run(
+            self.collab, adapters=self.adapters, timeout_seconds=0.05,
+            command_label="resume", intervention=self.answer(),
+        )
+        self.assertIs(state.status, Status.INTERRUPTED)
+        self.assert_nothing_lost()
+        self.a.sleep_seconds = 0.0
+        self.a.responses = [_QUESTION, _QUESTION]
+        call_id = self.etat()["current_call"]["call_id"]
+        state = workflow.run(
+            self.collab, adapters=self.adapters, timeout_seconds=30.0, command_label="resume",
+            intervention=workflow.RetryCall(call_id, self.reason_file()),
+        )
+        self.assertIs(state.status, Status.WAITING_HUMAN)
+        self.assert_nothing_lost()
+
+    def test_a_contract_error_then_a_retry_still_keeps_every_section(self) -> None:
+        self.question()
+        self.a.responses = [_HORS_CONTRAT, _DOC, _FINAL]
+        self.assertIs(
+            self.drive(command_label="resume", intervention=self.answer()), Status.ERROR
+        )
+        self.assert_nothing_lost()
+        call_id = self.etat()["current_call"]["call_id"]
+        self.b.responses = [fakes.review("ACCEPTER", findings=())]
+        self.assertIs(
+            self.drive(
+                command_label="resume",
+                intervention=workflow.RetryCall(call_id, self.reason_file()),
+            ),
+            Status.AWAITING_APPROVAL,
+        )
+        self.assert_nothing_lost()
+
+    def test_a_second_answer_after_an_incident_adds_and_removes_nothing(self) -> None:
+        """Deux réponses, un incident entre les deux : les précisions s'empilent,
+        chaque ancienne version reste archivée, la provenance les enchaîne."""
+        self.question()
+        self.a.sleep_seconds = 5.0
+        workflow.run(
+            self.collab, adapters=self.adapters, timeout_seconds=0.05,
+            command_label="resume", intervention=self.answer(),
+        )
+        self.a.sleep_seconds = 0.0
+        self.a.responses = [_QUESTION]
+        call_id = self.etat()["current_call"]["call_id"]
+        workflow.run(
+            self.collab, adapters=self.adapters, timeout_seconds=30.0, command_label="resume",
+            intervention=workflow.RetryCall(call_id, self.reason_file()),
+        )
+        self.assertEqual(self.etat()["status"], "WAITING_HUMAN")
+        self.a.responses = [_DOC, _FINAL]
+        self.b.responses = [fakes.review("ACCEPTER", findings=())]
+        second = self.answer_file("Une seconde precision.")
+        self.assertIs(
+            self.drive(command_label="resume", intervention=workflow.Answer(second)),
+            Status.AWAITING_APPROVAL,
+        )
+        text = (self.collab / "demande.md").read_text(encoding="utf-8")
+        self.assertIn("## Précisions n°1", text)
+        self.assertIn("## Précisions n°2\n\nUne seconde precision.", text)
+        self.assertEqual(self.archives(), ["demande.md.001", "demande.md.002"])
+        for name, body in demande.sections(fakes.DEMANDE_COMPLETE).items():
+            self.assertEqual(demande.sections(text)[name], body, name)
+        first_version, second_version = demande.read(self.collab)
+        self.assertEqual(second_version["replaces"], first_version["sha256"])
+        # La version archivée en dernier est bien la précédente, prolongée telle quelle.
+        previous = (self.collab / "demande.md.002").read_text(encoding="utf-8")
+        self.assertTrue(text.startswith(previous.rstrip()))
+
+    def tearDown_collaboration(self) -> None:
+        """Repart d'une collaboration neuve **au même endroit** entre deux sous-tests."""
+        for path in self.collab.iterdir():
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+        fakes.collaboration(self.root, demande=fakes.DEMANDE_COMPLETE)
+        self.a.responses, self.b.responses = [], []
 
 
 class TestRetryUnderLock(InterventionCase):

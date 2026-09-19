@@ -21,7 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import contracts, corpus, lock, settings, storage, transport, workflow
+from . import contracts, corpus, demande, lock, settings, storage, transport, workflow
 from .adapters.base import AdapterError, AgentAdapter
 from .adapters.claude import ClaudeAdapter
 from .adapters.codex import CodexAdapter
@@ -146,24 +146,50 @@ def cmd_new(args: argparse.Namespace) -> int:
     kind = _KIND[args.kind]
     if kind is MissionKind.RECHERCHE and not args.source_root:
         return _fail("mission de recherche sans corpus (--source-root et --source-list requis)")
+    # La demande est obtenue **avant** le dossier temporaire : un cadrage
+    # interrompu ne laisse rien derrière lui.
+    try:
+        demande_text, origin = _obtain_demande(args)
+    except EOFError:
+        return _fail("cadrage interrompu : rien n'a été créé")
+    except (OSError, ValueError) as exc:
+        return _fail(str(exc))
     tmp = dest.parent / f".new-{dest.name}-{uuid.uuid4().hex}"
     tmp.mkdir(parents=True)
     try:
-        _build_new(tmp, dest, args, kind, _ACCESS[args.reviewer_access])
+        _build_new(tmp, dest, args, kind, _ACCESS[args.reviewer_access], demande_text, origin)
     except (corpus.CorpusError, OSError, ValueError) as exc:
         shutil.rmtree(tmp, ignore_errors=True)
         return _fail(str(exc))
     tmp.rename(dest)
     print(f"collaboration creee : {dest}")
+    absent = demande.missing(demande_text)
+    if absent:
+        # Un repère, pas une porte : A rend une QUESTION si l'absence compte.
+        print(
+            f"demande : section(s) absente(s) ou vide(s) — {', '.join(absent)}."
+            " La production démarre quand même.", file=sys.stderr,
+        )
     return 0
 
 
+def _obtain_demande(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
+    """Le texte de la demande et sa provenance : un fichier fourni tel quel, ou le
+    cadrage guidé. Ni l'un ni l'autre n'appelle un modèle."""
+    if args.cadrer:
+        return demande.guide(input, print), {"source": "cadrage", "path": None}
+    path = Path(args.demande)
+    text, _ = storage.read_text(path)
+    return text, {"source": "fichier", "path": str(path.resolve())}
+
+
 def _build_new(
-    tmp: Path, dest: Path, args: argparse.Namespace, kind: MissionKind, access: ReviewerAccess
+    tmp: Path, dest: Path, args: argparse.Namespace, kind: MissionKind, access: ReviewerAccess,
+    demande_text: str, origin: dict[str, Any],
 ) -> None:
-    demande_text, _ = storage.read_text(Path(args.demande))
     normalized = contracts.normalize(demande_text)
     storage.write_atomic_text(tmp / "demande.md", normalized.text)
+    demande.record(tmp, {**origin, "sha256": normalized.sha256})
     corpus_sha: str | None = None
     if args.source_root:
         manifest = corpus.build(
@@ -334,7 +360,10 @@ def build_parser() -> argparse.ArgumentParser:
     # un refus avant mutation, pas une erreur d'usage.
     p_new = sub.add_parser("new")
     p_new.add_argument("collab")
-    p_new.add_argument("--demande", required=True)
+    # Un fichier de demande, ou le cadrage guidé : jamais les deux, jamais aucun.
+    source = p_new.add_mutually_exclusive_group(required=True)
+    source.add_argument("--demande")
+    source.add_argument("--cadrer", action="store_true")
     p_new.add_argument("--config")
     p_new.add_argument("--kind", choices=sorted(_KIND))
     p_new.add_argument("--reviewer-access", choices=sorted(_ACCESS))
