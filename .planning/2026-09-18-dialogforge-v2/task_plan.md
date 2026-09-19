@@ -31,17 +31,19 @@ commande `plan <dossier> [--link ID [--plan-root DIR] | --unlink]`, liaison dans
 à part, jamais lu par le cycle). Le résolveur public rend **toujours 0** : sortie vide = refus
 (mesuré). Le plan reste seul propriétaire ; l'outil imprime un résumé à reporter **à la main**.
 
-**Le lot 2 est complet** (2.1, 2.2, 2.3). **Écart au plan à faire valider** : la liaison est dans
-`plan.json`, pas dans `configuration.json` (schéma strict, dont dépend le cycle). **J2 : à constater
-par le PO** ; « les profils à vérifier avec les CLI réelles sont identifiés » = `FRONTIERE_ROLES.md`.
-**Ensuite : lot 3 (essais réels, qui consomment du quota) — à n'ouvrir que sur autorisation du PO ;
-avant, faire constater J2 et trancher l'écart `plan.json` / `configuration.json`.** Les garanties des CLI réelles ne sont pas acquises avant le lot 3.
+**Le lot 2 est complet** (2.1, 2.2, 2.3). **Amendement du plan validé** (PO, 2026-09-19) : la liaison
+est dans `plan.json`, pas dans `configuration.json` (schéma strict et opérationnel ; `plan.json`
+réduit le couplage et se retire sans toucher à l'état) ; le plan de mise en œuvre, point 2.3, est
+amendé en conséquence. **Il n'existe plus d'écart ouvert sur 2.3.** **J2 atteint et validé par le PO le 2026-09-19** ; « les profils à vérifier avec les CLI réelles sont
+identifiés » = `FRONTIERE_ROLES.md`.
+**Ensuite : lot 3 (essais réels, qui consomment du quota) — à n'ouvrir que sur autorisation explicite
+du PO.** Les garanties des CLI réelles ne sont pas acquises avant le lot 3.
 
 Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la seule voie où
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 3 (lot 2) — 2.1, 2.2 (fuite Codex corrigée) et 2.3 faits ; J2 à constater par le PO
+Phase 3 (lot 2) — 2.1, 2.2 (fuite Codex corrigée) et 2.3 faits ; J2 atteint et validé par le PO le 2026-09-19
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -87,10 +89,10 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 - [x] 2.1 Distinguer réponse mal interprétée, appel non lancé, issue inconnue ; verrou non effacé
 - [x] 2.2 Paquet B minimal ; session reviewer fraîche ; capacités effectives par profil vérifiées
 - [x] 2.2 Essai sur dossier jetable : sources non modifiées, journal de A non injecté chez B
-- [x] 2.3 Référence de plan PWF facultative via les scripts publics ; sortie vide traitée
+- [x] 2.3 Liaison facultative à un plan PWF via les scripts publics ; sortie vide traitée
 - [x] 2.3 Un seul propriétaire du plan ; fonctionnement documentaire vérifié sans liaison PWF
-- **Status:** in_progress — 2.1, 2.2 et 2.3 faits et commités ; J2 à constater par le PO
-- **Jalon :** J2 — version candidate aux essais réels.
+- **Status:** complete — 2.1, 2.2 et 2.3 faits et commités ; J2 atteint et validé par le PO le 2026-09-19
+- **Jalon :** **J2 atteint et validé par le PO le 2026-09-19** — version candidate aux essais réels.
 
 ### Phase 4: Lot 3 — Essais réels et première livraison
 - [ ] 3.1 Versions des CLI et modèles relevées ; essai de petite taille en collaboration jetable

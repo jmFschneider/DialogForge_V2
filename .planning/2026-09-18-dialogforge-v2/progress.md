@@ -401,9 +401,10 @@ session (un hôte Claude) : elle ne pouvait pas connaître l'autre hôte.
   `unlink`, `read`, `summary`.
 - **Commande `plan <dossier> [--link ID [--plan-root DIR] | --unlink]`** ; sans option, le résumé à
   reporter **à la main** (statut, décision, prochaine action, chemins). Lisible sans liaison.
-- **Écart au plan, à faire valider** : la liaison est dans `plan.json`, **pas** dans
-  `configuration.json` — schéma à clés exactes dont dépend le cycle ; un fichier à part se supprime
-  sans toucher à rien. Le cycle ne lit jamais `plan.json`.
+- **Amendement du plan validé** (PO, 2026-09-19 ; d'abord signalé ici comme écart) : la liaison est
+  dans `plan.json`, **pas** dans `configuration.json` — schéma à clés exactes dont dépend le cycle ;
+  un fichier à part se supprime sans toucher à rien. Le cycle ne lit jamais `plan.json`. **Il n'existe
+  plus d'écart ouvert sur 2.3.**
 - **Environnement par rôle** : déjà couvert par 2.2 (`clean_env` retire `PLAN_ID`/`PWF_*` pour A **et**
   B) ; test ajouté pour B. Plus strict que « selon le rôle » : aucun rôle n'a besoin du plan.
 - README, `CONCEPTION_FINALE.md` §7, `RULES.md` (2 règles), `FRONTIERE_ROLES.md`.
@@ -436,3 +437,29 @@ fichiers) est dans le second commit.
 | Contre-épreuve « résumé sans dossier » **verte** | Un autre ligne (« Document : <dossier>/… ») satisfaisait l'assertion : test resserré sur la ligne exacte, redevenue rouge |
 | Une « contre-épreuve » rouge par **erreur de collecte** (fichier de test cassé par mon heredoc) | Non comptée ; refaite après réparation |
 | Patch des tests abandonné (motif absent) | Cause : décodage du heredoc ; refait par fichier |
+
+## Session: 2026-09-19 — amendement du plan de mise en œuvre, point 2.3 (documentaire)
+
+Décision du PO : la liaison PWF dans `plan.json` est **validée** et remplace l'exigence initiale qui
+parlait de `configuration.json`. **Aucune modification de code ni de la liaison.**
+
+### Actions Taken
+- `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`, point 2.3 : premier point de
+  « Travail » remplacé par une liaison facultative dans un fichier indépendant `plan.json`, jamais
+  requise ni lue par le cycle ; note datée du 2026-09-19 (validée par le PO), avec sa justification.
+  Ce dossier n'est pas un dépôt Git : l'ancien texte est gardé hors dépôt pour le diff présenté.
+- `task_plan.md` et ce compte rendu : « écart à faire valider » remplacé par « amendement validé » ;
+  plus d'écart ouvert sur 2.3 ; « trancher l'écart » retiré de l'étape suivante.
+- `findings.md` : la ligne correspondante ne parle plus d'un écart à faire valider.
+- **Non fait, volontairement** : la liaison reste dans `plan.json` ; `configuration.json` et le code
+  fonctionnel sont inchangés. **Commité** sur feu vert du PO (`docs: ...`, voir `git log`).
+- Sur indication du PO : la case du plan PWF s'intitule désormais « Liaison facultative à un plan PWF
+  via les scripts publics ; sortie vide traitée », et « J2 à constater » devient **« J2 atteint et validé
+  par le PO le 2026-09-19 »** (`task_plan.md` : Next Step, Current Phase, statut et jalon de la phase 3).
+  Le lot 3 reste à n'ouvrir que sur autorisation explicite du PO.
+
+### Test Results
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| `rg` des mentions résiduelles de l'écart (`écart au plan`, `à faire valider`, `trancher l'écart`, `écart ouvert`) dans le plan PWF, le README, `RULES.md`, `CONCEPTION_FINALE.md`, `reference/` et le plan de mise en œuvre | aucune réserve obsolète | seules restent des négations (« plus d'écart ouvert sur 2.3 ») et la description de cette session | OK |
+| `git diff --check` (dépôt DialogForge_2) | aucune erreur d'espaces | rc=0 (un avertissement LF→CRLF sur `findings.md`, sans effet) | OK |
