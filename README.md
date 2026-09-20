@@ -130,6 +130,33 @@ kind = "conception"
 python -m iabinome new ./ma-collab --demande ./demande.md
 ```
 
+**Effort de raisonnement, facultatif** : `effort_a` / `effort_b` (ou `--effort-a` / `--effort-b`).
+Absent, rien n'est demandé à l'outil et `configuration.json` ne porte pas la clé — comme avant.
+Posé, il est figé à `new` avec le reste et transmis à chaque appel du rôle (`--effort` pour Claude,
+`-c model_reasoning_effort=…` pour Codex). **Chaque outil a son vocabulaire** — Claude : `low`,
+`medium`, `high`, `xhigh`, `max` ; Codex : `minimal`, `low`, `medium`, `high`, `xhigh` — et une
+valeur qu'il ne connaît pas est refusée **avant tout appel** : à `new`, et au prévol de `run`, sans
+rien modifier ni consommer de quota. Constat du 2026-09-19 : sous `--ignore-user-config`, Codex
+tourne à `none` et non au `medium` de votre `config.toml` ; le PO a décidé de ne rien changer par
+défaut.
+
+**Accès web, facultatif et fermé par défaut** : `web_access = true` dans `iabinome.toml`, ou
+`--web-access` / `--no-web-access` sur `new`. Un seul réglage, figé à `new`, **identique pour A et B**.
+Sans lui, Claude n'a que `Read`, `Grep`, `Glob` et Codex reçoit **explicitement**
+`-c web_search=disabled` ; avec lui, Claude reçoit `WebSearch` et `WebFetch` (autorisés d'avance) et
+Codex `-c web_search=live`. Le profil `context-only` reste sans aucun outil, web compris. Une
+collaboration créée avant ce réglage se comporte comme `web_access = false`. **Ce n'est pas un
+confinement réseau** : quand le web est ouvert, ce que contient le prompt peut sortir de la machine par
+une requête de recherche ou de lecture.
+
+**Chaque fournisseur ne reçoit que ses propres variables.** Le processus de Claude garde son
+authentification, sa configuration (`CLAUDE_CONFIG_DIR` choisit le compte) et son lanceur, et ne reçoit
+rien de Codex ; celui de Codex garde `CODEX_HOME` et ce dont son lanceur a besoin, et ne reçoit rien de
+Claude. `PLAN_ID`, `PWF_*` et les identifiants de session de l'hôte sont retirés à tous. `intention.json`
+nomme les variables retirées, jamais leurs valeurs. L'outil lance `claude.exe` directement, pas une
+fonction de votre profil : le compte est celui de `CLAUDE_CONFIG_DIR` dans le terminal où vous tapez
+`run` (défaut : `~/.claude`).
+
 **Cherché dans l'ordre :** `--config <chemin>`, puis `./iabinome.toml`, puis `~/.iabinome.toml`.
 Le premier trouvé gagne ; les autres sont ignorés, jamais fusionnés. La commande annonce sur la
 sortie d'erreur quel fichier a servi et ce qu'elle y a pris.

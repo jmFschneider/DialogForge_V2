@@ -776,6 +776,8 @@ les quatre permutations · registre de constats · porte `QUESTION` · terminal 
 
 ### 12.1 — Sources externes en recherche : **écartées de V0.1**
 
+**Amendé le 2026-09-19 (PO, V2 lot 3 point 3.1).** Le motif (b) ci-dessous — aucune capacité de consultation externe commune aux deux adaptateurs — n'est plus vrai : Codex cherche sur le web en natif (constaté : 6 recherches par appel de A) et Claude dispose de `WebSearch` et `WebFetch`. Le PO décide que l'accès web est un **réglage facultatif, fermé par défaut** (`web_access`, figé à `new`, même politique pour A et B, explicite dans l'argv des deux outils, `CONTEXT_ONLY` sans outil). Le corpus reste le cadre d'une mission de **recherche** (il est toujours exigé). Le motif (a) demeure : un mandat mal posé échoue quel que soit l'accès.
+
 **Décision.** V0.1 ne consulte aucune source externe. Le corpus est ce que l'humain y dépose.
 
 **Motifs.** (a) Les deux missions bibliographiques de FloraPi ont échoué, et la cause tracée

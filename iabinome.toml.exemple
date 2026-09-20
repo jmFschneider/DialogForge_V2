@@ -23,6 +23,22 @@ agent_b = "claude"
 # model_a = "opus"
 # model_b = "sonnet"
 
+# --- Effort de raisonnement (facultatif) -----------------------------
+# Sans ces lignes, rien n'est demande a l'outil : Codex tourne alors a "none" sous
+# --ignore-user-config (constate le 2026-09-19, decision du PO : on ne change rien).
+# Valeurs acceptees, refusees avant tout appel si l'outil ne les connait pas :
+#   Claude : low, medium, high, xhigh, max
+#   Codex  : minimal, low, medium, high, xhigh
+# effort_a = "medium"
+# effort_b = "high"
+
+# --- Acces web (facultatif, FERME par defaut) ------------------------
+# Meme politique pour A et B, figee a `new`. Absent ou false : Claude n'a que Read, Grep, Glob
+# et Codex recoit explicitement web_search=disabled. true : Claude recoit WebSearch et
+# WebFetch, Codex web_search=live. Le profil context-only reste sans aucun outil.
+# Ouvert, ce que contient le prompt peut sortir de la machine par une requete web.
+# web_access = true
+
 # --- Enveloppe du cycle ----------------------------------------------
 # Nombre maximal de revisions. 0 = B critique une fois, A finalise.
 max_revisions = 1

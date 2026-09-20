@@ -36,8 +36,13 @@ est dans `plan.json`, pas dans `configuration.json` (schéma strict et opératio
 réduit le couplage et se retire sans toucher à l'état) ; le plan de mise en œuvre, point 2.3, est
 amendé en conséquence. **Il n'existe plus d'écart ouvert sur 2.3.** **J2 atteint et validé par le PO le 2026-09-19** ; « les profils à vérifier avec les CLI réelles sont
 identifiés » = `FRONTIERE_ROLES.md`.
-**Ensuite : lot 3 (essais réels, qui consomment du quota) — à n'ouvrir que sur autorisation explicite
-du PO.** Les garanties des CLI réelles ne sont pas acquises avant le lot 3.
+**Lot 3 ouvert par le PO le 2026-09-19 ; 3.1 EN COURS.** Deux cycles réels (Codex/Claude et l'inverse) ont
+tourné sans incident ; le PO a tranché les trois constats (web facultatif et fermé par défaut, effort validé
+par adaptateur, environnement par fournisseur), commités et validés par Codex le 2026-09-20 (hash = référence
+des prochains essais, voir `git log`). **3.1 se ferme après le petit protocole fournisseur** (points 7 à 10 de
+`reference/FRONTIERE_ROLES.md`) — pas de nouveau cycle éditorial. Il consomme du quota : à lancer par le PO,
+sur son autorisation. Les garanties des CLI réelles ne sont acquises que point par point, à mesure qu'elles
+sont mesurées.
 
 Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la seule voie où
 l'injection automatique du plan est qualifiée.

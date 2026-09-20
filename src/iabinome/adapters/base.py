@@ -12,7 +12,8 @@ typée — est un bonus, jamais un prérequis (CONCEPTION_FINALE.md §8).
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
@@ -36,6 +37,30 @@ class Capabilities:
     supports_model_override: bool
     enforces_read_only: bool = False
     fresh_session: bool = False
+    # Les niveaux d'effort que la CLI accepte, dans son vocabulaire. Vide = le réglage n'est
+    # pas supporté : le prévol refuse alors toute valeur, avant tout appel.
+    effort_levels: tuple[str, ...] = ()
+    # L'adaptateur **impose** la politique d'accès web dans son argv, dans les deux sens
+    # (ouvert comme fermé) : le défaut est « fermé », et il doit être explicite.
+    controls_web_access: bool = False
+
+
+@dataclass(frozen=True)
+class EnvPolicy:
+    """Ce qu'un fournisseur possède dans l'environnement, et ce qu'il en garde.
+
+    Une CLI reçoit son environnement **et rien de celui de l'autre** : jetons, chemins de
+    configuration, clés d'API d'un fournisseur ne vont pas chez l'autre. C'est l'adaptateur
+    qui nomme ses variables — le noyau ne connaît que des politiques opaques.
+
+    - `owned_prefixes` : tout ce qui commence ainsi lui appartient, donc est retiré aux autres ;
+    - `host_refused` : identifiants de **session** de l'hôte qui l'a lancé, retirés à tous ;
+    - `kept` : variables opérationnelles qui restent chez lui, **chacune avec sa raison**.
+    """
+
+    owned_prefixes: tuple[str, ...] = ()
+    host_refused: frozenset[str] = frozenset()
+    kept: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -54,11 +79,15 @@ class CallSpec:
     timeout_seconds: float
     work_root: Path
     reviewer_access: ReviewerAccess | None
+    effort: str | None = None
+    # Même politique pour A et B ; `CONTEXT_ONLY` reste sans aucun outil, web compris.
+    web_access: bool = False
 
 
 class AgentAdapter(Protocol):
     adapter_id: str
     capabilities: Capabilities
+    env: EnvPolicy
 
     def default_model(self, role: Role) -> str:
         """Le défaut est une propriété de l'adaptateur pour un rôle, jamais une

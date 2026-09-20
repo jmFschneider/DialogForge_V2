@@ -44,14 +44,51 @@ class TestClaudeAdapter(unittest.TestCase):
         self.assertIn("--tools", cmd)
         self.assertEqual(cmd[cmd.index("--tools") + 1], "")
 
-    def test_consult_offers_read_tools_only(self) -> None:
-        """2.2 : lire, chercher, lister — ni écrire ni exécuter — pour B en CONSULT
-        comme pour A. Sans `--tools`, la CLI offrait tout son jeu d'outils."""
+    def test_by_default_the_tools_are_read_only_and_there_is_no_web(self) -> None:
+        """2.2 : lire, chercher, lister — ni écrire ni exécuter — pour B en CONSULT comme pour A ;
+        sans `--tools`, la CLI offrait tout son jeu d'outils. 3.1 (décision du PO, 2026-09-19) :
+        **le web est fermé par défaut**, et rien d'autorisé d'avance."""
         for access in (ReviewerAccess.CONSULT, None):
             spec = replace(_SPEC, reviewer_access=access)
             with mock.patch.object(shutil, "which", return_value="claude"):
                 cmd = self.adapter.command(spec)
             self.assertEqual(cmd[cmd.index("--tools") + 1], "Read,Grep,Glob")
+            self.assertNotIn("--allowedTools", cmd)
+            for web in ("WebSearch", "WebFetch"):
+                self.assertNotIn(web, " ".join(cmd))
+
+    def test_with_web_access_the_two_web_tools_are_added_and_pre_authorized(self) -> None:
+        """Recherche et lecture d'une page — jamais un outil qui écrit ou exécute. Autorisés
+        d'avance : sans personne pour approuver, l'appel non interactif les refuserait."""
+        for access in (ReviewerAccess.CONSULT, None):
+            spec = replace(_SPEC, reviewer_access=access, web_access=True)
+            with mock.patch.object(shutil, "which", return_value="claude"):
+                cmd = self.adapter.command(spec)
+            tools = cmd[cmd.index("--tools") + 1]
+            self.assertEqual(tools.split(","), ["Read", "Grep", "Glob", "WebSearch", "WebFetch"])
+            for forbidden in ("Bash", "PowerShell", "Edit", "Write", "NotebookEdit"):
+                self.assertNotIn(forbidden, tools)
+            self.assertEqual(cmd[cmd.index("--allowedTools") + 1], "WebSearch,WebFetch")
+
+    def test_context_only_has_no_tool_at_all_even_when_the_web_is_open(self) -> None:
+        for web in (False, True):
+            spec = replace(_SPEC, reviewer_access=ReviewerAccess.CONTEXT_ONLY, web_access=web)
+            with mock.patch.object(shutil, "which", return_value="claude"):
+                cmd = self.adapter.command(spec)
+            self.assertEqual(cmd[cmd.index("--tools") + 1], "")
+            self.assertNotIn("--allowedTools", cmd)
+
+    def test_effort_levels_are_claude_s_own(self) -> None:
+        self.assertEqual(
+            self.adapter.capabilities.effort_levels, ("low", "medium", "high", "xhigh", "max")
+        )
+        self.assertTrue(self.adapter.capabilities.controls_web_access)
+
+    def test_effort_is_passed_only_when_asked(self) -> None:
+        with mock.patch.object(shutil, "which", return_value="claude"):
+            self.assertNotIn("--effort", self.adapter.command(_SPEC))
+            cmd = self.adapter.command(replace(_SPEC, effort="high"))
+        self.assertEqual(cmd[cmd.index("--effort") + 1], "high")
 
     def test_every_role_is_restricted_and_starts_a_fresh_session(self) -> None:
         """2.2 : la séparation est dans l'argv, pour chaque rôle et chaque profil."""
@@ -130,11 +167,65 @@ class TestCodexAdapter(unittest.TestCase):
         self.assertTrue(self.adapter.capabilities.enforces_read_only)
         self.assertTrue(self.adapter.capabilities.fresh_session)
 
-    def test_consult_omits_the_disable_flag(self) -> None:
+    def values_of_c(self, cmd: list[str]) -> list[str]:
+        return [cmd[i + 1] for i, part in enumerate(cmd) if part == "-c"]
+
+    def test_the_web_policy_is_always_explicit_and_closed_by_default(self) -> None:
+        """Décision du PO (2026-09-19) : jamais laissée au réglage de l'outil, dans aucun sens.
+        Constaté avant : Codex cherchait sur le web sous `--sandbox read-only`."""
+        for access in (None, ReviewerAccess.CONSULT, ReviewerAccess.CONTEXT_ONLY):
+            spec = replace(_SPEC, reviewer_access=access)
+            with mock.patch.object(shutil, "which", return_value="codex"):
+                cmd = self.adapter.command(spec)
+            self.assertIn("web_search=disabled", self.values_of_c(cmd), access)
+            self.assertNotIn("web_search=live", self.values_of_c(cmd), access)
+
+    def test_with_web_access_it_is_live_for_both_roles_but_never_in_context_only(self) -> None:
+        for access in (None, ReviewerAccess.CONSULT):
+            spec = replace(_SPEC, reviewer_access=access, web_access=True)
+            with mock.patch.object(shutil, "which", return_value="codex"):
+                cmd = self.adapter.command(spec)
+            self.assertIn("web_search=live", self.values_of_c(cmd), access)
+            self.assertNotIn("web_search=disabled", self.values_of_c(cmd), access)
+        spec = replace(_SPEC, reviewer_access=ReviewerAccess.CONTEXT_ONLY, web_access=True)
+        with mock.patch.object(shutil, "which", return_value="codex"):
+            cmd = self.adapter.command(spec)
+        self.assertIn("web_search=disabled", self.values_of_c(cmd))
+        self.assertNotIn("web_search=live", self.values_of_c(cmd))
+
+    def test_effort_is_passed_only_when_asked_and_without_quotes(self) -> None:
+        """Sans réglage, rien : `--ignore-user-config` fait alors tourner Codex à `none`, et le PO
+        a choisi de ne pas y toucher (2026-09-19). Posé, la valeur passe par `-c`, **sans
+        guillemets** — le lanceur `.CMD` les abîmerait, et Codex lit une chaîne littérale."""
+        with mock.patch.object(shutil, "which", return_value="codex"):
+            plain = self.adapter.command(_SPEC)
+            cmd = self.adapter.command(replace(_SPEC, effort="medium"))
+        self.assertFalse(any("reasoning" in part for part in plain))
+        self.assertIn("model_reasoning_effort=medium", self.values_of_c(cmd))
+        self.assertEqual(cmd[-1], "-")
+
+    def test_every_setting_reaches_the_command_in_a_fixed_order(self) -> None:
+        spec = replace(
+            _SPEC, reviewer_access=ReviewerAccess.CONTEXT_ONLY, effort="low", web_access=True
+        )
+        with mock.patch.object(shutil, "which", return_value="codex"):
+            cmd = self.adapter.command(spec)
+        self.assertEqual(self.values_of_c(cmd), [
+            "features.shell_tool=false", "web_search=disabled", "model_reasoning_effort=low",
+        ])
+
+    def test_effort_levels_are_codex_s_own(self) -> None:
+        self.assertEqual(
+            self.adapter.capabilities.effort_levels, ("minimal", "low", "medium", "high", "xhigh")
+        )
+        self.assertNotIn("max", self.adapter.capabilities.effort_levels)
+        self.assertTrue(self.adapter.capabilities.controls_web_access)
+
+    def test_consult_does_not_disable_the_shell_tool(self) -> None:
         spec = replace(_SPEC, reviewer_access=ReviewerAccess.CONSULT)
         with mock.patch.object(shutil, "which", return_value="codex"):
             cmd = self.adapter.command(spec)
-        self.assertNotIn("-c", cmd)
+        self.assertNotIn("features.shell_tool=false", self.values_of_c(cmd))
 
     def test_command_raises_when_executable_absent(self) -> None:
         with mock.patch.object(shutil, "which", return_value=None):

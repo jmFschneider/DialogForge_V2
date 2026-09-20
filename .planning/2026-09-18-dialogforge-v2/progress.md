@@ -463,3 +463,87 @@ parlait de `configuration.json`. **Aucune modification de code ni de la liaison.
 |------|----------|--------|--------|
 | `rg` des mentions résiduelles de l'écart (`écart au plan`, `à faire valider`, `trancher l'écart`, `écart ouvert`) dans le plan PWF, le README, `RULES.md`, `CONCEPTION_FINALE.md`, `reference/` et le plan de mise en œuvre | aucune réserve obsolète | seules restent des négations (« plus d'écart ouvert sur 2.3 ») et la description de cette session | OK |
 | `git diff --check` (dépôt DialogForge_2) | aucune erreur d'espaces | rc=0 (un avertissement LF→CRLF sur `findings.md`, sans effet) | OK |
+
+## Session: 2026-09-19 — lot 3, point 3.1 (essais réels des adaptateurs) — EN COURS
+
+Autorisation du PO (« peux-tu me guider pour lancer ces tests du lot 3.1 »). **Les appels ont été lancés
+par le PO** avec ses accès (Claude Code 2.1.278, Codex CLI 0.155.0) ; l'assistant n'a lancé aucun appel
+fournisseur (essais de diagnostic avec un nom de modèle inexistant, sans coût). Dossiers d'essai hors dépôt :
+`C:\Projets\essais-3-1\collab` (A=codex `gpt-5.6-terra`, B=claude `sonnet`) et `collab-inverse` (A=claude
+`sonnet`, B=codex `gpt-5.6-terra`), même demande, `max_revisions = 1`, `consult`. **3.1 n'est pas marqué fait.**
+
+### Constatés en réel (les deux permutations, dans les deux rôles)
+- **Cycles complets, aucun incident** : 4 appels chacun, tous rc=0 ; `AWAITING_APPROVAL`, B a accepté la
+  version examinée. Durées d'appel : 305 s (Codex en A) et 402 s (Claude en A).
+- **Drapeaux acceptés** : Claude `--restricted --strict-mcp-config --no-session-persistence
+  --disable-slash-commands --tools Read,Grep,Glob` ; Codex `--sandbox read-only --skip-git-repo-check
+  --ephemeral --ignore-user-config --ignore-rules`. Authentification conservée avec l'environnement filtré
+  (Claude par `CLAUDE_CONFIG_DIR`, Codex avec `--ignore-user-config`). Le modèle passé par `-m` est appliqué.
+- **Extraction** : prompt par stdin, réponse lue sur stdout, dans les deux sens ; contrat v2 respecté par
+  les deux outils en producteur (bloc `IABINOME:REPONSES`) et en reviewer.
+- **Dossier neutre** : la bannière Codex montre un dossier sous `%TEMP%` ; aucun `iabinome-*` restant après ;
+  `workdir=neutre` inscrit dans chaque `intention.json`.
+- **Contexte du reviewer** : le prompt de B (14,6 Ko et 19,9 Ko) contient la demande et la version examinée,
+  aucune mention de `appels/`, `echanges/`, `etat.json`, `configuration.json`, `prompt.txt`.
+- **Bac à sable Codex** : une commande PowerShell tentée par A a été rejetée (`exec_command failed … Rejected`).
+
+### Non éprouvé (ne pas le déclarer acquis)
+- Le **filtre d'environnement en conditions réelles** : `env_removed` vide, le terminal d'essai n'ayant aucune
+  variable d'hôte. Les points 4 et 5 de `FRONTIERE_ROLES.md` restent ouverts.
+- **Accès aux sources et `SOURCES_MODIFIED`** : aucun corpus dans ces essais.
+- **Affichage des incidents** : aucun incident survenu.
+- **Lecture par chemin absolu** par un agent en `--restricted` (point 2 de `FRONTIERE_ROLES.md`).
+
+### Constats à trancher par le PO (rien de corrigé)
+| Constat | Détail |
+|---|---|
+| Codex fait des **recherches web** en A | 6 recherches par appel de A (`web search:` dans le stderr), non désactivées par `--sandbox read-only`. Claude, avec `--tools Read,Grep,Glob`, n'en a pas : les deux permutations ne sont pas comparables en qualité. Contredit le choix de conception qui écarte les sources externes en V0.1 (§12.1) — à accepter ou à désactiver par un réglage explicite |
+| Codex tourne en `reasoning effort: none` | `--ignore-user-config` retire `model_reasoning_effort = "medium"` du `config.toml` du PO. Options : ne rien changer, en faire un paramètre configurable, ou retirer le drapeau |
+| `CLAUDE_CONFIG_DIR` choisit le compte Claude | Elle passe le filtre parce qu'elle n'est pas refusée, mais n'est pas dans `KEPT_ON_PURPOSE` : une extension du filtre pourrait la retirer sans qu'un test le voie. Petite correction proposée |
+| Observation de protocole | `B-outils-003` (MAJOR) : A répond `REPORTE` (« sans accès web »), B le clôt `RESOLVED` parce que le guide qualifie désormais ces données de non établies. Le protocole a fonctionné comme conçu |
+
+### Hors produit (environnement du PO)
+- Sa fonction PowerShell `claude` (profil) ne transmet pas stdin à `claude.exe` : le tube échouait. Le moteur,
+  lui, lance `claude.exe` directement. `model_a = "terra"` dans son `iabinome.toml` n'est pas un nom valide :
+  `gpt-5.6-terra` (erreur 400 côté serveur, sans coût).
+
+### Décisions du PO sur les constats (2026-09-19) et corrections faites — **commitées** (voir `git log`)
+Les premières décisions (« web ouvert pour les deux ») ont été **remplacées** par les suivantes.
+1. **Accès web facultatif et fermé par défaut** : réglage booléen `web_access`, **un seul pour A et B**, figé à
+   `new` (`Configuration.web_access`, clé écrite seulement si vraie ; une collaboration sans clé vaut faux).
+   Sans lui : Claude `--tools Read,Grep,Glob`, Codex **explicitement** `-c web_search=disabled`. Avec lui :
+   Claude `+WebSearch,WebFetch` et `--allowedTools`, Codex `-c web_search=live`. `CONTEXT_ONLY` : aucun outil
+   Claude, `disabled` côté Codex quoi qu'il arrive. `--web-access` / `--no-web-access`, clé `web_access` du
+   fichier (booléen strict). `Capabilities.controls_web_access` exigée au prévol pour les deux rôles.
+2. **Effort** : conservé, facultatif, aucun effort explicite par défaut ; **validé contre l'adaptateur** —
+   Claude `low, medium, high, xhigh, max`, Codex `minimal, low, medium, high, xhigh` (`Capabilities.effort_levels`).
+   Une valeur incompatible est refusée **à `new`** et **au prévol** de `run`, sans mutation ni quota.
+3. **Filtrage d'environnement par adaptateur** : chaque adaptateur déclare une `EnvPolicy` (préfixes possédés,
+   sessions d'hôte, variables gardées avec leur raison). Claude garde `CLAUDE_CONFIG_DIR`,
+   `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_GIT_BASH_PATH`, `ANTHROPIC_API_KEY` et ne reçoit rien de Codex ;
+   Codex garde `CODEX_HOME`, `CODEX_MANAGED_PACKAGE_ROOT`, `OPENAI_API_KEY` et ne reçoit rien de Claude ;
+   `PLAN_ID`, `PWF_*` et les sessions d'hôte sont retirés à tous ; `intention.json` : noms seuls. **Effet
+   de bord voulu** : `isolation.py` ne nomme plus aucun fournisseur (`CLAUDE.md` §6, non respecté en 2.2).
+- **Tests** : `test_web_access.py` et `test_effort.py` (nouveaux), `test_adapters.py` et `test_isolation.py`
+  réécrits en partie. **26 contre-épreuves : 25 rouges, chacune rétablie ; 1 mutant équivalent** (compter
+  l'adaptateur lui-même parmi les « autres » ne change rien : sa règle de possession passe avant).
+- Docs : `iabinome.toml.exemple`, README, `FRONTIERE_ROLES.md` (frontière réseau, séparation des secrets,
+  points 7 à 10 à vérifier), `CONCEPTION_FINALE.md` §12.1, `RULES.md` (3 règles).
+- **Aucun nouvel appel fournisseur** pendant ce travail. Les clés `web_search`, `--allowedTools` et les
+  niveaux d'effort ne sont **pas éprouvés en réel**.
+
+### Validation par Codex (2026-09-20), relayée par le PO — et suite
+Codex a rejoué les vérifications de façon indépendante : 93 tests ciblés verts, suite complète 566 réussis et
+2 ignorés (les 6 tests PWF réels rejoués avec Git Bash), Ruff, mypy strict (47 fichiers), scénario rc=0,
+`git diff --check` ; README : 27 lignes ajoutées, aucune section supprimée. Il juge les trois décisions
+correctement traduites, la liste Codex conforme à la configuration officielle OpenAI, et les points non
+éprouvés correctement présentés comme des réserves d'exécution réelle. **Aucun défaut bloquant.**
+- **Le hash du commit de ce lot est la référence des prochains essais réels** (voir `git log`, et la ligne
+  ajoutée en fin de cette section par le commit qui suit).
+- **3.1 ne sera complètement fermé qu'après le petit protocole fournisseur** couvrant les points 7 à 10 de
+  `reference/FRONTIERE_ROLES.md` : `web_search=disabled|live` chez Codex (et coupure effective), `WebSearch` /
+  `WebFetch` + `--allowedTools` chez Claude sous `--restricted`, niveaux d'effort acceptés, authentification de
+  chaque outil sans les variables de l'autre. **Il n'est pas nécessaire de refaire les deux cycles éditoriaux
+  sur la peinture.** Ce protocole consomme du quota : à lancer par le PO, sur son autorisation.
+- Restent aussi, hors de ce protocole : un éventuel essai avec un petit corpus (accès aux sources,
+  `SOURCES_MODIFIED`) et un essai depuis une session outillée pour éprouver le filtre d'environnement.

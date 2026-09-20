@@ -14,39 +14,49 @@ from __future__ import annotations
 
 import json
 import os
+import pathlib
 import sys
 from pathlib import Path
 from unittest import mock
 
 from iabinome import incidents, isolation, workflow
-from iabinome.adapters.base import CallSpec
+from iabinome.adapters.base import CallSpec, EnvPolicy
+from iabinome.adapters.claude import ClaudeAdapter
+from iabinome.adapters.codex import CodexAdapter
 from iabinome.models import State, Status
 from tests import fakes
 from tests.test_incidents import IncidentCase
 
 _DOC = "IABINOME:DOCUMENT\n# Proposition\nCorps du document."
 
-_HOST_ENV = {
-    "PLAN_ID": "2026-09-18-dialogforge-v2",
-    "PWF_PLAN_ROOT": "C:/hote/plans",
+CLAUDE = ClaudeAdapter().env
+CODEX = CodexAdapter().env
+
+# Ce que l'humain pose, ce que l'hôte y dépose, ce que chaque fournisseur possède.
+_PLAN = {"PLAN_ID": "2026-09-18-dialogforge-v2", "PWF_PLAN_ROOT": "C:/hote/plans"}
+_CLAUDE_HOST = {
     "CLAUDE_CODE_SESSION_ID": "session-secrete",
     "CLAUDE_CODE_MESSAGING_TOKEN": "jeton-secret",
     "CLAUDE_PLUGIN_ROOT": "C:/hote/plugin",
-    # L'hôte Codex (signalé à la validation de 2.2).
+}
+_CODEX_HOST = {  # signalés à la validation de 2.2
     "CODEX_SESSION_ID": "session-codex-secrete",
     "CODEX_THREAD_ID": "fil-codex-secret",
     "CODEX_PERMISSION_PROFILE": "profil-de-l-hote",
 }
-# À garder : sans elles, l'authentification ou l'outil lui-même casseraient.
-_KEPT_ENV = {
-    "CLAUDE_CODE_OAUTH_TOKEN": "jeton-d-authentification",
+# Ce que chaque outil garde chez lui : authentification, configuration, lanceur.
+_CLAUDE_OWN = {
+    "CLAUDE_CONFIG_DIR": "C:/Users/x/.claude-thermique",
+    "CLAUDE_CODE_OAUTH_TOKEN": "jeton-d-authentification-claude",
     "CLAUDE_CODE_GIT_BASH_PATH": "C:/Git/bin/bash.exe",
-    "ANTHROPIC_API_KEY": "cle",
-    # Opérationnelles côté Codex : `CODEX_HOME` porte l'authentification, le lanceur
-    # réécrit `CODEX_MANAGED_PACKAGE_ROOT` (raisons : `isolation.KEPT_ON_PURPOSE`).
+    "ANTHROPIC_API_KEY": "cle-anthropic",
+}
+_CODEX_OWN = {
     "CODEX_HOME": "C:/Users/x/.codex",
     "CODEX_MANAGED_PACKAGE_ROOT": "C:/npm/node_modules/@openai/codex",
+    "OPENAI_API_KEY": "cle-openai",
 }
+_EVERYTHING = {**_PLAN, **_CLAUDE_HOST, **_CODEX_HOST, **_CLAUDE_OWN, **_CODEX_OWN}
 
 
 class _Spy(fakes.FakeAdapter):
@@ -64,8 +74,9 @@ class _Spy(fakes.FakeAdapter):
         *,
         tamper_copy: str | None = None,
         tamper_real: Path | None = None,
+        env: EnvPolicy | None = None,
     ) -> None:
-        super().__init__(adapter_id, responses)
+        super().__init__(adapter_id, responses, env=env)
         self.out = out
         self.tamper_copy = tamper_copy
         self.tamper_real = tamper_real
@@ -156,92 +167,136 @@ class TestNeutralWorkdir(SeparationCase):
         self.assertEqual(self.state(collab).last_incident, None)
 
 
-class TestEnvironment(SeparationCase):
-    def test_the_reviewer_does_not_inherit_the_host_or_plan_context_either(self) -> None:
-        """2.3 : « le reviewer ne doit pas hériter du contexte PWF du producteur ». Le même
-        filtre s'applique aux deux rôles — plus strict que « selon le rôle » : aucun des deux
-        n'a besoin du plan, qui reste l'affaire de l'humain."""
-        collab, _ = self.spy_collaboration()
-        seen_by_b = self.root / "vu-par-b.json"
-        self.b = _Spy("fake-b", (fakes.review("ACCEPTER"),), seen_by_b)
+class TestEnvironmentPerAdapter(SeparationCase):
+    """3.1 : le filtre dépend de l'adaptateur. Chaque processus garde ce qui est à son fournisseur
+    — authentification, configuration, lanceur — et ne reçoit **rien** de l'autre ; le plan et les
+    sessions d'hôte sont retirés à tous."""
+
+    def names_seen(self, path: Path) -> set[str]:
+        return set(json.loads(path.read_text(encoding="utf-8"))["env"])
+
+    def cycle_with_both_providers(self) -> tuple[Path, Path, Path]:
+        """A tient la politique de Claude, B celle de Codex : les deux processus observent."""
+        collab = fakes.collaboration(self.root)
+        seen_a, seen_b = self.root / "vu-a.json", self.root / "vu-b.json"
+        self.a = _Spy("fake-a", (_DOC,), seen_a, env=CLAUDE)
+        self.b = _Spy("fake-b", (fakes.review("ACCEPTER"),), seen_b, env=CODEX)
         self.adapters = {"fake-a": self.a, "fake-b": self.b}
-        with mock.patch.dict(os.environ, {**_HOST_ENV, **_KEPT_ENV}):
+        with mock.patch.dict(os.environ, _EVERYTHING):
             self.run_engine(collab)
-        names = set(json.loads(seen_by_b.read_text(encoding="utf-8"))["env"])
-        for name in _HOST_ENV:
-            self.assertNotIn(name, names)
-        for name in _KEPT_ENV:
-            self.assertIn(name, names)
+        return collab, seen_a, seen_b
 
-    def test_host_variables_do_not_reach_the_agent(self) -> None:
-        collab, _ = self.spy_collaboration()
-        with mock.patch.dict(os.environ, {**_HOST_ENV, **_KEPT_ENV}):
-            self.run_engine(collab)
-        names = set(self.seen()["env"])  # type: ignore[call-overload]
-        for name in _HOST_ENV:
+    def test_the_claude_process_keeps_claude_and_loses_codex(self) -> None:
+        _, seen_a, _ = self.cycle_with_both_providers()
+        names = self.names_seen(seen_a)
+        for name in _CLAUDE_OWN:
+            self.assertIn(name, names)
+        for name in {**_CODEX_OWN, **_CODEX_HOST}:
             self.assertNotIn(name, names)
 
-    def test_authentication_and_the_rest_are_kept(self) -> None:
-        collab, _ = self.spy_collaboration()
-        with mock.patch.dict(os.environ, {**_HOST_ENV, **_KEPT_ENV}):
-            self.run_engine(collab)
-        names = set(self.seen()["env"])  # type: ignore[call-overload]
-        for name in _KEPT_ENV:
+    def test_the_codex_process_keeps_codex_and_loses_claude(self) -> None:
+        _, _, seen_b = self.cycle_with_both_providers()
+        names = self.names_seen(seen_b)
+        for name in _CODEX_OWN:
             self.assertIn(name, names)
-        self.assertIn("PATH", names)
+        for name in {**_CLAUDE_OWN, **_CLAUDE_HOST}:
+            self.assertNotIn(name, names)
+
+    def test_the_plan_and_every_host_session_are_removed_for_both(self) -> None:
+        _, seen_a, seen_b = self.cycle_with_both_providers()
+        for path in (seen_a, seen_b):
+            names = self.names_seen(path)
+            for name in {**_PLAN, **_CLAUDE_HOST, **_CODEX_HOST}:
+                self.assertNotIn(name, names)
+            self.assertIn("PATH", names)  # le reste passe
 
     def test_the_intention_names_what_was_removed_and_never_its_value(self) -> None:
-        collab, _ = self.spy_collaboration()
-        with mock.patch.dict(os.environ, {**_HOST_ENV, **_KEPT_ENV}):
-            self.run_engine(collab)
-        call_dir = next((collab / "appels").iterdir())
-        intention_text = (call_dir / "intention.json").read_text(encoding="utf-8")
-        intention = json.loads(intention_text)
-        self.assertEqual(intention["workdir"], "neutre")
-        for name in _HOST_ENV:
-            self.assertIn(name, intention["env_removed"])
-        for value in _HOST_ENV.values():
-            self.assertNotIn(value, intention_text)
+        collab, _, _ = self.cycle_with_both_providers()
+        for call_dir, foreign in (
+            (next((collab / "appels").glob("*-A-*")), _CODEX_OWN),
+            (next((collab / "appels").glob("*-B-*")), _CLAUDE_OWN),
+        ):
+            text = (call_dir / "intention.json").read_text(encoding="utf-8")
+            intention = json.loads(text)
+            self.assertEqual(intention["workdir"], "neutre")
+            for name in {**_PLAN, **_CLAUDE_HOST, **_CODEX_HOST, **foreign}:
+                self.assertIn(name, intention["env_removed"], call_dir.name)
+            own = _CLAUDE_OWN if foreign is _CODEX_OWN else _CODEX_OWN
+            for name in own:  # ce qui reste n'est pas dans la liste des retraits
+                self.assertNotIn(name, intention["env_removed"], call_dir.name)
+            for value in _EVERYTHING.values():
+                self.assertNotIn(value, text)
 
-    def test_the_codex_host_variables_are_removed_by_name(self) -> None:
-        """Le cas observé : un agent lancé depuis Codex héritait de l'identité de l'hôte."""
-        cleaned = isolation.clean_env({**_HOST_ENV, **_KEPT_ENV})
-        for name in ("CODEX_SESSION_ID", "CODEX_THREAD_ID", "CODEX_PERMISSION_PROFILE"):
-            self.assertNotIn(name, cleaned)
-        self.assertEqual(sorted(cleaned), sorted(_KEPT_ENV))
+    def test_the_other_provider_is_only_known_through_its_declared_policy(self) -> None:
+        """Sans autre adaptateur déclaré, rien n'est « étranger » : le noyau ne devine pas un
+        fournisseur, il lit des politiques."""
+        cleaned = isolation.clean_env({**_CLAUDE_OWN, **_CODEX_OWN}, CLAUDE, others=())
+        self.assertEqual(sorted(cleaned), sorted({**_CLAUDE_OWN, **_CODEX_OWN}))
 
-    def test_no_blanket_codex_or_claude_refusal(self) -> None:
-        """Un refus global casserait l'authentification ou le lanceur : une variable
-        `CODEX_*` ou `CLAUDE_*` qu'aucune règle nommée ne vise **passe**."""
-        unknown = {"CODEX_UNE_AUTRE": "1", "CLAUDE_UNE_AUTRE": "2", "CODEX": "3"}
-        self.assertEqual(isolation.clean_env(unknown), unknown)
+    def test_claude_and_codex_in_isolation(self) -> None:
+        for own, other, mine, theirs in (
+            (CLAUDE, CODEX, _CLAUDE_OWN, _CODEX_OWN), (CODEX, CLAUDE, _CODEX_OWN, _CLAUDE_OWN),
+        ):
+            cleaned = isolation.clean_env(_EVERYTHING, own, [other])
+            self.assertEqual(sorted(cleaned), sorted(mine))
+            self.assertEqual(
+                isolation.refused_names(_EVERYTHING, own, [other]),
+                sorted(set(_EVERYTHING) - set(mine)),
+            )
+            self.assertFalse(set(theirs) & set(cleaned))
 
-    def test_operational_variables_are_kept_explicitly_and_justified(self) -> None:
-        for name, reason in isolation.KEPT_ON_PURPOSE.items():
-            self.assertEqual(isolation.clean_env({name: "v"}), {name: "v"}, name)
-            self.assertEqual(isolation.refused_names({name: "v"}), [], name)
-            self.assertGreater(len(reason), 20, name)  # une raison, pas une étiquette
-        self.assertEqual(set(isolation.KEPT_ON_PURPOSE), {
-            "CODEX_HOME", "CODEX_MANAGED_PACKAGE_ROOT",
-            "CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CODE_GIT_BASH_PATH",
-        })
+    def test_no_blanket_refusal_inside_a_provider(self) -> None:
+        """Une variable du fournisseur lui-même qu'aucune règle ne cible **reste**, pour son
+        propre processus : seul l'autre fournisseur perd ce qui n'est pas à lui."""
+        own = {"CODEX_UNE_AUTRE": "1", "OPENAI_ORG": "2"}
+        self.assertEqual(isolation.clean_env(own, CODEX, [CLAUDE]), own)
+        self.assertEqual(isolation.clean_env(own, CLAUDE, [CODEX]), {})
 
-    def test_matching_ignores_case_for_every_refused_and_kept_name(self) -> None:
+    def test_each_kept_variable_has_a_reason_and_survives_its_own_provider(self) -> None:
+        for policy, expected in ((CLAUDE, set(_CLAUDE_OWN)), (CODEX, set(_CODEX_OWN))):
+            self.assertEqual(set(policy.kept), expected)
+            for name, reason in policy.kept.items():
+                self.assertGreater(len(reason), 20, name)  # une raison, pas une étiquette
+                other = CODEX if policy is CLAUDE else CLAUDE
+                self.assertEqual(isolation.clean_env({name: "v"}, policy, [other]), {name: "v"})
+                self.assertEqual(isolation.clean_env({name: "v"}, other, [policy]), {})
+
+    def test_a_kept_variable_survives_where_another_provider_claims_its_prefix(self) -> None:
+        """`kept` n'est pas décoratif : quand le préfixe d'un autre fournisseur recouvre une
+        variable dont celui-ci a besoin, c'est elle qui protège — et elle seule."""
+        mine = EnvPolicy(kept={"SHARED_TOKEN": "une raison, pas une simple étiquette"})
+        other = EnvPolicy(owned_prefixes=("SHARED_",))
+        env = {"SHARED_TOKEN": "v", "SHARED_AUTRE": "w"}
+        self.assertEqual(isolation.clean_env(env, mine, [other]), {"SHARED_TOKEN": "v"})
+
+    def test_matching_ignores_case(self) -> None:
         """Windows ne distingue pas la casse : `Codex_Thread_Id` est `CODEX_THREAD_ID`."""
-        env = {name.lower(): "v" for name in _HOST_ENV}
-        env.update({name.title(): "v" for name in isolation.KEPT_ON_PURPOSE})
-        self.assertEqual(sorted(isolation.clean_env(env)),
-                         sorted(n.title() for n in isolation.KEPT_ON_PURPOSE))
-        self.assertEqual(isolation.refused_names(env), sorted(n.lower() for n in _HOST_ENV))
+        env = {name.lower(): "v" for name in _EVERYTHING}
+        mine = {name.lower() for name in _CLAUDE_OWN}
+        self.assertEqual(set(isolation.clean_env(env, CLAUDE, [CODEX])), mine)
+        self.assertEqual(
+            set(isolation.refused_names(env, CLAUDE, [CODEX])), set(env) - mine
+        )
+        title = {name.title(): "v" for name in _CODEX_OWN}
+        self.assertEqual(isolation.clean_env(title, CODEX, [CLAUDE]), title)
 
-    def test_clean_env_is_case_insensitive_and_removes_the_pwf_family(self) -> None:
-        cleaned = isolation.clean_env({"pwf_autre": "1", "Plan_Id": "x", "PATH": "p"})
+    def test_a_real_process_keeps_the_pwf_family_out_case_insensitively(self) -> None:
+        cleaned = isolation.clean_env(
+            {"pwf_autre": "1", "Plan_Id": "x", "PATH": "p"}, CLAUDE, [CODEX]
+        )
         self.assertEqual(cleaned, {"PATH": "p"})
 
     def test_clean_env_never_touches_the_process_environment(self) -> None:
-        with mock.patch.dict(os.environ, _HOST_ENV):
-            isolation.clean_env(os.environ)
+        with mock.patch.dict(os.environ, _EVERYTHING):
+            isolation.clean_env(os.environ, CLAUDE, [CODEX])
             self.assertIn("PLAN_ID", os.environ)
+            self.assertIn("CODEX_HOME", os.environ)
+
+    def test_the_kernel_names_no_provider(self) -> None:
+        """`CLAUDE.md` §6 : aucun fournisseur nommé hors de son adaptateur."""
+        source = pathlib.Path(isolation.__file__).read_text(encoding="utf-8").lower()
+        for name in ("claude", "codex", "anthropic", "openai"):
+            self.assertNotIn(name, source)
 
 
 class TestSourcesAreChecked(SeparationCase):

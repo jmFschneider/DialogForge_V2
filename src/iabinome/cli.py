@@ -71,8 +71,8 @@ _EXIT_CODE = {
 # Réglages que le fichier de configuration peut fournir, par commande. Une clé
 # absente d'ici reste hors de sa portée, même si `settings` sait la lire.
 _SETTABLE = {
-    "new": ("agent_a", "agent_b", "model_a", "model_b", "kind", "reviewer_access",
-            "max_revisions"),
+    "new": ("agent_a", "agent_b", "model_a", "model_b", "effort_a", "effort_b", "web_access",
+            "kind", "reviewer_access", "max_revisions"),
     "run": ("timeout",),
     "resume": ("timeout",),
     "decide": ("timeout",),
@@ -215,13 +215,26 @@ def _build_new(
         manifest_text, _ = storage.read_text(tmp / "corpus" / "manifeste.json")
         corpus_sha = contracts.normalize(manifest_text).sha256
     agent_a, agent_b = ADAPTERS[args.agent_a], ADAPTERS[args.agent_b]
+    for who, adapter, effort in (
+        ("A", agent_a, args.effort_a), ("B", agent_b, args.effort_b)
+    ):
+        levels = adapter.capabilities.effort_levels
+        if effort is not None and effort not in levels:
+            raise ValueError(
+                f"effort {who} : {effort!r} refusé par {adapter.adapter_id} —"
+                f" attendu : {', '.join(levels) or 'aucun'}"
+            )
     config = Configuration(
         schema_version=SCHEMA_VERSION, collaboration_id=dest.name, mission_kind=kind,
         reviewer_access=access, max_revisions=args.max_revisions,
-        agent_a=AgentSpec(args.agent_a, args.model_a or agent_a.default_model(Role.A)),
-        agent_b=AgentSpec(args.agent_b, args.model_b or agent_b.default_model(Role.B)),
+        agent_a=AgentSpec(
+            args.agent_a, args.model_a or agent_a.default_model(Role.A), args.effort_a
+        ),
+        agent_b=AgentSpec(
+            args.agent_b, args.model_b or agent_b.default_model(Role.B), args.effort_b
+        ),
         initial_demande_sha256=normalized.sha256, corpus_manifest_sha256=corpus_sha,
-        created_at=_now(),
+        created_at=_now(), web_access=bool(args.web_access),
     )
     state = State(
         schema_version=SCHEMA_VERSION, status=Status.READY, phase=Phase.PROPOSAL_A, revision=0,
@@ -539,6 +552,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_new.add_argument("--source-label")
     p_new.add_argument("--model-a")
     p_new.add_argument("--model-b")
+    p_new.add_argument("--effort-a")
+    p_new.add_argument("--effort-b")
+    p_new.add_argument("--web-access", action=argparse.BooleanOptionalAction, default=None)
     p_new.add_argument("--max-revisions", type=_revisions)
     p_new.set_defaults(func=cmd_new)
 

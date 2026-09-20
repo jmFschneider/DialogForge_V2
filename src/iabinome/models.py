@@ -8,6 +8,7 @@ sont toujours présents, avec `null` au besoin — ils ne disparaissent jamais.
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -125,6 +126,13 @@ def _opt_str(d: dict[str, Any], key: str) -> str | None:
     return v
 
 
+def _bool(d: dict[str, Any], key: str) -> bool:
+    v = d[key]
+    if not isinstance(v, bool):
+        raise SchemaError(f"{key}: booléen attendu")
+    return v
+
+
 def _int(d: dict[str, Any], key: str) -> int:
     v = d[key]
     if not isinstance(v, int) or isinstance(v, bool):
@@ -212,6 +220,8 @@ def _encode(obj: Any, fields: tuple[tuple[str, Decoder], ...]) -> dict[str, Any]
 
 # -- Structures --
 
+_EFFORT = re.compile(r"[A-Za-z0-9_-]+")
+
 _AGENT_SPEC_FIELDS: tuple[tuple[str, Decoder], ...] = (
     ("adapter_id", _str),
     ("model", _str),
@@ -222,13 +232,29 @@ _AGENT_SPEC_FIELDS: tuple[tuple[str, Decoder], ...] = (
 class AgentSpec:
     adapter_id: str
     model: str
+    # Effort de raisonnement demandé à l'outil : **opaque** (le vocabulaire est celui de la
+    # CLI, qui refuse ce qu'elle ne connaît pas). `None` = ne rien demander, comportement
+    # d'avant ce réglage — et la clé n'est alors **pas écrite** : un `configuration.json`
+    # sans réglage reste identique à celui d'avant.
+    effort: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.effort is not None and not _EFFORT.fullmatch(self.effort):
+            raise SchemaError(
+                f"effort: lettres, chiffres, « - » et « _ » seulement, reçu {self.effort!r}"
+            )
 
     @staticmethod
     def from_dict(d: dict[str, Any]) -> AgentSpec:
-        return AgentSpec(**_decode(d, _AGENT_SPEC_FIELDS, "agent"))
+        with_effort = isinstance(d, dict) and "effort" in d
+        fields = (*_AGENT_SPEC_FIELDS, ("effort", _str)) if with_effort else _AGENT_SPEC_FIELDS
+        return AgentSpec(**_decode(d, fields, "agent"))
 
     def to_dict(self) -> dict[str, Any]:
-        return _encode(self, _AGENT_SPEC_FIELDS)
+        out = _encode(self, _AGENT_SPEC_FIELDS)
+        if self.effort is not None:
+            out["effort"] = self.effort
+        return out
 
 
 _CALL_STATE_FIELDS: tuple[tuple[str, Decoder], ...] = (
@@ -292,6 +318,9 @@ class Configuration:
     initial_demande_sha256: str
     corpus_manifest_sha256: str | None
     created_at: str
+    # Accès web des agents : **fermé par défaut**, même politique pour A et B. La clé n'est
+    # écrite que si elle est vraie ; une collaboration sans clé vaut `False`.
+    web_access: bool = False
 
     def __post_init__(self) -> None:
         """Un plafond de révisions négatif n'a pas de sens : la promotion serait
@@ -303,10 +332,17 @@ class Configuration:
 
     @staticmethod
     def from_dict(d: dict[str, Any]) -> Configuration:
-        return Configuration(**_decode(d, _CONFIGURATION_FIELDS, "configuration"))
+        with_web = isinstance(d, dict) and "web_access" in d
+        fields = (
+            (*_CONFIGURATION_FIELDS, ("web_access", _bool)) if with_web else _CONFIGURATION_FIELDS
+        )
+        return Configuration(**_decode(d, fields, "configuration"))
 
     def to_dict(self) -> dict[str, Any]:
-        return _encode(self, _CONFIGURATION_FIELDS)
+        out = _encode(self, _CONFIGURATION_FIELDS)
+        if self.web_access:
+            out["web_access"] = True
+        return out
 
 
 _STATE_FIELDS: tuple[tuple[str, Decoder], ...] = (

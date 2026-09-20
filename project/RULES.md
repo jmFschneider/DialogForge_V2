@@ -251,6 +251,15 @@
 **La liaison à un plan est un fichier à part, que le cycle ne lit pas ; le plan reste seul propriétaire de l'avancement.**
 *Motif (2.3) : `configuration.json` a un schéma strict (clés exactes) et le cycle en dépend ; y loger une référence facultative faisait de sa suppression une opération sur un fichier d'état. `plan.json` se supprime sans rien toucher, une liaison cassée ne bloque rien, et l'outil n'écrit jamais dans un plan ni ne copie ses phases : une seconde liste à cocher est exactement ce que CLAUDE.md §0 interdit.*
 
+**L'accès web est un réglage explicite, fermé par défaut, identique pour A et B — et dit dans l'argv des deux outils.**
+*Motif (3.1) : Codex cherchait sur le web sans que rien ne le demande (`--sandbox read-only` ne l'arrête pas) ; Claude, sous `--tools Read,Grep,Glob`, ne le pouvait pas — deux permutations non comparables. Le PO a écarté le « web par défaut » : `web_access` est figé à `new`, absent il vaut faux, et **les deux sens sont explicites** (`-c web_search=disabled` ou `live` pour Codex ; les outils web ajoutés et autorisés, ou absents, pour Claude), parce qu'un défaut laissé au réglage de l'outil est un défaut qui change avec l'outil. `CONTEXT_ONLY` reste sans aucun outil.*
+
+**Un réglage facultatif n'écrit rien tant qu'il n'est pas posé, et se valide contre l'outil qui le reçoit.**
+*Motif (3.1) : `effort` et `web_access` n'entrent dans `configuration.json` que s'ils sont donnés — sans eux, le fichier, l'argv et le comportement sont ceux d'avant, et les dossiers déjà créés restent lisibles. Le vocabulaire d'effort est celui de chaque CLI (Claude `max`, Codex `minimal`) : une valeur incompatible est refusée à `new` **et** au prévol, avant toute mutation et tout quota, jamais découverte par l'échec d'un appel payé. Sa forme reste bornée, parce qu'elle finit dans une ligne de commande.*
+
+**Un fournisseur ne reçoit rien de l'autre : le filtre d'environnement dépend de l'adaptateur, et c'est lui qui nomme ses variables.**
+*Motif (3.1) : le filtre de 2.2 était global — un jeton, un chemin de configuration ou une clé d'API d'un outil allait chez l'autre, et le noyau nommait les fournisseurs, contre `CLAUDE.md` §6. Désormais chaque adaptateur déclare une `EnvPolicy` (ce qu'il possède, ce que son hôte y dépose, ce qu'il garde et **pourquoi**) ; le noyau ne lit que des politiques. `CLAUDE_CONFIG_DIR` (le compte) reste chez Claude et n'existe pas chez Codex ; `CODEX_HOME` l'inverse. Le plan et les sessions d'hôte sont retirés à tous.*
+
 **Un agent ne tourne pas dans le dossier qu'il ne doit pas lire.**
 *Motif (2.2) : B héritait de la collaboration comme dossier de travail — `appels/`, le journal du producteur, les anciennes demandes y étaient à portée d'un outil de lecture, sans qu'aucune règle ne l'ait voulu. Le dossier est désormais jetable, avec une **copie** du corpus (jamais un lien, même dur : écrire dedans atteindrait l'original) ; l'environnement est filtré par une liste de refus **nominative**, une liste d'autorisation cassant l'authentification de la première CLI dont on ignore les besoins.*
 

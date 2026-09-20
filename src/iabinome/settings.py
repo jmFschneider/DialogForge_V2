@@ -44,6 +44,9 @@ _SPEC: dict[str, type] = {
     "agent_b": str,
     "model_a": str,
     "model_b": str,
+    "effort_a": str,
+    "effort_b": str,
+    "web_access": bool,
     "kind": str,
     "reviewer_access": str,
     "max_revisions": int,
@@ -104,6 +107,6 @@ def _checked(path: Path, key: str, value: Any) -> Any:
     """
     expected = _SPEC[key]
     accepted: tuple[type, ...] = (int, float) if expected is float else (expected,)
-    if isinstance(value, bool) or not isinstance(value, accepted):
+    if (isinstance(value, bool) and expected is not bool) or not isinstance(value, accepted):
         raise SettingsError(f"{path} : {key} = {value!r} — {expected.__name__} attendu")
     return value

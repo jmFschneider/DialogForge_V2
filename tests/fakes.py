@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from iabinome import contracts, storage
-from iabinome.adapters.base import CallSpec, Capabilities, ObservedCli
+from iabinome.adapters.base import CallSpec, Capabilities, EnvPolicy, ObservedCli
 from iabinome.models import SCHEMA_VERSION, Role
 
 # Une demande aux six sections du format court, pour prouver qu'aucune ne
@@ -134,6 +134,9 @@ class FakeAdapter:
         supports_model_override: bool = True,
         enforces_read_only: bool = True,
         fresh_session: bool = True,
+        effort_levels: tuple[str, ...] = ("low", "medium", "high"),
+        controls_web_access: bool = True,
+        env: EnvPolicy | None = None,
         present: bool = True,
         version: str = "fake 0.1.0",
         sleep_seconds: float = 0.0,
@@ -142,8 +145,12 @@ class FakeAdapter:
     ) -> None:
         self.adapter_id = adapter_id
         self.capabilities = Capabilities(
-            supports_context_only, supports_model_override, enforces_read_only, fresh_session
+            supports_context_only, supports_model_override, enforces_read_only, fresh_session,
+            effort_levels, controls_web_access,
         )
+        # Sans politique, le faux adaptateur ne possède aucune variable : `env` se donne aux
+        # tests qui éprouvent le filtrage par adaptateur.
+        self.env = env if env is not None else EnvPolicy()
         self.present = present
         self.version = version
         self.sleep_seconds = sleep_seconds
@@ -152,6 +159,8 @@ class FakeAdapter:
         self.exit_codes = list(exit_codes)
         self.calls = 0
         self.prompts: list[str] = []
+        self.efforts: list[str | None] = []
+        self.web_accesses: list[bool] = []
         self.observed_status: list[str] = []
 
     def default_model(self, role: Role) -> str:
@@ -163,6 +172,8 @@ class FakeAdapter:
     def command(self, call: CallSpec) -> list[str]:
         self.calls += 1
         self.prompts.append(call.prompt)
+        self.efforts.append(call.effort)
+        self.web_accesses.append(call.web_access)
         # `command` est résolu AVANT la publication de `CALLING` : relire l'état
         # ici prouve qu'un exécutable disparu serait refusé sans mutation, et
         # non déclaré « possiblement payé ». Que `CALLING` précède bien `Popen`

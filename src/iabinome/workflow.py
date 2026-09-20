@@ -229,6 +229,7 @@ def _preflight(
         ):
             raise WorkflowError(f"{agent.adapter_id} : modèle non remplaçable")
         _require_separation(agent.adapter_id, adapter)
+        _require_effort(agent.adapter_id, agent.effort, adapter)
         observed[agent.adapter_id] = seen
     if config.reviewer_access is ReviewerAccess.CONTEXT_ONLY and (
         not adapters[config.agent_b.adapter_id].capabilities.supports_context_only
@@ -251,6 +252,7 @@ def _require_separation(adapter_id: str, adapter: AgentAdapter) -> None:
         for label, present in (
             ("lecture seule", adapter.capabilities.enforces_read_only),
             ("session fraîche", adapter.capabilities.fresh_session),
+            ("accès web contrôlé", adapter.capabilities.controls_web_access),
         )
         if not present
     ]
@@ -258,6 +260,16 @@ def _require_separation(adapter_id: str, adapter: AgentAdapter) -> None:
         raise WorkflowError(
             f"{adapter_id} : séparation des rôles non supportée ({', '.join(missing)})"
         )
+
+
+def _require_effort(adapter_id: str, effort: str | None, adapter: AgentAdapter) -> None:
+    """Un effort que la CLI ne connaît pas est refusé **avant tout appel** : ni mutation, ni
+    quota. Le vocabulaire est celui de l'adaptateur, jamais une liste du noyau."""
+    if effort is None or effort in adapter.capabilities.effort_levels:
+        return
+    levels = adapter.capabilities.effort_levels
+    accepted = ", ".join(levels) if levels else "aucun : réglage non supporté"
+    raise WorkflowError(f"{adapter_id} : effort {effort!r} refusé — attendu : {accepted}")
 
 
 def _read_answer(intervention: Intervention | None) -> contracts.Normalized | None:
@@ -551,7 +563,12 @@ class _Engine:
             prompt=prompt, model=agent.model, timeout_seconds=self.timeout_seconds,
             work_root=self.collab,
             reviewer_access=self.config.reviewer_access if role is Role.B else None,
+            effort=agent.effort, web_access=self.config.web_access,
         )
+        adapter = self.adapters[agent.adapter_id]
+        others = [a.env for key, a in self.adapters.items() if key != agent.adapter_id]
+        env = isolation.clean_env(os.environ, adapter.env, others)
+        removed = isolation.refused_names(os.environ, adapter.env, others)
         # `command()` est résolu avant **le premier octet écrit** : un exécutable
         # disparu entre le prévol et l'appel est alors un refus qui ne laisse
         # rien derrière lui, et non un faux « possiblement payé » sur un appel
@@ -576,7 +593,7 @@ class _Engine:
             # 2.2 : dossier de travail **neutre** (copie du corpus seule) et noms —
             # jamais les valeurs — des variables de l'hôte retirées de l'environnement.
             "workdir": "neutre",
-            "env_removed": isolation.refused_names(os.environ),
+            "env_removed": removed,
             "retries": None if retry is None else retry.call_id,
             "retry_reason": None if retry is None else retry.reason, "created_at": _now(),
         })
@@ -596,7 +613,7 @@ class _Engine:
                 result = transport.run(
                     argv, cwd=workdir, call_dir=self.collab / rel_dir,
                     timeout_seconds=self.timeout_seconds, stdin_text=prompt,
-                    env=isolation.clean_env(os.environ),
+                    env=env,
                 )
         except transport.TransportError as exc:
             # `Popen` a échoué : l'appel **n'est pas parti**. Le déclarer

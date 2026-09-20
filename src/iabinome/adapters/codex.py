@@ -13,7 +13,14 @@ from __future__ import annotations
 import shutil
 
 from ..models import ReviewerAccess, Role
-from .base import AdapterError, CallSpec, Capabilities, ObservedCli, probe_version
+from .base import (
+    AdapterError,
+    CallSpec,
+    Capabilities,
+    EnvPolicy,
+    ObservedCli,
+    probe_version,
+)
 
 _EXECUTABLE = "codex"
 _DEFAULT_MODEL = "gpt-5.6-sol"
@@ -26,6 +33,20 @@ class CodexAdapter:
         supports_model_override=True,
         enforces_read_only=True,
         fresh_session=True,
+        effort_levels=("minimal", "low", "medium", "high", "xhigh"),
+        controls_web_access=True,
+    )
+    env = EnvPolicy(
+        owned_prefixes=("CODEX_", "OPENAI_"),
+        host_refused=frozenset({"CODEX_PERMISSION_PROFILE", "CODEX_SESSION_ID", "CODEX_THREAD_ID"}),
+        kept={
+            "CODEX_HOME": "où Codex lit son authentification — `--ignore-user-config` ne "
+            "l'ignore pas, sa propre aide dit « auth still uses CODEX_HOME »",
+            "CODEX_MANAGED_PACKAGE_ROOT": "posée par le lanceur npm de Codex, qui la réécrit "
+            "pour son enfant (lu dans `bin/codex.js`) : elle décrit le paquet installé",
+            "OPENAI_API_KEY": "authentification par clé d'API, quand c'est celle de "
+            "l'utilisateur",
+        },
     )
 
     def default_model(self, role: Role) -> str:
@@ -50,6 +71,15 @@ class CodexAdapter:
         ]
         if call.reviewer_access is ReviewerAccess.CONTEXT_ONLY:
             cmd += ["-c", "features.shell_tool=false"]
+        # Toujours explicite, dans les deux sens : `disabled` par défaut, `live` si la
+        # collaboration le demande — et `disabled` quoi qu'il arrive en `CONTEXT_ONLY`.
+        # La clé est celle du PO ; **non éprouvée en réel** (lot 3).
+        live = call.web_access and call.reviewer_access is not ReviewerAccess.CONTEXT_ONLY
+        cmd += ["-c", f"web_search={'live' if live else 'disabled'}"]
+        if call.effort is not None:
+            # Valeur TOML ; si elle n'en est pas une, Codex la prend comme chaîne littérale
+            # (`codex exec --help`) : pas de guillemets, que le lanceur `.CMD` abîmerait.
+            cmd += ["-c", f"model_reasoning_effort={call.effort}"]
         cmd.append("-")
         return cmd
 
