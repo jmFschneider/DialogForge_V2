@@ -547,3 +547,5 @@ correctement traduites, la liste Codex conforme à la configuration officielle O
   sur la peinture.** Ce protocole consomme du quota : à lancer par le PO, sur son autorisation.
 - Restent aussi, hors de ce protocole : un éventuel essai avec un petit corpus (accès aux sources,
   `SOURCES_MODIFIED`) et un essai depuis une session outillée pour éprouver le filtre d'environnement.
+- **Commit de référence des prochains essais réels : `dda7a54`** (`feat: acces web facultatif, effort valide par
+  adaptateur, environnement par fournisseur (3.1)`), 566 tests, 2026-09-20.
