@@ -1,6 +1,8 @@
 # Protocole fournisseur du 3.1 — points 7 à 10 de `FRONTIERE_ROLES.md`
 
-*Version 2, 2026-09-20, après la revue de Codex (cinq corrections retenues). Écrit pour le commit **`dda7a54`**
+*Version 2, 2026-09-20, après la revue de Codex (cinq corrections retenues). **Précontrôle amendé le 2026-09-20 (session
+documentation)** : il comparait `HEAD` et répondait « inchangé » même avec des modifications non commitées ; il compare
+maintenant l'arbre de travail. Écrit pour le commit **`dda7a54`**
 (référence des essais réels). **Rédigé, pas lancé** : aucune commande ci-dessous n'a été exécutée avec un
 fournisseur. Sont éprouvés **sans quota** : la commande `new` du mini-cycle, la création du corpus et du canari,
 le lecteur de flux sur un fichier synthétique, la restauration de l'environnement. Fait pour être lancé **par le
@@ -28,8 +30,10 @@ $env:CLAUDE_CONFIG_DIR = "$HOME\.claude"                    # le compte qui port
 Test-Path $codex, $claude                                    # attendu : True, True
 cd C:\Projets\DialogForge_2 ; git rev-parse --short HEAD     # noter la révision exacte sur laquelle l'essai est lancé
 git merge-base --is-ancestor b36515c HEAD ; $LASTEXITCODE    # attendu : 0 — le protocole version 2 est bien présent
-git diff --quiet dda7a54 HEAD -- src tests pyproject.toml iabinome.toml.exemple
-$LASTEXITCODE                                                 # attendu : 0 — le code fournisseur reste celui de dda7a54
+git status --short                                            # noter ce qui n'est pas commité : le mini-cycle de l'étape 5 tourne sur l'ARBRE DE TRAVAIL
+git diff --quiet dda7a54 -- src pyproject.toml iabinome.toml.exemple ':!src/iabinome/cli.py'
+$LASTEXITCODE                                                 # attendu : 0 — le code qui parle aux fournisseurs est celui de dda7a54, commité ou non
+git diff --stat dda7a54 -- src/iabinome/cli.py                # cli.py exclu ci-dessus : depuis dda7a54 on n'y a ajouté que des textes d'aide (--help), sans changer un comportement
 cd C:\Projets\essais-3-1\protocole
 $base = @("-p","--model",$cm,"--restricted","--strict-mcp-config","--no-session-persistence","--disable-slash-commands")
 ```

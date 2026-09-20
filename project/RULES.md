@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-09-19 (lot 1, point 1.1)
+> Dernière mise à jour : 2026-09-20 (3.3, documentation utilisateur)
 
 ## Index
 
@@ -216,6 +216,9 @@
 **`mock.patch.object(module, "nom_importe", …)` échoue sous `mypy --strict`** (`--no-implicit-reexport` refuse l'accès à un attribut simplement importé). Patcher le module d'origine de l'attribut (`shutil.which`, pas `adaptateur.shutil.which`) le contourne sans rien désactiver.
 *Motif : mesuré au palier 4, 2026-09-04, sur `tests/test_adapters.py`.*
 
+**Un test qui rapproche la documentation du code cherche chaque élément dans la section de son propriétaire, pas dans tout le fichier.**
+*Motif mesuré le 2026-09-20 (`tests/test_docs.py`) : la première version cherchait chaque option de la CLI n'importe où dans `COMMANDES.md`. Elle passait au vert, et une contre-épreuve — retirer `--timeout` de la seule section `decide` — ne la faisait pas échouer, puisque `run` le décrivait aussi. Une contre-épreuve par élément, pas seulement une par test : neuf mutations détectées du premier coup ne disaient rien de la dixième. Limite assumée : le test prouve qu'un élément est **nommé**, jamais que le texte est **vrai**.*
+
 **Un scénario de référence qui n'échoue jamais ne prouve rien : son code de sortie doit dire si le cycle est allé à son terme.**
 *Motif mesuré le 2026-09-19 : `reference/cycle_sans_fournisseur.py` a affiché `statut : ERROR` et sorti en code `0`. Mes « scénario rc=0 » du jour prouvaient donc seulement qu'il s'exécutait. Il rend désormais `1` hors de `AWAITING_APPROVAL` sans objection ouverte, et la contre-épreuve (A qui ne répond pas) le fait échouer.*
 
@@ -224,6 +227,12 @@
 ## Conduite de projet
 
 **Une décision actée peut être rouverte, mais jamais en silence :** signaler, tracer, faire re-décider.
+
+**Une page de limites se rédige depuis les mesures consignées, pas depuis un document écrit avant elles.**
+*Motif mesuré le 2026-09-20 : `docs/LIMITES.md` a d'abord repris de `FRONTIERE_ROLES.md` (écrit avant les essais) que les options d'isolation n'avaient « jamais été éprouvées ». Le journal du 2026-09-19 montrait qu'elles avaient été **acceptées** par les deux outils en réel, authentification conservée. Deux faits distincts — « accepté » et « appliqué » — et seul le second est resté non mesuré. Une page qui l'aurait confondu aurait sous-déclaré ce qui est acquis, ce qui est aussi faux que le sur-déclarer.*
+
+**La documentation qui cite une sortie du programme la cite telle que le programme la produit, jamais réécrite.**
+*Motif (3.3) : les extraits de `PRISE_EN_MAIN.md` viennent du scénario sans fournisseur rejoué en UTF-8. La première capture avait perdu les accents (console cp1252) ; recopier la sortie « à la main » aurait écrit une version que le programme ne produit pas. Ce sont des sorties de faux agents : à relire contre un cycle réel.*
 
 **Une voie écrite dans un document de décision n'est pas encore une implémentation : la relire contre le code avant de la soumettre à l'arbitrage.**
 *Motif mesuré le 2026-09-05 : la voie B du bloc clôturé était formulée « exactement un bloc ; zéro ou deux restent un refus » — inapplicable, puisque compter les clôtures découpe au mauvais endroit dès que la revue cite du markdown dans `analysis`. L'ancrage correct, première clôture → dernière, était déjà dans le code. Soumis tel quel, l'arbitrage aurait porté sur une règle qu'on n'aurait pas pu écrire.*

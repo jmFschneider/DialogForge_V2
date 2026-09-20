@@ -1,4 +1,4 @@
-"""Surface CLI — sept commandes (CONCEPTION_FINALE.md §7, étendue en V2 par 1.4).
+"""Surface CLI — huit commandes (CONCEPTION_FINALE.md §7, étendue en V2 par 1.4 et 2.3).
 
 `new` fait tous ses prévols dans un répertoire temporaire frère puis publie
 par renommage ; `run` est l'unique moteur synchrone ; `resume` n'en contient
@@ -528,87 +528,138 @@ def _revisions(text: str) -> int:
     return value
 
 
+_EPILOG = """\
+codes de sortie : 0 terminé · 1 refus avant toute modification · 2 erreur d'usage
+                  3 interrompu · 4 erreur · 5 en attente de vous · 6 pause demandée
+documentation   : docs/PRISE_EN_MAIN.md · docs/COMMANDES.md · docs/CONFIGURATION.md"""
+
+_CONFIG_HELP = "fichier de configuration à utiliser (sinon ./iabinome.toml, puis ~/.iabinome.toml)"
+_TIMEOUT_HELP = "délai dur par appel, en secondes (défaut : fichier de configuration, sinon 1800)"
+_EFFORT_HELP = "effort de raisonnement de {} ; le vocabulaire est celui de l'outil, facultatif"
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="python -m iabinome")
-    sub = parser.add_subparsers(dest="command", required=True)
+    parser = argparse.ArgumentParser(
+        prog="python -m iabinome",
+        description="Deux agents IA en ligne de commande : A produit, B critique, vous arbitrez.",
+        epilog=_EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sub = parser.add_subparsers(dest="command", required=True, metavar="commande")
 
     # Ni `required=True` ni `default=` sur ce que le fichier peut fournir : la
     # valeur doit rester `None` pour que `_merge_settings` sache que l'humain
     # n'a rien tranché. Le manque est constaté dans `cmd_new`, donc en code 1 —
     # un refus avant mutation, pas une erreur d'usage.
-    p_new = sub.add_parser("new")
-    p_new.add_argument("collab")
+    p_new = sub.add_parser("new", help="créer une collaboration (aucun appel d'agent)")
+    p_new.add_argument("collab", help="dossier de la collaboration, qui ne doit pas exister")
     # Un fichier de demande, ou le cadrage guidé : jamais les deux, jamais aucun.
     source = p_new.add_mutually_exclusive_group(required=True)
-    source.add_argument("--demande")
-    source.add_argument("--cadrer", action="store_true")
-    p_new.add_argument("--config")
-    p_new.add_argument("--kind", choices=sorted(_KIND))
-    p_new.add_argument("--reviewer-access", choices=sorted(_ACCESS))
-    p_new.add_argument("--agent-a", choices=sorted(ADAPTERS))
-    p_new.add_argument("--agent-b", choices=sorted(ADAPTERS))
-    p_new.add_argument("--source-root")
-    p_new.add_argument("--source-list")
-    p_new.add_argument("--source-label")
-    p_new.add_argument("--model-a")
-    p_new.add_argument("--model-b")
-    p_new.add_argument("--effort-a")
-    p_new.add_argument("--effort-b")
-    p_new.add_argument("--web-access", action=argparse.BooleanOptionalAction, default=None)
-    p_new.add_argument("--max-revisions", type=_revisions)
+    source.add_argument("--demande", help="fichier texte qui contient votre demande")
+    source.add_argument(
+        "--cadrer", action="store_true",
+        help="écrire la demande par un questionnaire de terminal, sans appel de modèle",
+    )
+    p_new.add_argument("--config", help=_CONFIG_HELP)
+    p_new.add_argument(
+        "--kind", choices=sorted(_KIND), help="genre de livrable (une recherche exige un corpus)"
+    )
+    p_new.add_argument(
+        "--reviewer-access", choices=sorted(_ACCESS),
+        help="consult laisse à B les outils de sa CLI, context-only les lui retire",
+    )
+    p_new.add_argument("--agent-a", choices=sorted(ADAPTERS), help="l'outil qui produit")
+    p_new.add_argument("--agent-b", choices=sorted(ADAPTERS), help="l'outil qui critique")
+    p_new.add_argument("--source-root", help="dossier des sources ; va avec --source-list")
+    p_new.add_argument(
+        "--source-list",
+        help="fichier qui liste les sources, un chemin par ligne relatif à --source-root",
+    )
+    p_new.add_argument("--source-label", help="nom du corpus (défaut : nom de --source-root)")
+    p_new.add_argument("--model-a", help="modèle de A (défaut : celui de l'adaptateur)")
+    p_new.add_argument("--model-b", help="modèle de B (défaut : celui de l'adaptateur)")
+    p_new.add_argument("--effort-a", help=_EFFORT_HELP.format("A"))
+    p_new.add_argument("--effort-b", help=_EFFORT_HELP.format("B"))
+    p_new.add_argument(
+        "--web-access", action=argparse.BooleanOptionalAction, default=None,
+        help="autoriser la recherche web, pour A et B ; fermé par défaut",
+    )
+    p_new.add_argument(
+        "--max-revisions", type=_revisions,
+        help="nombre maximal de révisions (défaut : fichier de configuration, sinon 2)",
+    )
     p_new.set_defaults(func=cmd_new)
 
-    p_run = sub.add_parser("run")
-    p_run.add_argument("collab")
-    p_run.add_argument("--config")
-    p_run.add_argument("--timeout", type=_timeout)
+    p_run = sub.add_parser("run", help="lancer ou reprendre le cycle (appels payants)")
+    p_run.add_argument("collab", help="dossier de la collaboration")
+    p_run.add_argument("--config", help=_CONFIG_HELP)
+    p_run.add_argument("--timeout", type=_timeout, help=_TIMEOUT_HELP)
     p_run.set_defaults(func=cmd_run)
 
-    p_resume = sub.add_parser("resume")
-    p_resume.add_argument("collab")
-    p_resume.add_argument("--config")
-    p_resume.add_argument("--timeout", type=_timeout)
-    p_resume.add_argument("--answer")
-    p_resume.add_argument("--retry-call")
-    p_resume.add_argument("--reprocess", metavar="UUID")
-    p_resume.add_argument("--reason-file")
+    p_resume = sub.add_parser(
+        "resume", help="sortir d'un arrêt : répondre à une question, relancer, retraiter"
+    )
+    p_resume.add_argument("collab", help="dossier de la collaboration")
+    p_resume.add_argument("--config", help=_CONFIG_HELP)
+    p_resume.add_argument("--timeout", type=_timeout, help=_TIMEOUT_HELP)
+    p_resume.add_argument(
+        "--answer", help="fichier qui complète la demande (statut WAITING_HUMAN)"
+    )
+    p_resume.add_argument(
+        "--retry-call", help="identifiant de l'appel à relancer : nouvel appel payant"
+    )
+    p_resume.add_argument(
+        "--reprocess", metavar="UUID",
+        help="identifiant de l'appel dont la réponse conservée est relue en local, sans appel",
+    )
+    p_resume.add_argument(
+        "--reason-file", help="fichier qui dit pourquoi ; exigé avec --retry-call et --reprocess"
+    )
     p_resume.set_defaults(func=cmd_resume)
 
     # `status` est en lecture seule et n'a rien à régler : pas de `--config`.
-    p_status = sub.add_parser("status")
-    p_status.add_argument("collab")
-    p_status.add_argument("--json", action="store_true")
+    p_status = sub.add_parser("status", help="dire où en est la collaboration (lecture seule)")
+    p_status.add_argument("collab", help="dossier de la collaboration")
+    p_status.add_argument("--json", action="store_true", help="sortie en une ligne JSON")
     p_status.set_defaults(func=cmd_status)
 
-    p_show = sub.add_parser("show")
-    p_show.add_argument("collab")
-    p_show.add_argument("--no-document", action="store_true")
+    p_show = sub.add_parser("show", help="lire le résultat avant de décider (lecture seule)")
+    p_show.add_argument("collab", help="dossier de la collaboration")
+    p_show.add_argument(
+        "--no-document", action="store_true", help="le résumé seul, sans le document"
+    )
     p_show.set_defaults(func=cmd_show)
 
     # Une décision et une seule par commande. Trois ne touchent pas au moteur ;
     # `--correct` l'utilise, donc accepte `--timeout` et `--config`.
-    p_decide = sub.add_parser("decide")
-    p_decide.add_argument("collab")
-    p_decide.add_argument("--config")
-    p_decide.add_argument("--timeout", type=_timeout)
+    p_decide = sub.add_parser("decide", help="consigner votre décision sur la version examinée")
+    p_decide.add_argument("collab", help="dossier de la collaboration")
+    p_decide.add_argument("--config", help=_CONFIG_HELP)
+    p_decide.add_argument("--timeout", type=_timeout, help=_TIMEOUT_HELP)
     choice = p_decide.add_mutually_exclusive_group(required=True)
-    choice.add_argument("--accept", action="store_true")
-    choice.add_argument("--accept-with-reserves", metavar="TEXTE")
-    choice.add_argument("--correct", metavar="FICHIER")
-    choice.add_argument("--stop", action="store_true")
-    p_decide.add_argument("--reason")
+    choice.add_argument("--accept", action="store_true", help="accepter cette version")
+    choice.add_argument(
+        "--accept-with-reserves", metavar="TEXTE", help="accepter, avec vos réserves (exigées)"
+    )
+    choice.add_argument(
+        "--correct", metavar="FICHIER",
+        help="fichier qui complète la demande : A révise, B relit, un tour au-delà du plafond",
+    )
+    choice.add_argument("--stop", action="store_true", help="arrêter, définitivement")
+    p_decide.add_argument("--reason", help="motif de l'arrêt ; ne vaut qu'avec --stop")
     p_decide.set_defaults(func=cmd_decide)
 
-    p_plan = sub.add_parser("plan")
-    p_plan.add_argument("collab")
+    p_plan = sub.add_parser(
+        "plan", help="résumé à reporter dans un plan PWF, ou liaison facultative à ce plan"
+    )
+    p_plan.add_argument("collab", help="dossier de la collaboration")
     which = p_plan.add_mutually_exclusive_group()
-    which.add_argument("--link", metavar="ID_DU_PLAN")
-    which.add_argument("--unlink", action="store_true")
+    which.add_argument("--link", metavar="ID_DU_PLAN", help="lier la collaboration à ce plan")
+    which.add_argument("--unlink", action="store_true", help="retirer la liaison")
     p_plan.add_argument("--plan-root", help="racine du projet qui porte `.planning/`")
     p_plan.set_defaults(func=cmd_plan)
 
-    p_list = sub.add_parser("list")
-    p_list.add_argument("root")
+    p_list = sub.add_parser("list", help="énumérer les collaborations d'un dossier")
+    p_list.add_argument("root", help="dossier qui contient des collaborations")
     p_list.set_defaults(func=cmd_list)
 
     return parser

@@ -9,6 +9,14 @@ avec reprise après incident sans rejouer un appel ambigu.
 **REPRISE (écrit le 2026-09-20, fin de session) — lire ceci d'abord.**
 - **État** : branche `v2-socle`, arbre propre, suite verte (566 tests, ruff, mypy strict, scénario rc=0) au commit
   de code **`dda7a54`** ; les commits suivants (`9577c83`, `b36515c`) ne touchent que la documentation.
+- **Session du 2026-09-20 (suite) — documentation utilisateur, 3.3 partiel, NON COMMITÉE** (arbre modifié) :
+  `README.md` allégé (porte d'entrée), `docs/` (`PRISE_EN_MAIN`, `COMMANDES`, `CONFIGURATION`, `LIMITES`,
+  `DEVELOPPEMENT`), `exemples/`, texte d'aide sur toute la CLI (`--help`), `tests/test_docs.py`. Suite 574
+  passés, ruff, mypy, scénario rc=0. **`docs/LIMITES.md` est daté de `dda7a54` : à mettre à jour après le
+  protocole 3.1.** **Renommage en DialogForge : à faire à la fin du développement V2** (PO, 2026-09-20) ; les
+  fichiers touchés sont listés dans `docs/DEVELOPPEMENT.md`. **Le PO n'a pas lancé le protocole 3.1** (dit le
+  2026-09-20). Écart repéré, non corrigé : `reference/FRONTIERE_ROLES.md` (écrit avant les essais) dit « jamais
+  éprouvé » pour des drapeaux que les deux cycles réels du 2026-09-19 ont **acceptés** — l'*effet* reste non mesuré.
 - **Ce qui attend le PO** : lancer `reference/PROTOCOLE_FOURNISSEUR_3_1.md` (≈ 6 appels, ses accès et son quota,
   dans un `pwsh -NoProfile` jetable) et me rapporter les sorties — ou me dire de lire
   `C:\Projets\essais-3-1\protocole\` (hors dépôt, matériel déjà créé).
@@ -118,8 +126,10 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 - [ ] 3.1 Versions des CLI et modèles relevées ; essai de petite taille en collaboration jetable
 - [ ] 3.2 Trois tâches représentatives : conception courte, synthèse sur corpus, révision
 - [ ] 3.3 Aide courte, exemples sans donnée personnelle, limites effectives documentées
+      *(2026-09-20, non commité : aide `--help`, `exemples/`, `docs/` et README faits ; **reste** : mettre
+      `docs/LIMITES.md` à jour après 3.1/3.2, puis cocher)*
 - [ ] 3.3 Validation complète sur le commit livré, installation en environnement propre, version marquée
-- **Status:** pending
+- **Status:** in progress — 3.3 partiel (documentation) ; 3.1 en cours, 3.2 non commencé
 - **Jalon :** J3 — première livraison utilisable.
 
 ## Extension identifiée (hors phases)
@@ -155,6 +165,7 @@ commit, ni déploiement automatique dans le moteur documentaire.
 | **Catalogue des incidents** (`incidents.py`, 2.1) | « Payé ? » ∈ non / peut-être / inconnu / oui, sens, options. Pour `CLI_FAILED`, le message de l'outil est cité tel quel ; aucun coût, aucune heure de reprise déduits |
 | **Ctrl+C à deux temps** (2.1) | Premier = pause à la frontière d'appel (`workflow.run(pause=…)`, `READY`, code 6) ; second = arrêt immédiat (`INTERRUPTED_BY_USER`). Pas de worker, pas de tâche planifiée : c'est le terminal de l'humain |
 | Verrou : rien de changé (2.1) | L'exclusion et le refus d'un verrou ambigu étaient déjà là ; ajout de tests au niveau CLI (détenteur vivant, verrou illisible : jamais effacé) |
+| **Documentation utilisateur** : README court + `docs/` (5 pages) + `exemples/` + `--help` (3.3 partiel, PO, 2026-09-20) | Le README de 350 lignes mêlait mode d'emploi, justification et historique mesuré. Le PO a confirmé : ouvrir 3.3 dans ces termes, retirer l'historique et l'origine du code du README (passés dans `docs/DEVELOPPEMENT.md`), et **un test de cohérence** `tests/test_docs.py` (option ↔ section de sa commande, clé de réglage, aide, exemples rejoués par `new`, liens et ancres) — un contrôle de plus, **accepté en connaissance de cause** (`POURQUOI.md` règle 2), qui ne vérifie pas que le texte est *vrai*. Le renommage en DialogForge est reporté à la **fin du développement V2** : la documentation écrit `python -m iabinome` partout |
 | `ruff format` hors de la porte de validation | Le projet ne l'a jamais utilisé ; reformater 26 fichiers brouillerait les diffs du lot 1 sans rien prouver |
 
 ## Errors Encountered

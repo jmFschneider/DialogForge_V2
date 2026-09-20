@@ -569,3 +569,49 @@ correctement traduites, la liste Codex conforme à la configuration officielle O
   (`SetEnvironmentVariable(nom, $null)` laisse une variable **vide** au lieu de la supprimer) ; corrigé, retesté.
 - **Non vérifié** : le format réel du flux `stream-json` (le lecteur a été éprouvé sur un fichier synthétique).
 - **Zéro quota, déjà constaté** : `claude --effort minimal` est ignoré avec un avertissement (Claude n'échoue pas).
+
+## Session: 2026-09-20 (suite) — documentation utilisateur, 3.3 partiel — **NON COMMITÉE**
+
+Demande du PO : rédiger la documentation à l'usage de l'utilisateur. Proposition soumise, **quatre décisions du PO** :
+ouvrir 3.3 dans ces termes ; renommage en DialogForge **à la fin du développement V2** ; README allégé (historique et
+origine retirés) ; test de cohérence retenu. **Le PO n'a pas lancé le protocole 3.1** (dit dans la session).
+
+**Livré** (aucun appel fournisseur de ma part ; sorties citées produites par `reference/cycle_sans_fournisseur.py`) :
+- `README.md` : 350 → ~90 lignes, porte d'entrée. L'historique et l'origine du code passent dans `docs/DEVELOPPEMENT.md`.
+- `docs/PRISE_EN_MAIN.md`, `COMMANDES.md` (8 commandes, statuts, codes, catalogue des incidents), `CONFIGURATION.md`,
+  `LIMITES.md` (trois niveaux de preuve, **daté de `dda7a54`**), `DEVELOPPEMENT.md`.
+- `exemples/` : demande de conception, demande de recherche, mini-corpus fictif de deux notes, `corpus.txt`.
+- `src/iabinome/cli.py` : `help=` sur **toutes** les commandes et options, description et épilogue (codes de sortie) ;
+  docstring corrigée (huit commandes, pas sept). Seul code touché.
+- `tests/test_docs.py` (8 tests, 142 sous-tests) : chaque commande a sa section ; chaque option est nommée **dans la
+  section de sa commande** ; chaque clé de réglage est dans `CONFIGURATION.md` et dans `iabinome.toml.exemple` ; chaque
+  option a un texte d'aide ; les exemples passent par `new` (recherche : manifeste = les deux fichiers attendus) ; liens
+  relatifs et ancres résolus.
+
+**Vérifié** : suite complète **574 passés, 2 ignorés** (566 + 8 nouveaux), `ruff check .`, `mypy` strict (48 fichiers),
+scénario rc=0, `git diff --check` propre (avertissement LF→CRLF sur `README.md`, sans effet).
+**Contre-épreuves du test** : 10 mutations, **10 détectées**, chacune annulée ensuite (option retirée de `COMMANDES.md` ;
+`help=` retiré ; lien cassé ; ancre cassée ; section retirée d'un exemple ; corpus pointant un fichier absent ; clé
+absente de `CONFIGURATION.md` ; clé inconnue dans le `.toml` d'exemple ; commande sans section ; **option retirée de la
+seule section `decide`**). **Cette dernière a montré une faiblesse de ma première version** : le test cherchait l'option
+n'importe où dans `COMMANDES.md`, donc `--timeout` documenté pour `run` masquait son oubli dans `decide` ; rendu strict
+par section.
+
+**Erreur rectifiée en cours de route** : mon premier `LIMITES.md` écrivait « aucun appel réel n'a encore prouvé » pour les
+options d'isolation, d'après `FRONTIERE_ROLES.md` (écrit **avant** les essais). Le journal du 2026-09-19 (plus haut)
+montre qu'elles ont été **acceptées** par les deux outils en réel, avec authentification conservée ; seul leur **effet**
+n'est pas mesuré. Corrigé : `LIMITES.md` distingue « accepté » de « appliqué », et cite les durées d'appel mesurées
+(305 s Codex, 402 s Claude).
+
+**Écart non corrigé, à décider par le PO** : `reference/FRONTIERE_ROLES.md` dit encore « jamais éprouvé » pour ces drapeaux
+(section « Ce que le programme demande à la CLI »). À mettre à jour, ou à laisser daté.
+**Protocole 3.1 : le PO décide de le lancer (2026-09-20).** Avant lancement, défaut trouvé dans le **précontrôle du
+protocole** : `git diff --quiet dda7a54 HEAD -- src …` compare des commits, donc rendait `0` (« code inchangé ») alors que
+l'arbre de travail portait des modifications non commitées de `cli.py` (textes d'aide) — et le mini-cycle de l'étape 5 tourne
+sur l'arbre de travail. Mesuré : `HEAD` → rc 0, arbre de travail → rc 1. Corrigé : il compare l'arbre de travail, `cli.py`
+exclu (aide seule, suite verte), et `git status --short` est demandé. Le hash noté par `git rev-parse` ne désigne le code
+lancé que si la documentation est commitée avant.
+
+**Reste pour fermer 3.3** : mettre `LIMITES.md` à jour après 3.1/3.2 ; le renommage DialogForge (fin de V2, fichiers listés
+dans `docs/DEVELOPPEMENT.md`) ; relire `docs/` contre les sorties **réelles** quand un cycle réel les aura produites (les
+extraits cités viennent du faux agent).
