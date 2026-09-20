@@ -6,6 +6,20 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
+**REPRISE (écrit le 2026-09-20, fin de session) — lire ceci d'abord.**
+- **État** : branche `v2-socle`, arbre propre, suite verte (566 tests, ruff, mypy strict, scénario rc=0) au commit
+  de code **`dda7a54`** ; les commits suivants (`9577c83`, `b36515c`) ne touchent que la documentation.
+- **Ce qui attend le PO** : lancer `reference/PROTOCOLE_FOURNISSEUR_3_1.md` (≈ 6 appels, ses accès et son quota,
+  dans un `pwsh -NoProfile` jetable) et me rapporter les sorties — ou me dire de lire
+  `C:\Projets\essais-3-1\protocole\` (hors dépôt, matériel déjà créé).
+- **Première action d'une nouvelle session** : demander au PO s'il a lancé le protocole. Si oui, lire ses sorties,
+  remplir le tableau « Résultats » du protocole, proposer **seulement** les corrections que les écarts justifient.
+  Sinon : rien à faire de plus sur 3.1 ; ne rien lancer avec un fournisseur.
+- **Ensuite** (chacune sur autorisation du PO) : fermer 3.1 (cocher la case du plan), puis 3.2 (trois tâches
+  représentatives) et 3.3 (aide, exemples, validation sur le commit livré) — voir `## Phases`, phase 4.
+- **Règles de travail qui ne se déduisent pas du dépôt** : dans la mémoire du projet (préférences du PO, appels
+  fournisseur, environnement PowerShell, dossiers d'essai). Les règles de code sont dans `project/RULES.md`.
+
 **J1 validé par le PO le 2026-09-19. LOT 2 OUVERT le 2026-09-19** (autorisation du PO). Lot 1 : 1.1
 `b0dc6a3`, 1.2 `2b5ae15`, 1.3 `25ab101`, 1.4 `6cf7aa4`.
 

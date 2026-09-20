@@ -45,8 +45,9 @@ quota, et c'est la configuration de `§6` ci-dessous. Motif complet dans `projec
 demande.md → A produit → B critique → A révise → (N fois max) → A finalise → livrable
 ```
 
-**État : pas encore commencé.** L'étape en cours est la **récolte** (`RECOLTE.md`) — ni la spécification, ni le code.
-Enchaînement : **récolte → spécification → implémentation**, avec arbitrage humain entre chaque.
+**État : voir le plan PWF** (`## Next Step` de `.planning/2026-09-18-dialogforge-v2/task_plan.md`) — cette page ne le suit pas.
+L'enchaînement d'origine était **récolte → spécification → implémentation**, avec arbitrage humain entre chaque :
+les deux premières étapes sont faites (`conception/`), le développement V2 avance lot par lot dans le plan.
 
 ## 2. Périmètre — les cinq interdits
 
