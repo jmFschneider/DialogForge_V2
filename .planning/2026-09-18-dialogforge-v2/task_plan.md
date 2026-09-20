@@ -40,7 +40,8 @@ identifiés » = `FRONTIERE_ROLES.md`.
 tourné sans incident ; le PO a tranché les trois constats (web facultatif et fermé par défaut, effort validé
 par adaptateur, environnement par fournisseur), commités et validés par Codex le 2026-09-20 (hash = référence
 des prochains essais, voir `git log`). **3.1 se ferme après le petit protocole fournisseur** (points 7 à 10 de
-`reference/FRONTIERE_ROLES.md`) — pas de nouveau cycle éditorial. Il consomme du quota : à lancer par le PO,
+`reference/FRONTIERE_ROLES.md`), **rédigé et figé dans `reference/PROTOCOLE_FOURNISSEUR_3_1.md`**
+(version 2, revue Codex intégrée, **pas encore lancé**) — pas de nouveau cycle éditorial. Il consomme du quota : à lancer par le PO,
 sur son autorisation. Les garanties des CLI réelles ne sont acquises que point par point, à mesure qu'elles
 sont mesurées.
 

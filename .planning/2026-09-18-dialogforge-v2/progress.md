@@ -549,3 +549,23 @@ correctement traduites, la liste Codex conforme à la configuration officielle O
   `SOURCES_MODIFIED`) et un essai depuis une session outillée pour éprouver le filtre d'environnement.
 - **Commit de référence des prochains essais réels : `dda7a54`** (`feat: acces web facultatif, effort valide par
   adaptateur, environnement par fournisseur (3.1)`), 566 tests, 2026-09-20.
+
+## Session: 2026-09-20 — protocole fournisseur du 3.1 (rédigé, pas lancé)
+
+`reference/PROTOCOLE_FOURNISSEUR_3_1.md` (version 2) et `reference/lire_flux_claude.ps1` — **commités** (voir
+`git log`). Version 1 rédigée à la demande du PO, puis **corrigée sur cinq points de la revue de Codex** :
+1. **corpus et canari obligatoires** dans le mini-cycle (marqueur `CORPUS-3-1-OK`, fichier hors corpus
+   `CANARY-HORS-CORPUS-3-1`, demande explicite de les restituer) — le canari est une **observation**, pas un
+   verdict ;
+2. **Claude : la preuve est le flux** `--output-format stream-json --verbose` (outils annoncés, appels,
+   résultats), pas la phrase-témoin (contrôle secondaire) ;
+3. **chemins complets** (`codex.cmd`, `claude.exe`) et modèle Claude précis (`claude-sonnet-5`) ;
+4. **variables d'environnement sauvegardées et restaurées** (`try/finally`), dans un PowerShell jetable ;
+5. **coût ramené à environ six appels** : plus d'appels dédiés à l'effort, porté par le mini-cycle
+   (`--effort-a medium --effort-b high`) ; l'étape 4b reformulée (diagnostic d'un échec, pas preuve générale).
+- **Éprouvé sans quota** : `new` du mini-cycle avec corpus et efforts (configuration écrite avec `effort`) ;
+  création du matériel ; lecteur de flux sur un fichier synthétique ; commandes de lecture rejouées sur le
+  premier essai ; motif de restauration de l'environnement — **qui a révélé un défaut de ma première version**
+  (`SetEnvironmentVariable(nom, $null)` laisse une variable **vide** au lieu de la supprimer) ; corrigé, retesté.
+- **Non vérifié** : le format réel du flux `stream-json` (le lecteur a été éprouvé sur un fichier synthétique).
+- **Zéro quota, déjà constaté** : `claude --effort minimal` est ignoré avec un avertissement (Claude n'échoue pas).
