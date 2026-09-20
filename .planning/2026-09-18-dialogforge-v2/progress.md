@@ -570,7 +570,7 @@ correctement traduites, la liste Codex conforme à la configuration officielle O
 - **Non vérifié** : le format réel du flux `stream-json` (le lecteur a été éprouvé sur un fichier synthétique).
 - **Zéro quota, déjà constaté** : `claude --effort minimal` est ignoré avec un avertissement (Claude n'échoue pas).
 
-## Session: 2026-09-20 (suite) — documentation utilisateur, 3.3 partiel — **NON COMMITÉE**
+## Session: 2026-09-20 (suite) — documentation utilisateur, 3.3 partiel — commitée (`5542ee8`)
 
 Demande du PO : rédiger la documentation à l'usage de l'utilisateur. Proposition soumise, **quatre décisions du PO** :
 ouvrir 3.3 dans ces termes ; renommage en DialogForge **à la fin du développement V2** ; README allégé (historique et

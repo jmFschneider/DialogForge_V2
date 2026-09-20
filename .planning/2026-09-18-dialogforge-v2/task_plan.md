@@ -9,13 +9,13 @@ avec reprise après incident sans rejouer un appel ambigu.
 **REPRISE (écrit le 2026-09-20, fin de session) — lire ceci d'abord.**
 - **État** : branche `v2-socle`, arbre propre, suite verte (566 tests, ruff, mypy strict, scénario rc=0) au commit
   de code **`dda7a54`** ; les commits suivants (`9577c83`, `b36515c`) ne touchent que la documentation.
-- **Session du 2026-09-20 (suite) — documentation utilisateur, 3.3 partiel, NON COMMITÉE** (arbre modifié) :
+- **Session du 2026-09-20 (suite) — documentation utilisateur, 3.3 partiel, commitée (`5542ee8`)** :
   `README.md` allégé (porte d'entrée), `docs/` (`PRISE_EN_MAIN`, `COMMANDES`, `CONFIGURATION`, `LIMITES`,
   `DEVELOPPEMENT`), `exemples/`, texte d'aide sur toute la CLI (`--help`), `tests/test_docs.py`. Suite 574
   passés, ruff, mypy, scénario rc=0. **`docs/LIMITES.md` est daté de `dda7a54` : à mettre à jour après le
   protocole 3.1.** **Renommage en DialogForge : à faire à la fin du développement V2** (PO, 2026-09-20) ; les
-  fichiers touchés sont listés dans `docs/DEVELOPPEMENT.md`. **Le PO n'a pas lancé le protocole 3.1** (dit le
-  2026-09-20). Écart repéré, non corrigé : `reference/FRONTIERE_ROLES.md` (écrit avant les essais) dit « jamais
+  fichiers touchés sont listés dans `docs/DEVELOPPEMENT.md`. **Le PO n'avait pas lancé le protocole 3.1 ; il
+  décide de le lancer (2026-09-20)** — précontrôle du protocole corrigé (il comparait des commits, pas l'arbre de travail). Écart repéré, non corrigé : `reference/FRONTIERE_ROLES.md` (écrit avant les essais) dit « jamais
   éprouvé » pour des drapeaux que les deux cycles réels du 2026-09-19 ont **acceptés** — l'*effet* reste non mesuré.
 - **Ce qui attend le PO** : lancer `reference/PROTOCOLE_FOURNISSEUR_3_1.md` (≈ 6 appels, ses accès et son quota,
   dans un `pwsh -NoProfile` jetable) et me rapporter les sorties — ou me dire de lire
@@ -126,7 +126,7 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 - [ ] 3.1 Versions des CLI et modèles relevées ; essai de petite taille en collaboration jetable
 - [ ] 3.2 Trois tâches représentatives : conception courte, synthèse sur corpus, révision
 - [ ] 3.3 Aide courte, exemples sans donnée personnelle, limites effectives documentées
-      *(2026-09-20, non commité : aide `--help`, `exemples/`, `docs/` et README faits ; **reste** : mettre
+      *(2026-09-20, commité `5542ee8` : aide `--help`, `exemples/`, `docs/` et README faits ; **reste** : mettre
       `docs/LIMITES.md` à jour après 3.1/3.2, puis cocher)*
 - [ ] 3.3 Validation complète sur le commit livré, installation en environnement propre, version marquée
 - **Status:** in progress — 3.3 partiel (documentation) ; 3.1 en cours, 3.2 non commencé
