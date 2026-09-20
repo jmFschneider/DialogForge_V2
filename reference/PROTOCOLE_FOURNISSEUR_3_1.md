@@ -26,8 +26,10 @@ $cm     = "claude-sonnet-5"                                 # modèle précis : 
 $xm     = "gpt-5.6-terra"
 $env:CLAUDE_CONFIG_DIR = "$HOME\.claude"                    # le compte qui portera le quota (ou .claude-thermique)
 Test-Path $codex, $claude                                    # attendu : True, True
-cd C:\Projets\DialogForge_2 ; git rev-parse --short HEAD     # dda7a54 ou 9577c83 (docs seule après lui) ; les fichiers de ce
-                                                             # protocole non commités n'affectent pas le code
+cd C:\Projets\DialogForge_2 ; git rev-parse --short HEAD     # noter la révision exacte sur laquelle l'essai est lancé
+git merge-base --is-ancestor b36515c HEAD ; $LASTEXITCODE    # attendu : 0 — le protocole version 2 est bien présent
+git diff --quiet dda7a54 HEAD -- src tests pyproject.toml iabinome.toml.exemple
+$LASTEXITCODE                                                 # attendu : 0 — le code fournisseur reste celui de dda7a54
 cd C:\Projets\essais-3-1\protocole
 $base = @("-p","--model",$cm,"--restricted","--strict-mcp-config","--no-session-persistence","--disable-slash-commands")
 ```
