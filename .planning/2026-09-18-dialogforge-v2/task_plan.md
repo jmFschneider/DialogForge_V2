@@ -6,13 +6,31 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**2026-09-22 — J3 atteint : première livraison utilisable, `v0.1.0`.**
+**Reprise après J3 (atteint le 2026-09-22, `v0.1.0`) — scope à confirmer en début de session, sujets
+proposés ci-dessous, le premier déjà retenu par le PO.**
+
+1. **Revue et amélioration de la documentation** (priorité du PO). Pistes déjà identifiées, à trier en
+   séance plutôt qu'à traiter par automatisme (`POURQUOI.md` règle 2) :
+   - `docs/LIMITES.md` a été patché par petites touches sur trois sessions (3.1, qualification
+     Windows, 3.2) : une passe de clarté/cohérence, pas seulement d'ajout, s'y justifie.
+   - `docs/PRISE_EN_MAIN.md` : ajouter la règle du chemin absolu pour une collaboration hors dépôt
+     (`project/RULES.md`, nouvelle entrée du 22/09 — a coûté deux allers-retours ce jour-là).
+   - `docs/COMMANDES.md` : vérifier qu'il reste synchronisé avec la surface CLI réelle (`tests/test_docs.py`
+     le rejoue en partie, ne le garantit pas entièrement).
+   - Rejouer `tests/test_docs.py` après toute modification de ces pages.
+2. **Renommage `iabinome` → `DialogForge`**, question à trancher, pas à supposer. `docs/DEVELOPPEMENT.md`
+   et `README.md` le placent explicitement « à la fin du développement V2 ». J3 clôt le lot 3 (dernier
+   lot du plan de mise en œuvre initial) : est-ce ce repère, ou le PO le voit-il autrement (par exemple
+   après le lot 4) ? Décision à demander avant d'y toucher — impact large si oui (package, commande,
+   `iabinome.toml`, toute la documentation).
+3. **Lot 4 — Développement assisté** : seule extension déjà nommée dans ce plan (§ Extension identifiée),
+   conditionnée à une décision explicite du PO. Ne pas l'ouvrir sans elle.
+
+**Historique — 2026-09-22 — J3 atteint : première livraison utilisable, `v0.1.0`.**
 
 - Lot 3 complet : 3.1 (protocole + qualification Windows + corroboration réelle), 3.2 (trois tâches
   acceptées), 3.3 (limites documentées, validation complète verte, installation propre vérifiée,
   version taguée). Détail des trois tâches et de la preuve de lecture ci-dessous, inchangé.
-- **Reste, hors lot 3, sur décision du PO** : l'extension « Lot 4 — Développement assisté » (§
-  Extension identifiée) est la seule suite déjà nommée dans ce plan ; elle ne s'ouvre pas seule.
 
 **Historique — 2026-09-22, avant J3 : les 3 tâches représentatives de 3.2 faites et acceptées par le PO.**
 

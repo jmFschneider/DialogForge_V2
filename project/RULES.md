@@ -131,6 +131,9 @@
 **Commandes de développement via l'outil Bash, avec des chemins relatifs.** Pas de PowerShell ad-hoc du type `& "C:\…\outil.exe"`.
 *Motif : le PowerShell ad-hoc rate l'allowlist et déclenche une confirmation superflue.*
 
+**Une commande `iabinome` affichée pour une collaboration hors du dépôt (`essais-*`, dossier de l'utilisateur) porte toujours un chemin absolu, jamais relatif au dépôt.**
+*Motif mesuré le 2026-09-22 (lot 3.2, deux fois) : `decide essais-3-1\nextcloud-clients --accept` lancé depuis `DialogForge_2` a cherché `DialogForge_2\essais-3-1\…`, inexistant, et rendu `[Errno 2] No such file or directory: 'verrou.json'` — un chemin de dossier, pas un incident du moteur. Aucun état abîmé (`verrou.json` n'existe qu'en appel, jamais au repos), mais une commande à corriger et relancer.*
+
 **Ne pas préfixer les commandes avec `cd` vers la racine du projet** — le répertoire courant y est déjà.
 
 **Écrire un fichier de code par l'outil Write, jamais par un `heredoc` shell.** Un document long à guillemets multiples est mutilé au passage.
