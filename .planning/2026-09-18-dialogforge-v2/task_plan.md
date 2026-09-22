@@ -26,16 +26,18 @@ avec reprise après incident sans rejouer un appel ambigu.
   `ACCEPTE` le 2026-09-22T15:22:18Z. Collaboration hors dépôt :
   `C:\Projets\essais-3-1\revision-nextcloud\collab`.
 - **Bilan 3.2** : 16 appels au total sur les trois tâches, aucun défaut reproductible de perte de
-  réponse, de version ou de reprise. Codex a bien lu la documentation/le web sur les trois tâches :
-  n'infirme ni ne confirme la lecture par outil qualifiée le 21 (scénario différent — web ouvert ou
-  corpus local via manifeste, jamais la lecture de fichiers locaux arbitraires par l'outil de Codex
-  mise à l'épreuve). Seuls incidents : deux erreurs humaines (chemin relatif, frappe sans Entrée), sans
-  effet sur l'état des collaborations.
-- **Reste pour clore la phase 4 (lot 3)** : 3.3, mettre `docs/LIMITES.md` à jour après 3.1/3.2 (partie
-  déjà faite le 21 pour 3.1 ; ajouter ce que 3.2 montre : corpus local sourcé et vérifiable, révision
-  ciblée après acceptation, web ouvert/fermé selon le sujet) ; validation complète sur le commit livré
-  en environnement propre ; marquer la version. Correction Windows du 21 et modifications 3.1/3.2
-  toujours non commitées.
+  réponse, de version ou de reprise. **La révision du stockage externe corrobore la qualification du
+  21, en usage réel** : Codex a lu le corpus (un fichier, copié dans `corpus/fichiers/`) par son
+  propre outil — `Get-ChildItem` puis `Get-Content -LiteralPath … -Raw`, « succeeded in 917ms »,
+  contenu exact retourné, dans le dossier jetable du produit. Détail et citation exacte dans
+  `docs/LIMITES.md` §2. Cela ne teste pas la lecture d'un chemin hors du corpus (confinement général
+  toujours non mesuré). Seuls incidents : deux erreurs humaines (chemin relatif, frappe sans Entrée),
+  sans effet sur l'état des collaborations.
+- **Commité** : correction Windows (`1a7aa22`) et documentation/plan du protocole 3.1, de la
+  qualification et des trois tâches de 3.2 (`052678f`). Arbre propre, rien en attente.
+- **Reste pour clore la phase 4 (lot 3)** : 3.3 — `docs/LIMITES.md` mis à jour (3.1 et 3.2, avec la
+  preuve `Get-Content` du 22) ; reste la validation complète sur le commit livré, l'installation en
+  environnement propre, et marquer la version.
 
 **Historique — Reprise au 2026-09-21 — correction Windows qualifiée, non commitée.**
 
@@ -143,7 +145,11 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 - **Jalon :** **J2 atteint et validé par le PO le 2026-09-19** — version candidate aux essais réels.
 
 ### Phase 4: Lot 3 — Essais réels et première livraison
-- [ ] 3.1 Versions des CLI et modèles relevées ; essai de petite taille en collaboration jetable
+- [x] 3.1 Versions des CLI et modèles relevées ; essai de petite taille en collaboration jetable
+      *(versions : Claude 2.1.278, Codex 0.155.0 — `FRONTIERE_ROLES.md`. Petit protocole du 2026-09-20
+      (deux cycles réels, un par sens A/B) ; défaut de lecture Codex qualifié sans quota puis corrigé
+      le 21 (backend Windows `elevated`, essai ciblé concluant) ; corroboré en cycle A/B complet le 22
+      (lot 3.2, `Get-Content` réussi sur un vrai corpus). Commité `1a7aa22` + `052678f`.)*
 - [x] 3.2 Trois tâches représentatives : conception courte, synthèse sur corpus, révision
       *(2026-09-22 : Nextcloud clients, pièges à souris, révision stockage externe — 16 appels,
       toutes `ACCEPTE`, aucun défaut reproductible de perte de réponse/version/reprise. Détail dans

@@ -4,10 +4,13 @@ Ce que l'outil garantit, ce qu'il demande sans l'avoir mesuré, et ce qu'il n'ob
 distingue trois niveaux de preuve, parce qu'écrire « garanti » là où l'on a seulement « demandé » serait
 la promesse que ce projet s'interdit.
 
-> **État de cette page : code de `dda7a54`, mesures réelles du 2026-09-20.** Le petit protocole d'essai
-> fournisseur du lot 3.1 (`reference/PROTOCOLE_FOURNISSEUR_3_1.md`) a été lancé ce jour-là : Claude
+> **État de cette page : mesures réelles du 2026-09-20 au 2026-09-22.** Le petit protocole d'essai
+> fournisseur du lot 3.1 (`reference/PROTOCOLE_FOURNISSEUR_3_1.md`) a été lancé le 20 : Claude
 > (`claude-sonnet-5`) et Codex 0.155.0 (`gpt-5.6-terra`), **un essai par valeur** — des faits, pas des
-> statistiques. **Le défaut de lecture découvert alors est corrigé par sélection explicite du backend Windows `elevated`, avec un essai ciblé concluant le 2026-09-21 (Sol).** Le détail
+> statistiques. Le défaut de lecture découvert alors a été corrigé par sélection explicite du backend
+> Windows `elevated`, avec un essai ciblé concluant le 21 (Sol) puis **corroboré en usage réel le 22** :
+> les trois missions du lot 3.2 (`gpt-5.6-terra`), dont une où Codex a lu un corpus complet par son
+> propre outil (`Get-Content`), dans le dossier jetable du produit — voir section 2. Le détail
 > technique est dans [`reference/FRONTIERE_ROLES.md`](../reference/FRONTIERE_ROLES.md) et dans le tableau
 > « Résultats » du protocole.
 
@@ -48,7 +51,7 @@ l'outil a fait. Le protocole du 2026-09-20 a mesuré l'effet de plusieurs d'entr
 | Web ouvert | `WebSearch`, `WebFetch` + `--allowedTools` | `-c web_search=live` | ✅ Codex : recherches faites, source citée. Claude : un appel `WebSearch`, résultats réels, aucun refus de permission |
 | Effort de raisonnement | `--effort` | `-c model_reasoning_effort=…` | ✅ Codex : `medium` appliqué (`none` sans la clé). ✅ Claude : accepté sans avertissement — **son effet n'est pas observable d'ici** |
 | Séparation des secrets | rien de Codex | rien de Claude | ✅ Chaque outil garde son authentification sans les variables de l'autre. Ce qui est vérifié : ce que le programme **retire** (`intention.json`), pas ce que l'outil voit |
-| Lire le corpus | `--restricted`, `--tools "Read,Grep,Glob"` | `--sandbox read-only`, backend Windows `elevated` explicite | ✅ Claude lit le corpus. ✅ Codex lit un fichier témoin (2026-09-21), sans nouveau cycle A/B complet |
+| Lire le corpus | `--restricted`, `--tools "Read,Grep,Glob"` | `--sandbox read-only`, backend Windows `elevated` explicite | ✅ Claude lit le corpus. ✅ Codex : fichier témoin le 2026-09-21, puis **un vrai corpus dans un cycle A/B complet le 22** — `Get-Content` réussi en 917 ms sur `corpus/fichiers/…`, dans le dossier jetable du produit, contenu exact retourné |
 | Refuser un chemin hors du dossier | `--restricted` | `--sandbox read-only` | ✅ Claude refuse : « `--restricted` confines the file tools to the working directory ». Codex : **aucune garantie de confinement en lecture** |
 | Session fraîche, réglages ignorés | `--no-session-persistence`, `--restricted` | `--ephemeral`, `--ignore-user-config`, `--ignore-rules` | Acceptées par les deux outils en réel (2026-09-19). **Effet non mesuré** |
 
@@ -61,6 +64,13 @@ marqueur aléatoire et tenté une écriture refusée ; les deux empreintes sont 
 Cet essai utilise des fichiers témoins à la racine d'un dossier de qualification, pas un cycle A/B
 avec copie du corpus. Le même argv s'applique à B en consultation, sans nouvel essai réel de B.
 Il prouve la viabilité de cette configuration sur cet hôte, pas la cause unique des anciens rejets.
+
+**Corroboré le 2026-09-22, en usage réel.** Dans un cycle A/B complet du lot 3.2 (révision d'un
+document existant, corpus à un fichier), Codex a lu le corpus par son propre outil : `Get-ChildItem`
+puis `Get-Content -LiteralPath corpus/fichiers/… -Raw`, exécuté dans le dossier jetable du produit
+(`C:\Users\<vous>\AppData\Local\Temp\iabinome-…`), « succeeded in 917ms », contenu exact retourné.
+Cela confirme la correction sur un second scénario, indépendant du premier ; cela ne prouve toujours
+pas un confinement général — cette mission ne testait pas la lecture d'un chemin hors du corpus.
 
 Ce qui reste **non mesuré** :
 
@@ -110,6 +120,11 @@ Une option **inconnue** de l'outil fait échouer l'appel (`CLI_FAILED`), donc se
 - **Sous les options d'isolation**, Codex a tourné à l'effort `none` et non à celui de votre
   `config.toml`. Claude ignore un effort `minimal` avec un avertissement au lieu d'échouer.
 - Le profil **`context-only`** n'a été exercé qu'en tests, pas en mission réelle.
+- **Trois missions représentatives du lot 3.2** (2026-09-22, A = Codex / B = Claude) : conception
+  courte avec sources web, guide de décision avec une correction ciblée puis un complément de
+  recherche demandé **après acceptation** (le moteur ne le referme pas — voulu par la conception),
+  révision d'un document existant à partir d'un corpus local. 16 appels au total, toutes `ACCEPTE`,
+  aucun défaut reproductible de perte de réponse, de version ou de reprise. Détail dans le plan PWF.
 
 ## 5. Limites de périmètre
 

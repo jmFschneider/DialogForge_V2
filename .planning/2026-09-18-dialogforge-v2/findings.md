@@ -32,6 +32,11 @@
   backend » / « elevated Windows sandbox requires effective `:root` read access »). Le refus d'un chemin existe mais pose
   des ACL `DENY` **persistantes** (groupe `CodexSandboxUsers`) et refuser un ancêtre empêche de lancer dans son fils.
   Le rejet initial des commandes de lecture vient de la couche politique d'exécution, pas du système de fichiers.
+- **La correction (`windows.sandbox=elevated`) lit un vrai corpus en cycle A/B complet, pas seulement un témoin**
+  (2026-09-22, mission 3.2 « révision d'un document existant ») : Codex exécute `Get-ChildItem` puis
+  `Get-Content -LiteralPath corpus/fichiers/… -Raw` dans le dossier jetable du produit, « succeeded in 917ms »,
+  contenu exact retourné (`appels/0001-A-…/stderr.txt`, lignes 79-87). Second scénario indépendant du témoin du 21 ;
+  ne teste toujours pas la lecture d'un chemin hors du corpus.
 
 ## Technical Decisions
 | Decision | Rationale |
