@@ -6,11 +6,16 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Renommage de la surface exposée fait le 2026-09-22, non commité — puis choisir le sujet suivant.**
+**Renommage de la surface exposée fait et commité le 2026-09-22 (`9a9824c`) — choisir le sujet
+suivant en début de session.**
 
 La commande est désormais `dialogforge` ; le paquet reste `iabinome`, délibérément. Validation
 complète verte (ruff, mypy strict, **580 tests / 2 ignorés**, scénario rc=0, `dialogforge --help`
 vérifié après réinstallation). Détail dans `progress.md`.
+
+**À savoir pour la prochaine session** : le `.venv` a été réinstallé (`pip uninstall iabinome`, puis
+`pip install -e .`) — la commande `dialogforge` n'existe que dans un environnement réinstallé depuis
+ce commit.
 
 La documentation est alignée sur le code de `v0.1.0` : surface CLI vérifiée une à une, sept
 affirmations fausses corrigées, `LIMITES.md` condensé. **Le dépassement des ~1 500 lignes est assumé
