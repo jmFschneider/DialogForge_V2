@@ -231,6 +231,9 @@
 **Une page de limites se rédige depuis les mesures consignées, pas depuis un document écrit avant elles.**
 *Motif mesuré le 2026-09-20 : `docs/LIMITES.md` a d'abord repris de `FRONTIERE_ROLES.md` (écrit avant les essais) que les options d'isolation n'avaient « jamais été éprouvées ». Le journal du 2026-09-19 montrait qu'elles avaient été **acceptées** par les deux outils en réel, authentification conservée. Deux faits distincts — « accepté » et « appliqué » — et seul le second est resté non mesuré. Une page qui l'aurait confondu aurait sous-déclaré ce qui est acquis, ce qui est aussi faux que le sur-déclarer.*
 
+**Avant d'attribuer une ligne à un fichier de l'utilisateur, vérifier qu'elle y est** (`grep -c` sur le fichier), et se méfier des lignes que l'outil de l'assistant ajoute lui-même à ses sorties.
+*Motif mesuré le 2026-09-20 (3.1) : « Shell cwd was reset to C:\Projets\DialogForge_2 » terminait mes lectures de `.err`, et je l'ai inscrite dans le tableau du protocole comme contenu du stderr de Claude, puis j'ai demandé au PO d'en chercher l'origine. Les fichiers faisaient 0 octet : la ligne venait de mon propre outil, qui l'ajoute quand le dossier de travail change. Un `grep -c` aurait suffi ; il a fallu une erreur écrite dans un document validé, puis rectifiée.*
+
 **La documentation qui cite une sortie du programme la cite telle que le programme la produit, jamais réécrite.**
 *Motif (3.3) : les extraits de `PRISE_EN_MAIN.md` viennent du scénario sans fournisseur rejoué en UTF-8. La première capture avait perdu les accents (console cp1252) ; recopier la sortie « à la main » aurait écrit une version que le programme ne produit pas. Ce sont des sorties de faux agents : à relire contre un cycle réel.*
 
@@ -277,3 +280,6 @@
 
 **Avant d'ajouter un garde-fou, vérifier qu'il compense un défaut encore réel.**
 *Motif : l'échafaudage compense la faiblesse des modèles ; les modèles récents en demandent moins, pas plus.*
+
+**N'éprouver un refus de chemin d'un profil de permissions Codex (Windows, backend élevé) que dans un dossier jetable, puis vérifier `icacls`.**
+*Motif mesuré le 2026-09-21 (3.1) : `codex sandbox -P` avec un chemin refusé pose des ACL `DENY` **persistantes** pour le groupe local `CodexSandboxUsers`, qui survivent à la commande. Mes essais en ont laissé sur le dossier temporaire de la session ; l'essai suivant a échoué en `CreateProcessWithLogonW failed: 267` alors qu'il avait marché — refuser un ancêtre interdit aussi d'atteindre ses fils. `icacls <dossier>` a montré la cause, `icacls <dossier> /remove:d <groupe>` l'a réparée. Un profil de permissions n'est pas un réglage sans effet : il modifie le disque.*

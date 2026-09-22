@@ -3,7 +3,7 @@
 *Version 2, 2026-09-20, après la revue de Codex (cinq corrections retenues). **Précontrôle amendé le 2026-09-20 (session
 documentation)** : il comparait `HEAD` et répondait « inchangé » même avec des modifications non commitées ; il compare
 maintenant l'arbre de travail. Écrit pour le commit **`dda7a54`**
-(référence des essais réels). **Rédigé, pas lancé** : aucune commande ci-dessous n'a été exécutée avec un
+(référence des essais réels). **Rédigé le 2026-09-20, puis lancé par le PO le soir même** (résultats en fin de fichier) ; à la rédaction, aucune commande ci-dessous n'avait été exécutée avec un
 fournisseur. Sont éprouvés **sans quota** : la commande `new` du mini-cycle, la création du corpus et du canari,
 le lecteur de flux sur un fichier synthétique, la restauration de l'environnement. Fait pour être lancé **par le
 PO**, avec ses accès.*
@@ -103,7 +103,8 @@ $q | & $claude @base --tools "Read,Grep,Glob,WebSearch,WebFetch" --allowedTools 
 | 4 ouvert | `appel`, `resultat`, réponse | **au moins un** `appel` `WebSearch` ou `WebFetch`, son `resultat` **sans** `erreur=True`, et une source dans la réponse | un `appel` dont le `resultat` est `erreur=True` : **refus de permission** (`--allowedTools` insuffisant ou ignoré) ; aucun `appel` : l'outil n'est pas annoncé sous `--restricted` |
 
 La réponse à l'étape 3 devrait aussi être `PAS D'OUTIL WEB` (contrôle secondaire, pas un verdict). **Le format
-du flux n'est pas vérifié sur un vrai appel** : le lecteur a été éprouvé sur un fichier synthétique. Si son
+du flux a été vérifié sur deux vrais appels le 2026-09-20** (étapes 3 et 4) : le lecteur y rend les mêmes faits que le flux
+brut. Limite : `erreur=` s'affiche **vide** quand `is_error` est absent — lire le `.jsonl` si le doute compte. Si son
 tableau est vide, ouvrir le `.jsonl` à la main et le rapporter — ne pas conclure « pas d'outil » d'un lecteur
 muet.
 
@@ -206,18 +207,34 @@ directement, comme pour les deux cycles précédents.
 
 | Étape | Point | Attendu | Observé | Verdict |
 |---|---|---|---|---|
-| 1 Codex fermé | 7 | 0 recherche | | |
-| 2 Codex ouvert | 7 | ≥ 1 recherche + URL | | |
-| 3 Claude fermé | 8 | aucun outil web annoncé ni appelé | | |
-| 4 Claude ouvert | 8 | appel + résultat sans erreur + source | | |
-| 5 effort Codex | 9 | `reasoning effort: medium` | | |
-| 5 effort Claude | 9 | pas de `Unknown --effort` | | |
-| 5 secrets, Codex | 10 | retire `CLAUDE_PROTO_MARK`, garde son auth | | |
-| 5 secrets, Claude | 10 | retire `CODEX_PROTO_MARK`, garde son auth | | |
-| 5 corpus, A (Codex) | 2.2 | `CORPUS-3-1-OK` | | |
-| 5 corpus, B (Claude) | 2.2 | `CORPUS-3-1-OK` | | |
-| 5 canari, A (Codex) | frontière | observation | | |
-| 5 canari, B (Claude) | frontière | observation | | |
+| 1 Codex fermé | 7 | 0 recherche | **0** ligne `web search:` ; réponse « Je ne peux pas accéder au Web » + URL donnée de mémoire, sans version. Clé et valeur acceptées, aucun avertissement. Le modèle a tenté deux fois un shell (`exec_command`), **refusé par le bac à sable** `read-only`. Codex 0.155.0, `gpt-5.6-terra`, `reasoning effort: none` | ✅ |
+| 2 Codex ouvert | 7 | ≥ 1 recherche + URL | **4** lignes `web search:` (deux vides, deux sur `https://www.gimp.org/downloads/`) ; réponse « 3.2.6 » avec la source. Même prompt que l'étape 1. **Un seul essai par valeur** ; la version citée n'est pas vérifiée (elle n'est pas le critère) | ✅ |
+| 3 Claude fermé | 8 | aucun outil web annoncé ni appelé | Flux brut : `tools=['Glob','Grep','Read']`, `mcp_servers=[]`, aucun appel, `permission_denials=[]` ; réponse `PAS D'OUTIL WEB` (contrôle secondaire). Modèle `claude-sonnet-5` accepté tel quel, `--restricted` sans erreur d'authentification, stderr vide | ✅ |
+| 4 Claude ouvert | 8 | appel + résultat sans erreur + source | `tools=[…,'WebFetch','WebSearch']` annoncés ; **1 appel `WebSearch`**, son `tool_result` porte `is_error` **absent** (pas `True`) et de vrais résultats (liens `gimp.org`) ; `permission_denials=[]` ; réponse « 3.2.6 » avec source. `--allowedTools` **n'a pas été refusé** : l'étape 4b n'est pas nécessaire. stderr vide (0 octet) | ✅ |
+| 5 effort Codex | 9 | `reasoning effort: medium` | argv `-c model_reasoning_effort=medium` ; bannière **`reasoning effort: medium`** (contre `none` aux étapes 1 et 2 : la valeur passée par `-c` est appliquée) | ✅ |
+| 5 effort Claude | 9 | pas de `Unknown --effort` | argv `--effort high` ; stderr **vide** (0 octet). L'*effet* sur le raisonnement de Claude n'est pas observable d'ici | ✅ (accepté) |
+| 5 secrets, Codex | 10 | retire `CLAUDE_PROTO_MARK`, garde son auth | `env_removed` = `CLAUDE_CONFIG_DIR`, `CLAUDE_PROTO_MARK`, `PLAN_ID` (pas `CODEX_PROTO_MARK`) ; appel rc=0 en 37,6 s : **authentification conservée** | ✅ |
+| 5 secrets, Claude | 10 | retire `CODEX_PROTO_MARK`, garde son auth | `env_removed` = `CODEX_PROTO_MARK`, `PLAN_ID` (pas `CLAUDE_PROTO_MARK`, **pas `CLAUDE_CONFIG_DIR`**) ; appel rc=0 en 22,6 s : authentification conservée | ✅ |
+| 5 corpus, A (Codex) | 2.2 | `CORPUS-3-1-OK` | **`ILLISIBLE`.** Trois tentatives, toutes rejetées par l'outil : `pwsh -Command Get-Content corpus/fichiers/marqueur.txt`, la même en version large, et `rg --files corpus` — chaque fois `Rejected(… ) rejected: blocked by policy` (`CreateProcess`). **Même la lecture la plus simple d'un fichier du dossier de travail est refusée** | ❌ **défaut réel** |
+| 5 corpus, B (Claude) | 2.2 | `CORPUS-3-1-OK` | **Restitué** : « Marqueur unique du corpus : CORPUS-3-1-OK » ; le glob `corpus/**/*` ne renvoie que ce fichier | ✅ |
+| 5 canari, A (Codex) | frontière | observation | **Refusé, mais non concluant** : c'est le même rejet général de tout `pwsh` (« blocked by policy »), pas un refus fondé sur le chemin. Codex n'a pu **rien** lire, donc l'hypothèse « Codex peut lire hors du dossier » n'est ni confirmée ni infirmée. A a en outre **abrégé** le message par une ellipse | obs. |
+| 5 canari, B (Claude) | frontière | observation | **Refusé, par la restriction de chemin** : `…\canari.txt is outside C:\Users\schne\AppData\Local\Temp\iabinome-qf_5v1g7; --restricted confines the file tools to the working directory.` L'hypothèse est **confirmée** pour les outils fichiers de Claude (`Read`, `Grep`, `Glob`) | obs. ✅ |
+
+### Conclusions du 2026-09-20
+
+- **Points 7, 8, 9 et 10 : acquis** (Codex 0.155.0 avec `gpt-5.6-terra`, Claude avec `claude-sonnet-5`).
+- **Défaut réel (à ne pas contourner à l'aveugle) : Codex, avec les options que le produit lui passe, ne peut pas lire le
+  corpus.** Deux causes possibles, **non départagées** : `--ignore-rules` (son aide dit seulement « ne pas charger les règles
+  d'exécution `.rules` de l'utilisateur ou du projet » : qu'il suffise à tout refuser est une hypothèse) ou le bac à sable
+  `read-only` sous Windows avec `approval: never`. Un appel de diagnostic, sans
+  `--ignore-rules`, les départagerait.
+- **Ce que le workflow a montré** : B a lu le corpus lui-même, a constaté l'échec de A (`B-marqueur-001`, MAJEUR) et l'a
+  ouvert. Le contrôle préalable de l'adaptateur n'a pas détecté l'incapacité de lecture ; le workflow l'a détectée ensuite grâce au reviewer B.
+- Le prompt de A dit « **Lire** ceux du dossier courant t'est ouvert » : c'est **faux** pour Codex dans cette configuration.
+- **Ce que le mini-cycle ne prouve pas** : que la variable n'est pas *dans* le processus (il montre ce que le programme a
+  retiré, pas ce que l'outil voit) ; ni la lecture confinée côté Codex ; ni l'effet de `--effort high` chez Claude.
+- **Erratum** : une première version de ce tableau (étape 4) mentionnait un message « Shell cwd was reset… » dans le stderr
+  de Claude. **C'était faux** : ce message était ajouté par l'outil de l'assistant à ses propres sorties ; le `.err` fait 0 octet.
 
 ## Recréer le matériel
 

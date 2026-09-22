@@ -6,27 +6,47 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**REPRISE (écrit le 2026-09-20, fin de session) — lire ceci d'abord.**
-- **État** : branche `v2-socle`, arbre propre, suite verte (566 tests, ruff, mypy strict, scénario rc=0) au commit
-  de code **`dda7a54`** ; les commits suivants (`9577c83`, `b36515c`) ne touchent que la documentation.
-- **Session du 2026-09-20 (suite) — documentation utilisateur, 3.3 partiel, commitée (`5542ee8`)** :
-  `README.md` allégé (porte d'entrée), `docs/` (`PRISE_EN_MAIN`, `COMMANDES`, `CONFIGURATION`, `LIMITES`,
-  `DEVELOPPEMENT`), `exemples/`, texte d'aide sur toute la CLI (`--help`), `tests/test_docs.py`. Suite 574
-  passés, ruff, mypy, scénario rc=0. **`docs/LIMITES.md` est daté de `dda7a54` : à mettre à jour après le
-  protocole 3.1.** **Renommage en DialogForge : à faire à la fin du développement V2** (PO, 2026-09-20) ; les
-  fichiers touchés sont listés dans `docs/DEVELOPPEMENT.md`. **Le PO n'avait pas lancé le protocole 3.1 ; il
-  décide de le lancer (2026-09-20)** — précontrôle du protocole corrigé (il comparait des commits, pas l'arbre de travail). Écart repéré, non corrigé : `reference/FRONTIERE_ROLES.md` (écrit avant les essais) dit « jamais
-  éprouvé » pour des drapeaux que les deux cycles réels du 2026-09-19 ont **acceptés** — l'*effet* reste non mesuré.
-- **Ce qui attend le PO** : lancer `reference/PROTOCOLE_FOURNISSEUR_3_1.md` (≈ 6 appels, ses accès et son quota,
-  dans un `pwsh -NoProfile` jetable) et me rapporter les sorties — ou me dire de lire
-  `C:\Projets\essais-3-1\protocole\` (hors dépôt, matériel déjà créé).
-- **Première action d'une nouvelle session** : demander au PO s'il a lancé le protocole. Si oui, lire ses sorties,
-  remplir le tableau « Résultats » du protocole, proposer **seulement** les corrections que les écarts justifient.
-  Sinon : rien à faire de plus sur 3.1 ; ne rien lancer avec un fournisseur.
-- **Ensuite** (chacune sur autorisation du PO) : fermer 3.1 (cocher la case du plan), puis 3.2 (trois tâches
-  représentatives) et 3.3 (aide, exemples, validation sur le commit livré) — voir `## Phases`, phase 4.
-- **Règles de travail qui ne se déduisent pas du dépôt** : dans la mémoire du projet (préférences du PO, appels
-  fournisseur, environnement PowerShell, dossiers d'essai). Les règles de code sont dans `project/RULES.md`.
+**2026-09-22 — 3.2 clos : les 3 tâches représentatives faites et acceptées par le PO.**
+
+- Nextcloud, déploiement du client de bureau (serveur 33 → 34) : cycle complet, 4 appels, ~6 min 15 s,
+  2 désaccords `NOTE` non bloquants restés ouverts en connaissance de cause, `ACCEPTE` le 2026-09-22.
+  Collaboration hors dépôt : `C:\Projets\essais-3-1\nextcloud-clients`.
+- Pièges à souris (conception courte, guide de décision) : cycle + correction ciblée + complément de
+  recherche demandé **après** une première acceptation (GPS centimétrique externe), 8 appels sur 3
+  tours, `ACCEPTE` final le 2026-09-22, sans réserve. Refus par construction de changer de modèle
+  (Sol) en cours de collaboration — `configuration.json` fixé à `new`, sans option sur
+  `decide`/`resume`. **Constat** : `decide --correct` n'est pas fermé par une acceptation antérieure
+  (voulu par la conception ; confirmé en réel pour la première fois). Collaboration hors dépôt :
+  `C:\Projets\essais-3-1\pieges-souris`.
+- Révision d'un document existant (note technique Nextcloud/Apache/Docker réelle, anonymisée avant
+  dépôt dans le corpus) : corpus à un fichier, `--kind conception`, **web fermé** — premier essai réel
+  de ce réglage par défaut sur 3.2. 4 appels, ~6 min 15 s, **B a accepté dès le premier tour, zéro
+  désaccord** ; 6 objections soulevées et résolues par A, dont un diagnostic de permissions lui-même
+  corrigé (le mode affiché prouvait déjà l'accès, le vrai test doit s'exécuter sous `www-data`).
+  `ACCEPTE` le 2026-09-22T15:22:18Z. Collaboration hors dépôt :
+  `C:\Projets\essais-3-1\revision-nextcloud\collab`.
+- **Bilan 3.2** : 16 appels au total sur les trois tâches, aucun défaut reproductible de perte de
+  réponse, de version ou de reprise. Codex a bien lu la documentation/le web sur les trois tâches :
+  n'infirme ni ne confirme la lecture par outil qualifiée le 21 (scénario différent — web ouvert ou
+  corpus local via manifeste, jamais la lecture de fichiers locaux arbitraires par l'outil de Codex
+  mise à l'épreuve). Seuls incidents : deux erreurs humaines (chemin relatif, frappe sans Entrée), sans
+  effet sur l'état des collaborations.
+- **Reste pour clore la phase 4 (lot 3)** : 3.3, mettre `docs/LIMITES.md` à jour après 3.1/3.2 (partie
+  déjà faite le 21 pour 3.1 ; ajouter ce que 3.2 montre : corpus local sourcé et vérifiable, révision
+  ciblée après acceptation, web ouvert/fermé selon le sujet) ; validation complète sur le commit livré
+  en environnement propre ; marquer la version. Correction Windows du 21 et modifications 3.1/3.2
+  toujours non commitées.
+
+**Historique — Reprise au 2026-09-21 — correction Windows qualifiée, non commitée.**
+
+- Le PO a validé le recentrage décrit dans `astra/07_recentrage_simplicite.md` et un unique appel fournisseur, désormais consommé.
+- `CodexAdapter` sélectionne `windows.sandbox=elevated` sous Windows. Backend déjà installé requis ; autres protections et plateformes inchangées.
+- Codex 0.155.0 / Sol : lecture du marqueur par outil réussie, écriture témoin refusée, empreintes inchangées, 19,187 s. Essai de fichiers témoins via l'adaptateur et le transport, pas un nouveau cycle A/B complet. Détail : fin de `progress.md`.
+- Pas de garantie générale d'inaccessibilité en lecture du disque ; pas de profils personnalisés, prévol système générique ni injection du corpus. Les anciennes hypothèses de cause restent historiques, pas une cause unique démontrée.
+- Préserver l'arbre sale, notamment les modifications antérieures : utiliser `git status`, pas un compteur figé. Aucun commit ni nouvel appel fournisseur sans demande.
+- Validations locales et revue terminées : Ruff, mypy strict, scénario rc=0 ; suite 570 réussis / 8 ignorés, puis 41 réussis sur PWF et documentation avec Git Bash dans le PATH (les 6 tests PWF initialement ignorés passent). Seuls les 2 tests de liens symboliques restent ignorés. Revenir aux usages du lot 3.2 (Nextcloud / UrBackup proposés, non démarrés), après décision du PO sur la suite ; ne pas rouvrir une campagne de confinement.
+- Les résultats du protocole 3.1 du 20 septembre restent dans le journal ; l'essai du 21 complète la lecture seule. Aucun autre point n'est déclaré acquis par extension.
+- Pour une session Claude avec injection PWF qualifiée : `.\tools\claude-pwf.ps1`.
 
 **J1 validé par le PO le 2026-09-19. LOT 2 OUVERT le 2026-09-19** (autorisation du PO). Lot 1 : 1.1
 `b0dc6a3`, 1.2 `2b5ae15`, 1.3 `25ab101`, 1.4 `6cf7aa4`.
@@ -63,7 +83,7 @@ tourné sans incident ; le PO a tranché les trois constats (web facultatif et f
 par adaptateur, environnement par fournisseur), commités et validés par Codex le 2026-09-20 (hash = référence
 des prochains essais, voir `git log`). **3.1 se ferme après le petit protocole fournisseur** (points 7 à 10 de
 `reference/FRONTIERE_ROLES.md`), **rédigé et figé dans `reference/PROTOCOLE_FOURNISSEUR_3_1.md`**
-(version 2, revue Codex intégrée, **pas encore lancé**) — pas de nouveau cycle éditorial. Il consomme du quota : à lancer par le PO,
+(version 2, revue Codex intégrée ; **lancé par le PO le 2026-09-20 : points 7 à 10 acquis, défaut de lecture du corpus par Codex ouvert**, voir REPRISE) — pas de nouveau cycle éditorial. Il a consommé du quota : lancé par le PO,
 sur son autorisation. Les garanties des CLI réelles ne sont acquises que point par point, à mesure qu'elles
 sont mesurées.
 
@@ -71,7 +91,7 @@ Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la se
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 3 (lot 2) — 2.1, 2.2 (fuite Codex corrigée) et 2.3 faits ; J2 atteint et validé par le PO le 2026-09-19
+Phase 4 (lot 3) — 3.2 clos ; 3.1 qualification Windows conclue, validation complète à faire ; 3.3 reste
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -124,12 +144,16 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 
 ### Phase 4: Lot 3 — Essais réels et première livraison
 - [ ] 3.1 Versions des CLI et modèles relevées ; essai de petite taille en collaboration jetable
-- [ ] 3.2 Trois tâches représentatives : conception courte, synthèse sur corpus, révision
+- [x] 3.2 Trois tâches représentatives : conception courte, synthèse sur corpus, révision
+      *(2026-09-22 : Nextcloud clients, pièges à souris, révision stockage externe — 16 appels,
+      toutes `ACCEPTE`, aucun défaut reproductible de perte de réponse/version/reprise. Détail dans
+      `progress.md`.)*
 - [ ] 3.3 Aide courte, exemples sans donnée personnelle, limites effectives documentées
       *(2026-09-20, commité `5542ee8` : aide `--help`, `exemples/`, `docs/` et README faits ; **reste** : mettre
       `docs/LIMITES.md` à jour après 3.1/3.2, puis cocher)*
 - [ ] 3.3 Validation complète sur le commit livré, installation en environnement propre, version marquée
-- **Status:** in progress — 3.3 partiel (documentation) ; 3.1 en cours, 3.2 non commencé
+- **Status:** in progress — 3.1 qualifié (correction Windows), 3.2 clos, 3.3 partiel (documentation),
+  reste à mettre `docs/LIMITES.md` à jour avec ce que 3.1/3.2 montrent et la validation complète
 - **Jalon :** J3 — première livraison utilisable.
 
 ## Extension identifiée (hors phases)

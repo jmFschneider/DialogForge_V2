@@ -4,20 +4,21 @@ Ce que l'outil garantit, ce qu'il demande sans l'avoir mesuré, et ce qu'il n'ob
 distingue trois niveaux de preuve, parce qu'écrire « garanti » là où l'on a seulement « demandé » serait
 la promesse que ce projet s'interdit.
 
-> **État de cette page : commit `dda7a54` (2026-09-20).** Le petit protocole d'essai fournisseur du
-> lot 3.1 (`reference/PROTOCOLE_FOURNISSEUR_3_1.md`) **n'a pas encore été lancé**. Tant qu'il ne l'est
-> pas, l'**effet** des protections demandées aux outils (section 2) reste non mesuré. La page sera mise
-> à jour point par point, à mesure que ces vérifications sont faites. Le détail technique est dans
-> [`reference/FRONTIERE_ROLES.md`](../reference/FRONTIERE_ROLES.md).
+> **État de cette page : code de `dda7a54`, mesures réelles du 2026-09-20.** Le petit protocole d'essai
+> fournisseur du lot 3.1 (`reference/PROTOCOLE_FOURNISSEUR_3_1.md`) a été lancé ce jour-là : Claude
+> (`claude-sonnet-5`) et Codex 0.155.0 (`gpt-5.6-terra`), **un essai par valeur** — des faits, pas des
+> statistiques. **Le défaut de lecture découvert alors est corrigé par sélection explicite du backend Windows `elevated`, avec un essai ciblé concluant le 2026-09-21 (Sol).** Le détail
+> technique est dans [`reference/FRONTIERE_ROLES.md`](../reference/FRONTIERE_ROLES.md) et dans le tableau
+> « Résultats » du protocole.
 
 ## 1. Garanti par le programme
 
 Ces séparations sont faites par le programme lui-même et **prouvées par des tests, sans aucun appel
 fournisseur** :
 
-- **Les agents ne voient pas la collaboration.** A et B tournent dans un dossier jetable, hors de la
-  collaboration, qui contient une **copie** du corpus et disparaît après l'appel. Ils ne voient ni
-  `appels/`, ni le journal de l'autre, ni les anciennes versions de la demande. Écrire dans cette
+- **Le dossier de travail ne contient pas la collaboration.** A et B tournent dans un dossier jetable, hors de la
+  collaboration, qui contient une **copie** du corpus et disparaît après l'appel. On n'y copie ni
+  `appels/`, ni le journal de l'autre, ni les anciennes versions de la demande ; cela n'interdit pas leur accès par chemin absolu. Écrire dans cette
   copie n'atteint jamais l'original.
 - **Chaque outil ne reçoit que ses variables.** Rien de Claude chez Codex, rien de Codex chez Claude ;
   `PLAN_ID`, `PWF_*` et les identifiants de session de l'outil qui vous a lancé sont retirés aux deux.
@@ -35,42 +36,37 @@ fournisseur** :
 - **Un incident dit s'il a pu être payé** (« non », « peut-être », « inconnu », « oui »), jamais un
   montant ni une heure de reprise.
 
-## 2. Demandé aux outils : accepté ou non éprouvé, effet jamais mesuré
+## 2. Demandé aux outils : ce que l'essai réel a montré
 
 Le programme **écrit** ces demandes dans la ligne de commande de chaque outil, et un test le montre.
 `intention.json` garde ce qui a été demandé : c'est une trace de la demande, pas une preuve de ce que
-l'outil a fait.
+l'outil a fait. Le protocole du 2026-09-20 a mesuré l'effet de plusieurs d'entre elles :
 
-- **Les options d'isolation** (lecture seule, session fraîche, réglages ignorés) ont été **acceptées**
-  par les deux outils lors des deux cycles réels du 2026-09-19 : aucun appel n'a échoué, l'authentification
-  a été conservée et le modèle demandé appliqué. Cela prouve que l'outil les **connaît** ; cela ne prouve
-  pas qu'il les **applique**. Aucun essai n'a tenté de lui faire violer une restriction.
-- **Les demandes ajoutées ensuite** — web fermé ou ouvert, niveaux d'effort — n'ont **jamais été envoyées
-  à un outil réel**.
+| Ce que le programme demande | Claude | Codex | Mesuré |
+|---|---|---|---|
+| Web fermé | aucun outil web | `-c web_search=disabled` | ✅ Codex : 0 recherche (contre 4 lignes `web search:` en ouvert, même prompt). Claude : aucun outil web annoncé, aucun appel |
+| Web ouvert | `WebSearch`, `WebFetch` + `--allowedTools` | `-c web_search=live` | ✅ Codex : recherches faites, source citée. Claude : un appel `WebSearch`, résultats réels, aucun refus de permission |
+| Effort de raisonnement | `--effort` | `-c model_reasoning_effort=…` | ✅ Codex : `medium` appliqué (`none` sans la clé). ✅ Claude : accepté sans avertissement — **son effet n'est pas observable d'ici** |
+| Séparation des secrets | rien de Codex | rien de Claude | ✅ Chaque outil garde son authentification sans les variables de l'autre. Ce qui est vérifié : ce que le programme **retire** (`intention.json`), pas ce que l'outil voit |
+| Lire le corpus | `--restricted`, `--tools "Read,Grep,Glob"` | `--sandbox read-only`, backend Windows `elevated` explicite | ✅ Claude lit le corpus. ✅ Codex lit un fichier témoin (2026-09-21), sans nouveau cycle A/B complet |
+| Refuser un chemin hors du dossier | `--restricted` | `--sandbox read-only` | ✅ Claude refuse : « `--restricted` confines the file tools to the working directory ». Codex : **aucune garantie de confinement en lecture** |
+| Session fraîche, réglages ignorés | `--no-session-persistence`, `--restricted` | `--ephemeral`, `--ignore-user-config`, `--ignore-rules` | Acceptées par les deux outils en réel (2026-09-19). **Effet non mesuré** |
 
-| Ce que le programme demande | Claude | Codex |
-|---|---|---|
-| Lecture seule | `--restricted`, `--tools "Read,Grep,Glob"` | `--sandbox read-only` |
-| Session fraîche | `--no-session-persistence` | `--ephemeral` |
-| Ignorer vos réglages et hooks | `--restricted` | `--ignore-user-config`, `--ignore-rules` |
-| Web fermé | aucun outil web | `-c web_search=disabled` |
-| Web ouvert | `WebSearch`, `WebFetch` + `--allowedTools` | `-c web_search=live` |
-| Effort de raisonnement | `--effort` | `-c model_reasoning_effort=…` |
+**Correction ciblée du 2026-09-21.** Le mini-cycle du 20 septembre avait révélé des lectures rejetées
+(`blocked by policy`) ; le contrôle préalable ne les avait pas détectées, le reviewer B ensuite, oui.
+L'adaptateur sélectionne désormais `windows.sandbox=elevated` sous Windows, sans retirer les options
+d'isolation. Ce backend doit être déjà installé et utilisable ; le produit ne l'installe pas.
+Un unique appel Codex 0.155.0 / `gpt-5.6-sol`, via l'adaptateur et le transport du produit, a lu un
+marqueur aléatoire et tenté une écriture refusée ; les deux empreintes sont restées identiques.
+Cet essai utilise des fichiers témoins à la racine d'un dossier de qualification, pas un cycle A/B
+avec copie du corpus. Le même argv s'applique à B en consultation, sans nouvel essai réel de B.
+Il prouve la viabilité de cette configuration sur cet hôte, pas la cause unique des anciens rejets.
 
-Les versions dont l'aide a été lue pour écrire ces demandes : Claude 2.1.278, Codex 0.155.0. Ce qui
-reste à vérifier au lot 3.1, en clair :
+Ce qui reste **non mesuré** :
 
-- que `web_search=disabled` **coupe réellement** la recherche chez Codex, et que `live` l'active ;
-- que `WebSearch` / `WebFetch` fonctionnent chez Claude sous `--restricted` avec `--allowedTools`, et
-  refusent sans ;
-- que tous les niveaux d'effort déclarés sont acceptés par les outils installés ;
-- que chaque outil, privé des variables de l'autre, **garde son authentification** — les cycles du
-  2026-09-19 tournaient dans un terminal sans variable de l'autre outil, donc le filtre n'avait rien à
-  retirer ;
-- qu'un reviewer Claude en `--restricted` ne lit bien que `corpus/fichiers/`, y compris par un chemin
-  absolu ;
-- que vos hooks et réglages personnels sont réellement sans effet avec ces options ;
-- l'accès aux sources et l'incident `SOURCES_MODIFIED` avec un vrai corpus : aucun n'y figurait.
+- que vos hooks et réglages personnels sont sans effet avec ces options ;
+- le confinement général de Codex en lecture : il n'est pas promis, conformément au recentrage approuvé ;
+- l'incident `SOURCES_MODIFIED` avec un vrai corpus modifié pendant un appel.
 
 Une option **inconnue** de l'outil fait échouer l'appel (`CLI_FAILED`), donc se voit. Une option
 **acceptée mais sans effet** ne se voit pas d'ici.
@@ -78,12 +74,13 @@ Une option **inconnue** de l'outil fait échouer l'appel (`CLI_FAILED`), donc se
 ## 3. Non obtenu
 
 - **Aucun confinement réseau.** Web ouvert, ce que contient le prompt peut sortir de la machine par une
-  recherche ou une lecture de page. Web fermé, rien ne le prouve encore (voir ci-dessus), et **la demande
-  et le corpus partent de toute façon chez les deux fournisseurs** : n'y mettez rien que vous ne leur
-  confieriez pas.
+  recherche ou une lecture de page. Web fermé, la coupure a été observée chez les deux outils (un essai
+  chacun, section 2), mais **la demande et le corpus partent de toute façon chez les deux fournisseurs** :
+  n'y mettez rien que vous ne leur confieriez pas.
 - **Aucun confinement du système d'exploitation.** Un agent qui écrit ou lit un **chemin absolu** n'est
-  arrêté que par sa propre CLI. Le programme ne peut que **constater** après coup une modification du
-  corpus ; il ne l'empêche pas. Ce contrôle ne couvre que le corpus : `demande.md` et `etat.json` sont
+  arrêté que par sa propre CLI : mesuré chez Claude (ses outils fichiers refusent un chemin hors du dossier
+  de travail), **non mesuré chez Codex**. Le programme ne peut que **constater** après coup une modification
+  du corpus ; il ne l'empêche pas. Ce contrôle ne couvre que le corpus : `demande.md` et `etat.json` sont
   protégés par leurs empreintes à la reprise, pas pendant l'appel.
 - **Le dossier jetable n'est pas isolé du reste du disque** : il est sous le dossier temporaire de
   l'utilisateur, ne contient rien de la collaboration, mais reste lisible par un chemin absolu.

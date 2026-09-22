@@ -39,11 +39,16 @@ n'a été observé directement ici. Tout nom nouveau se relève, se justifie, pu
 | Adaptateur | Lecture seule | Session fraîche | Rien de l'utilisateur / de l'hôte |
 |---|---|---|---|
 | Claude (`claude --help` 2.1.278) | `--restricted`, `--tools "Read,Grep,Glob"` ; **avec `web_access`** `--tools "Read,Grep,Glob,WebSearch,WebFetch"` et `--allowedTools "WebSearch,WebFetch"` ; `--tools ""` en `CONTEXT_ONLY`, quoi qu'il arrive | `--no-session-persistence` ; jamais `--resume`/`--continue` | `--restricted` (ignore réglages user/project/local, donc hooks), `--strict-mcp-config`, `--disable-slash-commands` |
-| Codex (`codex exec --help` 0.155.0) | `--sandbox read-only` ; `-c features.shell_tool=false` en `CONTEXT_ONLY` ; **toujours** `-c web_search=disabled`, ou `web_search=live` avec `web_access` (jamais `live` en `CONTEXT_ONLY`) | `--ephemeral` ; jamais `resume` | `--ignore-user-config`, `--ignore-rules` |
+| Codex (`codex exec` 0.155.0) | `--sandbox read-only` ; sous Windows `-c windows.sandbox=elevated` ; `-c features.shell_tool=false` en `CONTEXT_ONLY` ; **toujours** `-c web_search=disabled`, ou `web_search=live` avec `web_access` (jamais `live` en `CONTEXT_ONLY`) | `--ephemeral` ; jamais `resume` | `--ignore-user-config`, `--ignore-rules` |
 
 Le champ `Capabilities` dit ce que l'adaptateur **met dans son argv**, jamais ce que la CLI en
 fait. `intention.json` garde l'argv demandé (`invocation_args`) : c'est une trace de la demande,
 **pas une preuve des capacités effectives**.
+
+Qualification bornée du 2026-09-21 (Windows, Codex 0.155.0, `gpt-5.6-sol`) : avec cet argv,
+un agent a lu un marqueur aléatoire par son outil et sa tentative d'écrire un témoin a été refusée ;
+les deux fichiers ont gardé leurs empreintes. Le web était explicitement fermé. Cela qualifie ce
+scénario, non une frontière générale de lecture du disque ou du réseau.
 
 ## Ce qui n'est PAS obtenu
 

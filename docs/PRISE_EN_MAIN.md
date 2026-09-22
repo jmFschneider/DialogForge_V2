@@ -68,6 +68,11 @@ Les fichiers sont **copiés octet pour octet** et hachés dans `corpus/manifeste
 c'est exactement ce que le manifeste énumère : ajouter un fichier au dossier après coup ne l'y fait
 pas entrer, et en retirer un fait échouer la vérification.
 
+> **Sous Windows, Codex nécessite le backend natif `elevated` déjà installé et utilisable.**
+> L'adaptateur le sélectionne explicitement ; lecture et refus d'écriture qualifiés le 2026-09-21.
+> Cela ne garantit pas l'inaccessibilité en lecture du reste du disque. Détail dans
+> [`LIMITES.md`](LIMITES.md#2-demandé-aux-outils--ce-que-lessai-réel-a-montré).
+
 ## 3. Lancer le cycle
 
 ```

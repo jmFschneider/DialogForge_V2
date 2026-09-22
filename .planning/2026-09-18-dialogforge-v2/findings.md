@@ -27,6 +27,11 @@
 - **Route d'installation PWF** : seule la route plugin/marketplace livre les hooks `SessionStart`
   et les commandes `/plan-*`. La route skill autonome retenue ici n'a que des hooks à portée
   d'activation, enregistrés après la première invocation du skill dans la session.
+- **Codex 0.155.0 sous Windows n'offre pas de lecture bornée par profil** (mesuré le 2026-09-21, sans quota) : un profil
+  qui refuse `:root` échoue avec les deux backends (« Restricted read-only access requires the elevated Windows sandbox
+  backend » / « elevated Windows sandbox requires effective `:root` read access »). Le refus d'un chemin existe mais pose
+  des ACL `DENY` **persistantes** (groupe `CodexSandboxUsers`) et refuser un ancêtre empêche de lancer dans son fils.
+  Le rejet initial des commandes de lecture vient de la couche politique d'exécution, pas du système de fichiers.
 
 ## Technical Decisions
 | Decision | Rationale |
@@ -59,6 +64,7 @@
 | Le `python`/`pytest` global résout `iabinome` vers l'ancien projet | Toujours `.venv/Scripts/python.exe -m pytest tests` |
 | `reference/cycle_sans_fournisseur.py` rend rc=0 même en `ERROR` | Corrigé le 2026-09-19 : rc=1 hors de `AWAITING_APPROVAL` sans objection ouverte |
 | `ruff format --check` signale 26 fichiers | Laissé ouvert : `ruff format` n'appartient pas à la porte historique du projet. À trancher explicitement, pas à subir |
+| Codex ne lit pas le corpus sous `--ignore-rules` + `approval: never` (3.1, 2026-09-20) | Qualifié sans quota le 2026-09-21 : cause = politique d'exécution ; un profil borné n'est pas constructible (voir Research Findings). **Tranché par le PO** (`astra/07_recentrage_simplicite.md`) : petite correction ciblée (`windows.sandbox=elevated`), pas d'injection du corpus ni de profil de permissions. Qualifiée le 21, premier usage réel en 3.2 le 22 (web ouvert, pas de lecture de corpus local dans ce cas) |
 
 ## Resources
 - Plan de mise en œuvre : `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`

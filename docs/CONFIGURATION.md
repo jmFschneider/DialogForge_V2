@@ -84,7 +84,8 @@ prévol de `run` — sans rien modifier ni consommer de quota.
 
 À savoir : sous les options d'isolation que l'outil applique à Codex, celui-ci a tourné à l'effort
 `none` et non au `medium` de votre `config.toml` (constaté le 2026-09-19). Le PO a décidé de ne rien
-changer par défaut ; si vous voulez un effort précis, posez-le.
+changer par défaut ; si vous voulez un effort précis, posez-le : `medium` a bien été appliqué à Codex
+lors de l'essai du 2026-09-20 (visible dans la bannière de son `stderr.txt`).
 
 ## Accès web
 
@@ -98,8 +99,8 @@ Fermé par défaut. `web_access = true` dans le fichier, ou `--web-access` / `--
 | Profil `context-only` | Aucun outil | Web coupé quoi qu'il arrive |
 
 **Ce n'est pas un confinement réseau.** Ouvert, ce que contient le prompt peut sortir de la machine par
-une requête de recherche ou de lecture. Fermé, l'outil demande la coupure à chaque CLI, mais cela n'a
-pas encore été vérifié sur un appel réel — voir [`LIMITES.md`](LIMITES.md). Une collaboration créée
+une requête de recherche ou de lecture. Fermé, l'outil demande la coupure à chaque CLI, et la coupure a été
+observée sur un appel réel de chaque outil le 2026-09-20 (un essai chacun) — voir [`LIMITES.md`](LIMITES.md). Une collaboration créée
 avant ce réglage se comporte comme `web_access = false`.
 
 ## Quel compte est utilisé
