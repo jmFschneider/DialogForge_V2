@@ -6,19 +6,15 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Revue de documentation faite le 2026-09-22 (non commitée) — décider du commit, puis choisir le
-sujet suivant.**
+**Revue de documentation faite, validée et commitée le 2026-09-22 (`a059348`) — choisir le sujet
+suivant en début de session.**
 
-0. **À trancher d'abord : commiter la revue de documentation.** 13 fichiers modifiés, non commités.
-   Validation complète verte (ruff, mypy strict, 576 tests / 2 ignorés, `test_docs.py`, scénario rc=0).
-   Détail exhaustif dans `progress.md`, session « revue de documentation contre le code ».
-   Deux points portent une décision du PO, à relire avant le commit :
-   - **le dépassement des ~1 500 lignes est assumé** (2026-09-22) : chiffre réel (3 253 lignes de code
-     dans `src/`) écrit dans `CLAUDE.md`, `docs/DEVELOPPEMENT.md` et `project/RULES.md`, plus une
-     **note datée sous la règle 1 de `POURQUOI.md`** — le texte d'origine du 2026-09-02 est conservé,
-     la note est retirable d'une ligne si le PO préfère ne pas toucher ce fichier ;
-   - `docs/LIMITES.md` a été **condensé** (§2, en-tête) et non seulement complété : le récit
-     d'enquête des 21 et 22 est descendu dans `reference/FRONTIERE_ROLES.md`.
+La documentation est alignée sur le code de `v0.1.0` : surface CLI vérifiée une à une, sept
+affirmations fausses corrigées, `LIMITES.md` condensé. **Le dépassement des ~1 500 lignes est assumé
+par le PO** (3 253 lignes de code dans `src/`) — chiffre porté dans `CLAUDE.md`,
+`docs/DEVELOPPEMENT.md` et `project/RULES.md`, note datée validée sous la règle 1 de `POURQUOI.md`.
+Détail exhaustif dans `progress.md`, session « revue de documentation contre le code ».
+
 1. **Renommage `iabinome` → `DialogForge`**, question à trancher, pas à supposer. `docs/DEVELOPPEMENT.md`
    et `README.md` le placent explicitement « à la fin du développement V2 ». J3 clôt le lot 3 (dernier
    lot du plan de mise en œuvre initial) : est-ce ce repère, ou le PO le voit-il autrement (par exemple
