@@ -6,7 +6,15 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**2026-09-22 — 3.2 clos : les 3 tâches représentatives faites et acceptées par le PO.**
+**2026-09-22 — J3 atteint : première livraison utilisable, `v0.1.0`.**
+
+- Lot 3 complet : 3.1 (protocole + qualification Windows + corroboration réelle), 3.2 (trois tâches
+  acceptées), 3.3 (limites documentées, validation complète verte, installation propre vérifiée,
+  version taguée). Détail des trois tâches et de la preuve de lecture ci-dessous, inchangé.
+- **Reste, hors lot 3, sur décision du PO** : l'extension « Lot 4 — Développement assisté » (§
+  Extension identifiée) est la seule suite déjà nommée dans ce plan ; elle ne s'ouvre pas seule.
+
+**Historique — 2026-09-22, avant J3 : les 3 tâches représentatives de 3.2 faites et acceptées par le PO.**
 
 - Nextcloud, déploiement du client de bureau (serveur 33 → 34) : cycle complet, 4 appels, ~6 min 15 s,
   2 désaccords `NOTE` non bloquants restés ouverts en connaissance de cause, `ACCEPTE` le 2026-09-22.
@@ -93,7 +101,8 @@ Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la se
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 4 (lot 3) — 3.2 clos ; 3.1 qualification Windows conclue, validation complète à faire ; 3.3 reste
+Phase 4 (lot 3) — complète, J3 atteint le 2026-09-22, `v0.1.0`. Prochaine étape hors phase :
+extension du lot 4 (§ Extension identifiée), sur décision du PO.
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -154,13 +163,17 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
       *(2026-09-22 : Nextcloud clients, pièges à souris, révision stockage externe — 16 appels,
       toutes `ACCEPTE`, aucun défaut reproductible de perte de réponse/version/reprise. Détail dans
       `progress.md`.)*
-- [ ] 3.3 Aide courte, exemples sans donnée personnelle, limites effectives documentées
-      *(2026-09-20, commité `5542ee8` : aide `--help`, `exemples/`, `docs/` et README faits ; **reste** : mettre
-      `docs/LIMITES.md` à jour après 3.1/3.2, puis cocher)*
-- [ ] 3.3 Validation complète sur le commit livré, installation en environnement propre, version marquée
-- **Status:** in progress — 3.1 qualifié (correction Windows), 3.2 clos, 3.3 partiel (documentation),
-  reste à mettre `docs/LIMITES.md` à jour avec ce que 3.1/3.2 montrent et la validation complète
-- **Jalon :** J3 — première livraison utilisable.
+- [x] 3.3 Aide courte, exemples sans donnée personnelle, limites effectives documentées
+      *(2026-09-20, commité `5542ee8` : aide `--help`, `exemples/`, `docs/` et README faits ;
+      `docs/LIMITES.md` mis à jour le 22 avec 3.1, 3.2 et la preuve `Get-Content`, commité `052678f` +
+      `5cd91e9`.)*
+- [x] 3.3 Validation complète sur le commit livré, installation en environnement propre, version marquée
+      *(2026-09-22, sur `5cd91e9` : ruff et mypy --strict verts ; pytest 576 passed, 2 skipped (privilège
+      de lien symbolique absent) ; scénario de référence rc=0 ; `git diff --check` sans erreur ;
+      installation propre (`pip install -e .`, zéro dépendance) vérifiée dans un venv neuf, hors dépôt ;
+      taggué `v0.1.0`.)*
+- **Status:** complete — 3.1, 3.2 et 3.3 faits ; J3 atteint
+- **Jalon :** **J3 atteint le 2026-09-22** — première livraison utilisable, `v0.1.0`.
 
 ## Extension identifiée (hors phases)
 

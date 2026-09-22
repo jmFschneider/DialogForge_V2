@@ -1,5 +1,42 @@
 # Progress Log — DialogForge V2
 
+## Session: 2026-09-22 (suite) — 3.3 clos, J3 atteint, v0.1.0
+
+Suite à une relecture externe des commits : trois points corrigés avant de clore.
+
+1. **Suivi périmé.** `task_plan.md` disait encore « non commitées » alors que la correction Windows
+   (`1a7aa22`) et la documentation du protocole 3.1/qualification/3.2 (`052678f`) l'étaient déjà ; la
+   case 3.1 restait décochée. Corrigé.
+2. **Preuve à consigner.** Relecture des traces brutes de la mission de révision (lot 3.2, 22/09) :
+   Codex a bien lu un vrai corpus par son propre outil, dans un cycle A/B complet —
+   `Get-ChildItem` puis `Get-Content -LiteralPath corpus/fichiers/nextcloud-stockage-externe-anonymise.md
+   -Raw`, « succeeded in 917ms », contenu exact retourné, dans le dossier jetable du produit
+   (`appels/0001-A-…/stderr.txt`, lignes 79-87). Corrobore la qualification du 21 sur un second
+   scénario indépendant (pas de témoin isolé cette fois, un vrai corpus dans un cycle complet) ; ne
+   teste pas la lecture d'un chemin hors du corpus. Reporté dans `docs/LIMITES.md` §2, `findings.md`,
+   `task_plan.md`. La formulation antérieure du bilan 3.2 (« n'infirme ni ne confirme ») était imprécise
+   au vu de cette preuve : corrigée. Commité `5cd91e9`.
+3. **Lot 3.3 terminé** :
+   - `docs/LIMITES.md` : tableau §2 mis à jour (lecture du corpus par Codex), section « Correction
+     ciblée » complétée par le paragraphe de corroboration du 22, section 4 augmentée du bilan des
+     trois missions 3.2. En-tête daté au 2026-09-22.
+   - **Validation complète sur `5cd91e9`** : `ruff check .` → *All checks passed*. `mypy --strict` →
+     *no issues found in 48 source files*. `pytest tests` (Git Bash dans le `PATH` de la commande,
+     nécessaire aux tests PWF, cf. règle du 19/09) → **576 passed, 2 skipped** (privilège de lien
+     symbolique absent, connu), 220 sous-tests. `reference/cycle_sans_fournisseur.py` → rc=0.
+     `git diff --check` → aucune erreur.
+   - **Installation en environnement propre** : venv neuf hors dépôt, `pip install -e .` sans aucune
+     dépendance tierce (conforme à la stack stdlib), `python -m iabinome --help` et le scénario de
+     référence exécutés depuis ce venv, rc=0 dans les deux cas. Venv temporaire supprimé après
+     vérification ; `git status` resté propre pendant tout l'essai.
+   - **Version marquée** : tag annoté `v0.1.0` sur `5cd91e9`, message résumant les lots 0 à 3 et la
+     porte de validation. `pyproject.toml` était à `0.1.0` depuis le lot 0, jamais tagué jusqu'ici.
+   - Plan mis à jour : 3.1/3.2/3.3 cochés, Phase 4 « complete », **jalon J3 atteint le 2026-09-22**.
+
+**J3 atteint : première livraison utilisable, `v0.1.0`.** Aucun `push` (le clone n'a pas de remote,
+par choix du lot 0). Suite éventuelle : lot 4 (développement assisté), sur décision du PO — non
+engagée par cette session.
+
 ## Session: 2026-09-18 — mise en place du chantier
 
 ### Current Status
