@@ -48,7 +48,16 @@ fait. `intention.json` garde l'argv demandé (`invocation_args`) : c'est une tra
 Qualification bornée du 2026-09-21 (Windows, Codex 0.155.0, `gpt-5.6-sol`) : avec cet argv,
 un agent a lu un marqueur aléatoire par son outil et sa tentative d'écrire un témoin a été refusée ;
 les deux fichiers ont gardé leurs empreintes. Le web était explicitement fermé. Cela qualifie ce
-scénario, non une frontière générale de lecture du disque ou du réseau.
+scénario, non une frontière générale de lecture du disque ou du réseau. L'essai portait sur des
+fichiers témoins à la racine d'un dossier de qualification, pas sur un cycle A/B avec copie du corpus ;
+le même argv vaut pour B en consultation, sans essai réel de B.
+
+**Corroboré le 2026-09-22, en usage réel** (lot 3.2, révision d'un document existant, corpus à un
+fichier) : dans un cycle A/B complet, Codex a lu le corpus par son propre outil — `Get-ChildItem` puis
+`Get-Content -LiteralPath corpus/fichiers/… -Raw`, exécuté dans le dossier jetable du produit
+(`…\AppData\Local\Temp\iabinome-…`), « succeeded in 917ms », contenu exact retourné. Second scénario,
+indépendant du premier ; toujours pas une preuve de confinement, la mission ne testant aucun chemin
+hors du corpus.
 
 ## Ce qui n'est PAS obtenu
 

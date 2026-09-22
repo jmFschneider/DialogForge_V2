@@ -64,10 +64,10 @@ Ce n'est pas une liste de limitations : c'est le périmètre, tenu volontairemen
 - **Aucun budget ni quota interne.** Les plafonds de votre fournisseur suffisent.
 - **Pas d'interface graphique.**
 
-**Il ne prétend pas savoir ce qu'il ignore.** Le web fermé, l'effort et la séparation des secrets ont
-été mesurés sur de vrais appels le 2026-09-20 ; l'effet de plusieurs autres protections ne l'est pas ; et
-**la lecture Codex et le refus d'écriture ont été qualifiés le 2026-09-21 avec le backend Windows `elevated` déjà installé**, sans garantie de confinement en lecture. Un incident dit s'il a pu
-être payé, jamais combien. Voir [`docs/LIMITES.md`](docs/LIMITES.md).
+**Il ne prétend pas savoir ce qu'il ignore.** Certaines protections ont été mesurées sur de vrais
+appels, d'autres sont seulement demandées à la CLI de chaque outil : rien n'est promis sans preuve, et
+il n'y a **aucune garantie de confinement en lecture du disque**. Un incident dit s'il a pu être payé,
+jamais combien. Le détail, niveau de preuve par niveau de preuve : [`docs/LIMITES.md`](docs/LIMITES.md).
 
 ## Pourquoi c'est si petit
 

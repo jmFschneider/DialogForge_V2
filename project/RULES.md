@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-09-20 (3.3, documentation utilisateur)
+> Dernière mise à jour : 2026-09-22 (revue de documentation après J3)
 
 ## Index
 
@@ -234,6 +234,9 @@
 **Une page de limites se rédige depuis les mesures consignées, pas depuis un document écrit avant elles.**
 *Motif mesuré le 2026-09-20 : `docs/LIMITES.md` a d'abord repris de `FRONTIERE_ROLES.md` (écrit avant les essais) que les options d'isolation n'avaient « jamais été éprouvées ». Le journal du 2026-09-19 montrait qu'elles avaient été **acceptées** par les deux outils en réel, authentification conservée. Deux faits distincts — « accepté » et « appliqué » — et seul le second est resté non mesuré. Une page qui l'aurait confondu aurait sous-déclaré ce qui est acquis, ce qui est aussi faux que le sur-déclarer.*
 
+**`tests/test_docs.py` garantit la forme, jamais la vérité : une documentation se confronte au code et aux mesures, et les commentaires du code vieillissent avec elle.**
+*Motif mesuré le 2026-09-22 (revue de documentation demandée par le PO) : la suite était verte, et pourtant `CLAUDE.md` et `iabinome.toml.exemple` décrivaient encore un appel `A finalise` supprimé en 1.3, quatre documents annonçaient ~1 500 lignes pour 3 253, et cinq commentaires d'adaptateur disaient « non éprouvé en réel (lot 3) » après que le lot 3 l'eut éprouvé. Le test compare les options et les liens ; rien ne relit les affirmations. Corollaire : une page patchée à chaque session (ici `LIMITES.md`) dérive en journal — une passe de clarté se fait à froid, et le récit d'enquête descend dans `reference/`.*
+
 **Avant d'attribuer une ligne à un fichier de l'utilisateur, vérifier qu'elle y est** (`grep -c` sur le fichier), et se méfier des lignes que l'outil de l'assistant ajoute lui-même à ses sorties.
 *Motif mesuré le 2026-09-20 (3.1) : « Shell cwd was reset to C:\Projets\DialogForge_2 » terminait mes lectures de `.err`, et je l'ai inscrite dans le tableau du protocole comme contenu du stderr de Claude, puis j'ai demandé au PO d'en chercher l'origine. Les fichiers faisaient 0 octet : la ligne venait de mon propre outil, qui l'ajoute quand le dossier de travail change. Un `grep -c` aurait suffi ; il a fallu une erreur écrite dans un document validé, puis rectifiée.*
 
@@ -253,6 +256,7 @@
 
 **Métrique de garde : l'outil ne dépasse jamais le projet qu'il sert.**
 *Motif : DialogForge pesait 87 382 lignes pour un FloraPi de 58 894. Voir `POURQUOI.md`.*
+**Amendement du 2026-09-22 (PO) : le chiffre de ~1 500 lignes est abandonné, la métrique ne l'est pas.** Mesuré à J3 : 3 253 lignes de code dans `src/` (4 891 avec commentaires et docstrings), contre 2 968 au commit de départ ; 7 555 en tests. *Motif : le dépassement est assumé explicitement plutôt que constaté en silence dans quatre documents qui annonçaient encore 1 500. Ce qui se surveille reste le rapport à la taille du projet servi, pas un absolu.*
 
 **Une garantie qui se contente de consigner une perte ne la garantit pas : la rendre impossible par construction.**
 *Motif mesuré le 2026-09-19 (1.1) : `--answer` remplaçait la demande et je n'y ai ajouté que `sections_retirees`, qui constate. Le PO l'a refusé, et le test qui montrait la section « Sources » retirée en était la preuve. Corrigé en faisant de la réponse un complément dont le texte existant est un préfixe intact : plus rien à constater.*

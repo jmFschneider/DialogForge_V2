@@ -63,7 +63,7 @@ Ce n'est pas une lacune, c'est délibéré.
   collaboration non reproductible d'une machine à l'autre.
 - **Il ne touche jamais une collaboration existante.** Une fois `new` passé, `configuration.json` est
   la seule vérité : éditer `iabinome.toml` ne déplace rien de ce qui tourne. Seul `timeout` est relu, à
-  chaque `run`.
+  chaque `run`, `resume` et `decide --correct`.
 - **Il n'y a qu'un seul fichier.** Pas de fusion entre celui du dossier et celui de votre profil.
 
 ## Effort de raisonnement

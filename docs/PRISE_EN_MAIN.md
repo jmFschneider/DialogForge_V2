@@ -57,6 +57,14 @@ réglages dans `configuration.json`.
 Sept réglages à chaque `new`, c'est trop : un fichier [`iabinome.toml`](CONFIGURATION.md) en fournit
 les valeurs par défaut, et `new` se réduit alors à un dossier et une demande.
 
+> **Chemin de `<dossier>`.** Toutes les commandes qui suivent (`run`, `show`, `decide`, `resume`,
+> `status`, `plan`) reprennent le chemin tel que vous l'avez tapé, relatif au dossier où vous lancez
+> la commande. Si la collaboration vit hors du dépôt — un essai dans votre propre dossier, par
+> exemple — donnez-lui toujours un **chemin absolu** : un chemin relatif tapé depuis un autre
+> dossier ne désigne pas la même collaboration, et l'erreur qui en résulte (`verrou.json`
+> introuvable, par exemple) ressemble à un incident du moteur alors que c'est seulement le mauvais
+> dossier.
+
 **Pour une recherche**, le corpus se déclare par un fichier qui liste des chemins, un par ligne,
 relatifs à `--source-root` :
 
@@ -88,9 +96,11 @@ demande → A produit → B critique → A révise → B relit → … (N révis
 
 Avec `--max-revisions N`, il y a au plus **2 + 2×N appels** : deux pour la proposition et sa critique,
 puis deux par révision. B peut accepter avant le plafond, il y en a alors moins. Un tour de plus
-décidé par vous, une relance ou une correction ciblée s'ajoutent. Ordre de grandeur relevé lors des
-deux essais réels du 2026-09-19 : un appel de A a pris entre 5 et 7 minutes (voir
-[`LIMITES.md`](LIMITES.md)).
+décidé par vous, une relance ou une correction ciblée s'ajoutent. Ordre de grandeur mesuré : **un
+appel dure de 1 à 7 minutes**, et un cycle complet de quatre appels a pris environ **6 minutes** lors
+des missions réelles du 2026-09-22. Les appels les plus longs relevés (5 et 7 minutes) datent des
+premiers essais du 2026-09-19 — voir [`LIMITES.md`](LIMITES.md). Ce n'est pas une garantie : le délai
+dur par défaut reste de 30 minutes.
 
 Le terminal reste occupé pendant les appels ; fermer la fenêtre ne laisse rien tourner en fond. Vous
 pouvez vous arrêter proprement :
@@ -166,12 +176,14 @@ cas courants :
 ```
 essai/
 ├── demande.md                    votre demande, normalisée
+├── provenance_demande.json       d'où elle vient : fichier ou cadrage, et son empreinte
 ├── configuration.json            figé au `new` : outils, modèles, révisions
 ├── etat.json                     où en est le cycle, lisible à l'œil
 ├── corpus/                       manifeste et copies des sources (recherche)
-├── echanges/                     propositions de A, revues de B, en clair
+├── echanges/                     propositions de A, revues de B, réponses de A aux objections
 ├── appels/NNNN-<rôle>-<uuid>/    la preuve : prompt exact, flux bruts, résultat, incident
 ├── decisions.json                vos décisions, datées
+├── plan.json                     seulement si vous avez lié un plan PWF (`plan --link`)
 ├── livrables/version_finale.md   le document
 └── livrables/bilan.md            ce qui est livré, examiné, resté en désaccord
 ```

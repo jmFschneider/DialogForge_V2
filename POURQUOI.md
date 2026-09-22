@@ -34,6 +34,12 @@ IAbinome, c'est le retour à la phrase de départ — avec les 7 676 lignes qui 
 **1. L'outil ne doit jamais dépasser le projet qu'il sert.**
 C'est la métrique de garde. Si IAbinome approche de la taille du module FloraPi qu'il aide à concevoir, quelque chose a mal tourné. Objectif : ~1 500 lignes.
 
+> *Relevé à J3, le 2026-09-22 : 3 253 lignes de code dans `src/` (4 891 avec commentaires et
+> docstrings), contre 2 968 au commit de départ. **Dépassement du chiffre de 1 500 assumé par le
+> PO ce jour-là.** La règle, elle, n'est pas levée : c'est le rapport à la taille du projet servi
+> qui se mesure — 58 894 lignes pour FloraPi — et non ce chiffre absolu. Le reste de ce fichier
+> garde son texte du 2026-09-02.*
+
 **2. Chaque contrôle ajouté a un coût qui ne se voit qu'au refactoring.**
 Isolément, un contrôle coûte une heure. Collectivement, ils rendent le système irréparable. La bonne question n'est jamais « est-ce que ce contrôle est utile ? » — c'est *« qu'est-ce que je retire en échange ? »*
 

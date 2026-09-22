@@ -4,10 +4,15 @@ Pour qui travaille **sur** l'outil, pas avec. Les utilisateurs n'ont pas besoin 
 
 ## D'où vient le code
 
-DialogForge V2 est développé dans ce dépôt (`DialogForge_2`), à partir d'IAbinome : un outil d'environ
-1 500 lignes qui coordonne deux agents en ligne de commande. Le prédécesseur, DialogForge, pesait
-87 000 lignes et sa partie « exécution autonome » n'a jamais mené une implémentation au bout ;
-l'histoire et les cinq règles qui en découlent sont dans [`POURQUOI.md`](../POURQUOI.md).
+DialogForge V2 est développé dans ce dépôt (`DialogForge_2`), à partir d'IAbinome : un outil qui
+coordonne deux agents en ligne de commande. Le prédécesseur, DialogForge, pesait 87 000 lignes et sa
+partie « exécution autonome » n'a jamais mené une implémentation au bout ; l'histoire et les cinq
+règles qui en découlent sont dans [`POURQUOI.md`](../POURQUOI.md).
+
+**Taille, relevée à J3 (2026-09-22)** : 3 253 lignes de code dans `src/` (4 891 avec commentaires et
+docstrings), 7 555 en tests ; le commit de départ en comptait 2 968. La visée d'origine était de
+~1 500 lignes : **le dépassement est assumé par le PO depuis le 2026-09-22.** Ce qui reste surveillé
+est le rapport à la taille du projet servi (règle 1 de `POURQUOI.md`), pas ce chiffre absolu.
 
 | Élément | Valeur |
 |---|---|
@@ -27,9 +32,11 @@ critique B indépendante → correction avec une disposition explicite par objec
 restantes → acceptation, correction ciblée ou arrêt, avec reprise après incident sans rejouer un appel
 ambigu.
 
-**Hors périmètre à ce stade :** recherche externe (profil distinct, à qualifier), développement assisté
-(lot 4), interface graphique (extension conditionnelle après J3), service permanent ou reprise autonome
-après fermeture du programme.
+**Hors périmètre à ce stade :** recherche externe **conduite par l'outil** — un profil distinct, à
+qualifier ; les agents, eux, gardent la recherche web de leur propre CLI, fermée par défaut et réglée
+par `web_access` (exercée en réel au lot 3.2). Également hors périmètre : développement assisté
+(lot 4), interface graphique (extension conditionnelle après J3), service permanent ou reprise
+autonome après fermeture du programme.
 
 ## Nom du package
 

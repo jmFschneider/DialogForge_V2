@@ -6,24 +6,25 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Reprise après J3 (atteint le 2026-09-22, `v0.1.0`) — scope à confirmer en début de session, sujets
-proposés ci-dessous, le premier déjà retenu par le PO.**
+**Revue de documentation faite le 2026-09-22 (non commitée) — décider du commit, puis choisir le
+sujet suivant.**
 
-1. **Revue et amélioration de la documentation** (priorité du PO). Pistes déjà identifiées, à trier en
-   séance plutôt qu'à traiter par automatisme (`POURQUOI.md` règle 2) :
-   - `docs/LIMITES.md` a été patché par petites touches sur trois sessions (3.1, qualification
-     Windows, 3.2) : une passe de clarté/cohérence, pas seulement d'ajout, s'y justifie.
-   - `docs/PRISE_EN_MAIN.md` : ajouter la règle du chemin absolu pour une collaboration hors dépôt
-     (`project/RULES.md`, nouvelle entrée du 22/09 — a coûté deux allers-retours ce jour-là).
-   - `docs/COMMANDES.md` : vérifier qu'il reste synchronisé avec la surface CLI réelle (`tests/test_docs.py`
-     le rejoue en partie, ne le garantit pas entièrement).
-   - Rejouer `tests/test_docs.py` après toute modification de ces pages.
-2. **Renommage `iabinome` → `DialogForge`**, question à trancher, pas à supposer. `docs/DEVELOPPEMENT.md`
+0. **À trancher d'abord : commiter la revue de documentation.** 13 fichiers modifiés, non commités.
+   Validation complète verte (ruff, mypy strict, 576 tests / 2 ignorés, `test_docs.py`, scénario rc=0).
+   Détail exhaustif dans `progress.md`, session « revue de documentation contre le code ».
+   Deux points portent une décision du PO, à relire avant le commit :
+   - **le dépassement des ~1 500 lignes est assumé** (2026-09-22) : chiffre réel (3 253 lignes de code
+     dans `src/`) écrit dans `CLAUDE.md`, `docs/DEVELOPPEMENT.md` et `project/RULES.md`, plus une
+     **note datée sous la règle 1 de `POURQUOI.md`** — le texte d'origine du 2026-09-02 est conservé,
+     la note est retirable d'une ligne si le PO préfère ne pas toucher ce fichier ;
+   - `docs/LIMITES.md` a été **condensé** (§2, en-tête) et non seulement complété : le récit
+     d'enquête des 21 et 22 est descendu dans `reference/FRONTIERE_ROLES.md`.
+1. **Renommage `iabinome` → `DialogForge`**, question à trancher, pas à supposer. `docs/DEVELOPPEMENT.md`
    et `README.md` le placent explicitement « à la fin du développement V2 ». J3 clôt le lot 3 (dernier
    lot du plan de mise en œuvre initial) : est-ce ce repère, ou le PO le voit-il autrement (par exemple
    après le lot 4) ? Décision à demander avant d'y toucher — impact large si oui (package, commande,
    `iabinome.toml`, toute la documentation).
-3. **Lot 4 — Développement assisté** : seule extension déjà nommée dans ce plan (§ Extension identifiée),
+2. **Lot 4 — Développement assisté** : seule extension déjà nommée dans ce plan (§ Extension identifiée),
    conditionnée à une décision explicite du PO. Ne pas l'ouvrir sans elle.
 
 **Historique — 2026-09-22 — J3 atteint : première livraison utilisable, `v0.1.0`.**

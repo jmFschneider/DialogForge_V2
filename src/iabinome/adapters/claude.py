@@ -72,7 +72,8 @@ class ClaudeAdapter:
         exe = _resolve()
         # 2.2 : lecture seule, session fraîche, rien de l'utilisateur ni de l'hôte
         # (réglages, hooks, MCP, commandes). Formes lues dans `claude --help`
-        # 2.1.278, **non éprouvées sur un appel réel** avant le lot 3.
+        # 2.1.278, acceptées sur des appels réels au lot 3 (2026-09-19 et 20) ;
+        # leur **effet** n'est acquis que là où il a été mesuré (`LIMITES.md` §2).
         cmd = [
             exe, "-p", "--model", call.model,
             "--restricted", "--strict-mcp-config",
@@ -87,7 +88,8 @@ class ClaudeAdapter:
         cmd += ["--tools", tools]
         if tools and call.web_access:
             # Sans cette autorisation, l'appel non interactif refuse ces deux outils faute
-            # de personne pour approuver — **à vérifier sur un appel réel** (lot 3).
+            # de personne pour approuver. Vérifié le 2026-09-20 : un `WebSearch` réel, des
+            # résultats réels, aucun refus de permission.
             cmd += ["--allowedTools", _WEB_TOOLS]
         if call.effort is not None:
             cmd += ["--effort", call.effort]

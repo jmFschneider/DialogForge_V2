@@ -64,8 +64,9 @@ class CodexAdapter:
     def command(self, call: CallSpec) -> list[str]:
         exe = _resolve()
         # 2.2 : session éphémère, ni configuration ni règles de l'utilisateur (`auth`
-        # reste lue). Formes lues dans `codex exec --help` 0.155.0, **non éprouvées
-        # sur un appel réel** avant le lot 3.
+        # reste lue). Formes lues dans `codex exec --help` 0.155.0, acceptées sur des
+        # appels réels au lot 3 ; leur **effet** n'est acquis que là où il a été
+        # mesuré (`docs/LIMITES.md` §2).
         cmd = [
             exe, "exec", "-m", call.model, "--sandbox", "read-only", "--skip-git-repo-check",
             "--ephemeral", "--ignore-user-config", "--ignore-rules",
@@ -78,7 +79,8 @@ class CodexAdapter:
             cmd += ["-c", "features.shell_tool=false"]
         # Toujours explicite, dans les deux sens : `disabled` par défaut, `live` si la
         # collaboration le demande — et `disabled` quoi qu'il arrive en `CONTEXT_ONLY`.
-        # La clé est celle du PO ; **non éprouvée en réel** (lot 3).
+        # La clé est celle du PO ; mesurée le 2026-09-20 : `disabled` a bien coupé la
+        # recherche (0 ligne `web search:`, contre 4 en `live` sur le même prompt).
         live = call.web_access and call.reviewer_access is not ReviewerAccess.CONTEXT_ONLY
         cmd += ["-c", f"web_search={'live' if live else 'disabled'}"]
         if call.effort is not None:

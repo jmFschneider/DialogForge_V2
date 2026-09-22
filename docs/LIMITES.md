@@ -4,15 +4,11 @@ Ce que l'outil garantit, ce qu'il demande sans l'avoir mesuré, et ce qu'il n'ob
 distingue trois niveaux de preuve, parce qu'écrire « garanti » là où l'on a seulement « demandé » serait
 la promesse que ce projet s'interdit.
 
-> **État de cette page : mesures réelles du 2026-09-20 au 2026-09-22.** Le petit protocole d'essai
-> fournisseur du lot 3.1 (`reference/PROTOCOLE_FOURNISSEUR_3_1.md`) a été lancé le 20 : Claude
-> (`claude-sonnet-5`) et Codex 0.155.0 (`gpt-5.6-terra`), **un essai par valeur** — des faits, pas des
-> statistiques. Le défaut de lecture découvert alors a été corrigé par sélection explicite du backend
-> Windows `elevated`, avec un essai ciblé concluant le 21 (Sol) puis **corroboré en usage réel le 22** :
-> les trois missions du lot 3.2 (`gpt-5.6-terra`), dont une où Codex a lu un corpus complet par son
-> propre outil (`Get-Content`), dans le dossier jetable du produit — voir section 2. Le détail
-> technique est dans [`reference/FRONTIERE_ROLES.md`](../reference/FRONTIERE_ROLES.md) et dans le tableau
-> « Résultats » du protocole.
+> **État de cette page : mesures réelles du 2026-09-20 au 2026-09-22**, avec Claude 2.1.278 et
+> Codex 0.155.0. **Un essai par valeur** : ce sont des faits, pas des statistiques. Comment ces
+> mesures ont été obtenues, et ce qu'elles ne couvrent pas :
+> [`reference/FRONTIERE_ROLES.md`](../reference/FRONTIERE_ROLES.md) et
+> `reference/PROTOCOLE_FOURNISSEUR_3_1.md`.
 
 ## 1. Garanti par le programme
 
@@ -21,8 +17,9 @@ fournisseur** :
 
 - **Le dossier de travail ne contient pas la collaboration.** A et B tournent dans un dossier jetable, hors de la
   collaboration, qui contient une **copie** du corpus et disparaît après l'appel. On n'y copie ni
-  `appels/`, ni le journal de l'autre, ni les anciennes versions de la demande ; cela n'interdit pas leur accès par chemin absolu. Écrire dans cette
-  copie n'atteint jamais l'original.
+  `appels/`, ni le journal de l'autre, ni les anciennes versions de la demande ; cela n'empêche pas
+  A ou B d'y accéder par un chemin absolu (voir §3). Écrire dans cette copie n'atteint jamais
+  l'original.
 - **Chaque outil ne reçoit que ses variables.** Rien de Claude chez Codex, rien de Codex chez Claude ;
   `PLAN_ID`, `PWF_*` et les identifiants de session de l'outil qui vous a lancé sont retirés aux deux.
   Le même filtre vaut pour A et B.
@@ -55,28 +52,19 @@ l'outil a fait. Le protocole du 2026-09-20 a mesuré l'effet de plusieurs d'entr
 | Refuser un chemin hors du dossier | `--restricted` | `--sandbox read-only` | ✅ Claude refuse : « `--restricted` confines the file tools to the working directory ». Codex : **aucune garantie de confinement en lecture** |
 | Session fraîche, réglages ignorés | `--no-session-persistence`, `--restricted` | `--ephemeral`, `--ignore-user-config`, `--ignore-rules` | Acceptées par les deux outils en réel (2026-09-19). **Effet non mesuré** |
 
-**Correction ciblée du 2026-09-21.** Le mini-cycle du 20 septembre avait révélé des lectures rejetées
-(`blocked by policy`) ; le contrôle préalable ne les avait pas détectées, le reviewer B ensuite, oui.
-L'adaptateur sélectionne désormais `windows.sandbox=elevated` sous Windows, sans retirer les options
-d'isolation. Ce backend doit être déjà installé et utilisable ; le produit ne l'installe pas.
-Un unique appel Codex 0.155.0 / `gpt-5.6-sol`, via l'adaptateur et le transport du produit, a lu un
-marqueur aléatoire et tenté une écriture refusée ; les deux empreintes sont restées identiques.
-Cet essai utilise des fichiers témoins à la racine d'un dossier de qualification, pas un cycle A/B
-avec copie du corpus. Le même argv s'applique à B en consultation, sans nouvel essai réel de B.
-Il prouve la viabilité de cette configuration sur cet hôte, pas la cause unique des anciens rejets.
-
-**Corroboré le 2026-09-22, en usage réel.** Dans un cycle A/B complet du lot 3.2 (révision d'un
-document existant, corpus à un fichier), Codex a lu le corpus par son propre outil : `Get-ChildItem`
-puis `Get-Content -LiteralPath corpus/fichiers/… -Raw`, exécuté dans le dossier jetable du produit
-(`C:\Users\<vous>\AppData\Local\Temp\iabinome-…`), « succeeded in 917ms », contenu exact retourné.
-Cela confirme la correction sur un second scénario, indépendant du premier ; cela ne prouve toujours
-pas un confinement général — cette mission ne testait pas la lecture d'un chemin hors du corpus.
+**Sous Windows, Codex exige le backend natif `elevated`** : l'adaptateur le sélectionne explicitement,
+sans retirer les options d'isolation, et **ce backend doit être déjà installé et utilisable — le produit
+ne l'installe pas.** C'est la correction d'un défaut de lecture (`blocked by policy`) découvert le
+2026-09-20 : qualifiée le 21 sur un fichier témoin (lecture réussie, écriture refusée, empreintes
+inchangées), puis confirmée le 22 sur un vrai corpus dans un cycle A/B complet. Deux scénarios sur cet
+hôte : ce n'est ni la preuve d'une cause unique des anciens rejets, ni un confinement en lecture.
 
 Ce qui reste **non mesuré** :
 
 - que vos hooks et réglages personnels sont sans effet avec ces options ;
 - le confinement général de Codex en lecture : il n'est pas promis, conformément au recentrage approuvé ;
-- l'incident `SOURCES_MODIFIED` avec un vrai corpus modifié pendant un appel.
+- l'incident `SOURCES_MODIFIED` avec un vrai corpus modifié pendant un appel ;
+- le même argv appliqué à **B en consultation** sous ce backend : aucun essai réel de B.
 
 Une option **inconnue** de l'outil fait échouer l'appel (`CLI_FAILED`), donc se voit. Une option
 **acceptée mais sans effet** ne se voit pas d'ici.
@@ -108,8 +96,10 @@ Une option **inconnue** de l'outil fait échouer l'appel (`CLI_FAILED`), donc se
   Ce sont **les deux seules permutations mesurées en réel**, délibérément ; les quatre sont couvertes de
   bout en bout par l'agent `fake`. `A == B` reste permis (c'est la seule sortie quand un fournisseur est
   en quota) mais n'est pas un usage éprouvé.
-- **Durée d'un appel** : un appel de A a pris environ 5 minutes (Codex, 305 s) et 7 minutes (Claude,
-  402 s). Un ordre de grandeur, pas une garantie : le délai dur par défaut est de 30 minutes.
+- **Durée d'un appel** : de **1 à 7 minutes** sur les mesures disponibles. Les plus longues datent du
+  2026-09-19 (A : 305 s côté Codex, 402 s côté Claude) ; au 2026-09-22, les appels des missions réelles
+  ont duré de 55 s à 153 s, soit environ **6 minutes pour un cycle complet de quatre appels**. Un ordre
+  de grandeur, pas une garantie : le délai dur par défaut est de 30 minutes.
 - **Le prompt de B**, relu sur ces essais, contient la demande et la version examinée et ne mentionne
   aucun fichier interne de la collaboration.
 - **Sur quota, les deux outils rendent un code de retour non nul** ; ils ne l'écrivent pas au même
@@ -118,7 +108,10 @@ Une option **inconnue** de l'outil fait échouer l'appel (`CLI_FAILED`), donc se
 - **Avant le réglage `web_access`**, Codex a fait des recherches web (six par appel de A) sans que rien
   ne les demande : c'est pourquoi le web est maintenant fermé par défaut et dit explicitement.
 - **Sous les options d'isolation**, Codex a tourné à l'effort `none` et non à celui de votre
-  `config.toml`. Claude ignore un effort `minimal` avec un avertissement au lieu d'échouer.
+  `config.toml` : posez `effort_a` / `effort_b` si vous voulez une valeur précise. Un effort qu'un
+  outil ne connaît pas — `minimal` chez Claude, par exemple — est désormais **refusé avant tout
+  appel** ; c'est ce que la mesure de 2026-09-19 a motivé, Claude se contentant alors d'un
+  avertissement.
 - Le profil **`context-only`** n'a été exercé qu'en tests, pas en mission réelle.
 - **Trois missions représentatives du lot 3.2** (2026-09-22, A = Codex / B = Claude) : conception
   courte avec sources web, guide de décision avec une correction ciblée puis un complément de

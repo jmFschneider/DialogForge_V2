@@ -7,7 +7,8 @@
 # Precedence : drapeau de la ligne de commande > ce fichier > defaut du
 # programme > defaut de l'adaptateur (pour les modeles).
 #
-# Ce fichier n'est lu qu'au `new`, plus `timeout` pour `run` et `resume`.
+# Ce fichier n'est lu qu'au `new`, plus `timeout` pour `run`, `resume` et
+# `decide --correct` (la seule decision qui appelle les agents).
 # Il ne touche jamais une collaboration deja creee : `configuration.json`
 # y est la seule verite.
 #
@@ -40,7 +41,8 @@ agent_b = "claude"
 # web_access = true
 
 # --- Enveloppe du cycle ----------------------------------------------
-# Nombre maximal de revisions. 0 = B critique une fois, A finalise.
+# Nombre maximal de revisions. 0 = B critique une fois, et la version qu'il a
+# examinee est livree telle quelle : il n'y a pas d'appel de finalisation.
 max_revisions = 1
 
 # Delai dur par appel, en secondes.

@@ -30,7 +30,8 @@ comme contexte. Ce ne sont plus des tableaux de bord de reprise : ne pas y suivr
 
 ## 1. Ce qu'est IAbinome
 
-Un outil d'environ **1 500 lignes** qui coordonne **deux agents IA en CLI** aux rôles distincts :
+Un outil de **~3 250 lignes de code** (`src/`, hors commentaires et docstrings ; 4 900 lignes en tout)
+qui coordonne **deux agents IA en CLI** aux rôles distincts :
 **A produit, B critique, l'humain arbitre.** Tout en fichiers sur disque.
 Le livrable est un document de **conception ou de recherche** — les deux, décidé le 2026-09-03.
 
@@ -42,8 +43,11 @@ seulement sont mesurées en réel, délibérément** (PO, 2026-09-05) — `A == 
 quota, et c'est la configuration de `§6` ci-dessous. Motif complet dans `project/RULES.md`.
 
 ```
-demande.md → A produit → B critique → A révise → (N fois max) → A finalise → livrable
+demande.md → A produit → B critique → A révise → B relit → (N fois max) → livrable → l'humain décide
 ```
+
+**Il n'y a pas d'appel de finalisation** : le livrable est la version que B vient d'examiner, promue
+octet pour octet (décision 1.3). Un `FINAL_A` qui réécrivait après la dernière revue a été supprimé.
 
 **État : voir le plan PWF** (`## Next Step` de `.planning/2026-09-18-dialogforge-v2/task_plan.md`) — cette page ne le suit pas.
 L'enchaînement d'origine était **récolte → spécification → implémentation**, avec arbitrage humain entre chaque :
@@ -66,7 +70,10 @@ Toute demande qui commence par « et si on ajoutait un petit contrôle pour… �
 ## 3. Méthode
 
 - **Étape 1 — spécification.** Produire ce qui reste, ce qui tombe, la disposition des fichiers, la surface CLI, les gabarits de prompts repris. **Arbitrage humain avant la première ligne de code.**
-- **Étape 2 — implémentation.** ~1 500 lignes + tests.
+- **Étape 2 — implémentation.** Visée d'origine : ~1 500 lignes. **Dépassement assumé par le PO le
+  2026-09-22** — mesuré à J3 : 3 253 lignes de code dans `src/`, 7 555 en tests. La métrique de garde
+  de `POURQUOI.md` (l'outil ne dépasse pas le projet servi) reste tenue et **reste la métrique** :
+  c'est elle qu'on mesure, pas le chiffre de 1 500.
 - Claude produit. Construire l'outil avec son propre protocole est la démonstration qu'il n'a jamais eu besoin de machinerie.
 - **La relecture Codex palier par palier est suspendue depuis le 2026-09-03** — décision du PO : la conception est assez précise pour s'en passer. Portée et condition de réouverture dans `project/RULES.md`.
 

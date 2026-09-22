@@ -973,3 +973,48 @@ chemin après). Reste à faire pour clore 3.2 : une conception courte et une ré
 
 - **Revue indépendante** : l'assistant principal a lu le script `C:\Projets\DialogForge_qualification\qualification.py` et le stderr original sous `call/` : `Get-Content` réussit (rc=0), `Set-Content` est refusé (rc=1). Fichiers témoins à la racine du dossier, et non un cycle A/B avec copie dans `corpus/fichiers/`. Le script utilise bien `CodexAdapter.command`, `clean_env` et `transport.run`. Les traces sont conservées à cet emplacement ; le nettoyage demandé par Terra n'a pas abouti, aucun nouvel essai n'a été lancé.
 - **Validation finale** : Ruff vert ; mypy strict vert sur 48 fichiers après correction des mocks de plateforme ; pytest complet : 570 réussis, 8 ignorés (6 faute de `sh` dans le PATH de la session, 2 liens symboliques sans privilège). Relance locale de `test_planlink.py` et `test_docs.py` avec `C:\Program Files\Git\bin` ajouté au PATH de la commande uniquement : 41 réussis, aucun ignoré. Scénario `reference/cycle_sans_fournisseur.py` : rc=0. `git diff --check` sans erreur, avertissements LF/CRLF seulement. Aucun appel fournisseur supplémentaire, aucun commit.
+
+## Session: 2026-09-22 (apres J3) — revue de documentation contre le code
+
+**Scope demande par le PO** : confronter la documentation a l'etat reel du programme, proposer les
+corrections, ou conclure qu'elle suffit. Verdict rendu : documentation utilisateur juste sur la
+surface CLI, mais sept affirmations fausses hors `docs/` et une page derivee en journal.
+
+**Confronte au code** (aucun appel fournisseur) : `COMMANDES.md` vs `cli.py` (8 commandes, toutes les
+options, codes 0-6 identiques a `_EXIT_CODE` et a l'epilogue) ; statuts vs `decisions.next_action` ;
+cles de `CONFIGURATION.md` vs `settings._SPEC` ; modeles et niveaux d'effort vs les adaptateurs ;
+exemple de `show` vs la sortie reelle du scenario sans fournisseur (identique) ; arborescence de
+`PRISE_EN_MAIN.md` §6 vs le dossier produit.
+
+**Corrige** :
+- `CLAUDE.md` §1 : le schema montrait encore `A finalise`, supprime en 1.3 (promotion). Meme erreur
+  dans `iabinome.toml.exemple` (`max_revisions = 0`).
+- **Taille** : ~1 500 lignes annonce dans `CLAUDE.md` §1 et §3 et `DEVELOPPEMENT.md`. Mesure :
+  **3 253 lignes de code dans `src/`** (4 891 avec commentaires et docstrings), 2 968 au commit de
+  depart `4a11cc7`, 7 555 en tests. **Le PO assume le depassement** (2026-09-22) : chiffre corrige
+  partout, note datee ajoutee sous la regle 1 de `POURQUOI.md` (texte d'origine conserve), amendement
+  inscrit dans `RULES.md`. La metrique de garde (rapport au projet servi) reste, et reste tenue.
+- `iabinome.toml.exemple` : `timeout` vaut aussi pour `decide --correct`.
+- Durees d'appel : `PRISE_EN_MAIN.md` §3 et `LIMITES.md` §4 ne citaient que le 19/09 (5-7 min).
+  Ajout des mesures du 22 (appels de 55 s a 153 s, cycle de 4 appels ~6 min) : fourchette 1 a 7 min.
+- `LIMITES.md` §4 : « Claude ignore un effort `minimal` avec un avertissement » — le programme le
+  refuse desormais avant tout appel ; la phrase devient le motif de ce refus.
+- `LIMITES.md` : en-tete et §2 condenses (deux paragraphes de recit du 21 et du 22 → un paragraphe
+  operationnel) ; le recit d'enquete descend dans `reference/FRONTIERE_ROLES.md`. L'essai de B en
+  consultation sous le backend `elevated` passe explicitement en « non mesure ».
+- `PRISE_EN_MAIN.md` §6 : `provenance_demande.json` et `plan.json` manquaient ; `echanges/` contient
+  aussi les reponses de A.
+- `README.md` : paragraphe « il ne pretend pas savoir ce qu'il ignore » ramene a l'essentiel, le
+  detail du backend Windows reste dans `PRISE_EN_MAIN.md` et `LIMITES.md`.
+- `DEVELOPPEMENT.md` : « recherche externe hors perimetre » precise — l'outil n'en conduit aucune,
+  les agents gardent celle de leur CLI (`web_access`, exercee en 3.2).
+- **Commentaires de code perimes** : `adapters/claude.py` (x2), `adapters/codex.py` (x2) et
+  `adapters/base.py` disaient encore « non eprouve en reel, lot 3 » apres les mesures des 19, 20 et 22.
+
+**Validation** : ruff vert ; mypy strict vert (48 fichiers) ; pytest complet **576 reussis, 2 ignores**
+(privilege de lien symbolique) ; `tests/test_docs.py` vert avant et apres ; scenario sans fournisseur
+rc=0. Aucun appel fournisseur, aucun commit (arbre sale, en attente de decision du PO).
+
+**Regle nouvelle** (`RULES.md`, Conduite de projet) : `test_docs.py` garantit la forme, jamais la
+verite — une documentation se confronte au code et aux mesures, et les commentaires du code
+vieillissent avec elle.

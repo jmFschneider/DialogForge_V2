@@ -25,7 +25,8 @@ _VERSION_TIMEOUT_SECONDS = 5.0
 @dataclass(frozen=True)
 class Capabilities:
     """Ce que l'adaptateur **impose dans l'argv qu'il construit** — jamais une
-    attestation de ce que la CLI fait réellement (à mesurer au lot 3).
+    attestation de ce que la CLI fait réellement. Les mesures du lot 3 valent
+    point par point, jamais par extension : `docs/LIMITES.md` §2 dit lesquelles.
 
     `enforces_read_only` : aucun outil d'écriture ni d'exécution n'est offert à
     l'agent. `fresh_session` : rien n'est repris d'une session précédente, rien
