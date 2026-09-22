@@ -11,6 +11,7 @@ le profil `CONTEXT_ONLY` de B — équivalent mesuré à `--disable shell_tool`
 from __future__ import annotations
 
 import shutil
+import sys
 
 from ..models import ReviewerAccess, Role
 from .base import (
@@ -69,6 +70,10 @@ class CodexAdapter:
             exe, "exec", "-m", call.model, "--sandbox", "read-only", "--skip-git-repo-check",
             "--ephemeral", "--ignore-user-config", "--ignore-rules",
         ]
+        # `--ignore-user-config` écarte le réglage personnel : sélectionner explicitement
+        # le backend Windows natif. Les autres plateformes conservent leur argv.
+        if sys.platform == "win32":
+            cmd += ["-c", "windows.sandbox=elevated"]
         if call.reviewer_access is ReviewerAccess.CONTEXT_ONLY:
             cmd += ["-c", "features.shell_tool=false"]
         # Toujours explicite, dans les deux sens : `disabled` par défaut, `live` si la

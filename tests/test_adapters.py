@@ -149,9 +149,22 @@ class TestCodexAdapter(unittest.TestCase):
     def test_context_only_disables_the_shell_tool(self) -> None:
         spec = replace(_SPEC, reviewer_access=ReviewerAccess.CONTEXT_ONLY)
         with mock.patch.object(shutil, "which", return_value="codex"):
-            cmd = self.adapter.command(spec)
+            with mock.patch("iabinome.adapters.codex.sys.platform", "win32"):
+                cmd = self.adapter.command(spec)
         self.assertIn("-c", cmd)
-        self.assertEqual(cmd[cmd.index("-c") + 1], "features.shell_tool=false")
+        self.assertIn("features.shell_tool=false", self.values_of_c(cmd))
+
+    def test_windows_uses_the_native_elevated_sandbox_backend(self) -> None:
+        with mock.patch.object(shutil, "which", return_value="codex"):
+            with mock.patch("iabinome.adapters.codex.sys.platform", "win32"):
+                cmd = self.adapter.command(_SPEC)
+        self.assertIn("windows.sandbox=elevated", self.values_of_c(cmd))
+
+    def test_other_platforms_do_not_receive_a_windows_sandbox_setting(self) -> None:
+        with mock.patch.object(shutil, "which", return_value="codex"):
+            with mock.patch("iabinome.adapters.codex.sys.platform", "linux"):
+                cmd = self.adapter.command(_SPEC)
+        self.assertNotIn("windows.sandbox=elevated", self.values_of_c(cmd))
 
     def test_every_role_is_read_only_ephemeral_and_ignores_user_config(self) -> None:
         """2.2, côté Codex : le même résultat par d'autres moyens."""
@@ -209,9 +222,11 @@ class TestCodexAdapter(unittest.TestCase):
             _SPEC, reviewer_access=ReviewerAccess.CONTEXT_ONLY, effort="low", web_access=True
         )
         with mock.patch.object(shutil, "which", return_value="codex"):
-            cmd = self.adapter.command(spec)
+            with mock.patch("iabinome.adapters.codex.sys.platform", "win32"):
+                cmd = self.adapter.command(spec)
         self.assertEqual(self.values_of_c(cmd), [
-            "features.shell_tool=false", "web_search=disabled", "model_reasoning_effort=low",
+            "windows.sandbox=elevated", "features.shell_tool=false", "web_search=disabled",
+            "model_reasoning_effort=low",
         ])
 
     def test_effort_levels_are_codex_s_own(self) -> None:
