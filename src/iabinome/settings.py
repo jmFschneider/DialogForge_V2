@@ -1,9 +1,19 @@
 """Fichier de configuration — des valeurs par défaut, jamais un état.
 
-Cherché dans l'ordre : `--config <chemin>`, puis `./iabinome.toml`, puis
-`~/.iabinome.toml`. **Le premier trouvé gagne, et les autres sont ignorés** :
-fusionner deux fichiers rendrait indevinable d'où vient une valeur, et la
-commande annonce sur `stderr` celui qui a servi.
+Cherché dans l'ordre : `--config <chemin>`, puis `./dialogforge.toml`, puis
+`~/.dialogforge/reglages.toml`. **Le premier trouvé gagne, et les autres sont
+ignorés** : fusionner deux fichiers rendrait indevinable d'où vient une valeur,
+et la commande annonce sur `stderr` celui qui a servi.
+
+Le nom du dossier courant porte celui du produit, jamais une généralité comme
+`reglages.toml` : le fichier est cherché **là où vous lancez la commande**, et
+une clé inconnue est un refus (plus bas) — un fichier homonyme d'un autre outil
+ferait donc échouer `new` et `run` au lieu d'être ignoré. Dans le dossier
+personnel, c'est `~/.dialogforge/` qui porte le nom, et le fichier sa fonction.
+
+Les anciens noms (`iabinome.toml`, `~/.iabinome.toml`) sont **encore lus**, en
+dernier recours et **en le disant** : cesser de les lire en silence ferait
+chercher la panne ailleurs.
 
 **Il ne touche jamais une collaboration existante.** Il fournit des défauts au
 moment du `new`, et `--timeout` à `run`/`resume`. Une fois la collaboration
@@ -33,9 +43,23 @@ from pathlib import Path
 from typing import Any
 
 # Attribut de module, comme `cli.ADAPTERS` : **tout test de la CLI doit le
-# neutraliser**, sans quoi un `iabinome.toml` du dépôt ou du dossier personnel
-# rendrait la suite dépendante de la machine.
-SEARCH_PATHS: tuple[Path, ...] = (Path("iabinome.toml"), Path.home() / ".iabinome.toml")
+# neutraliser**, sans quoi un `dialogforge.toml` du dépôt ou du dossier personnel
+# rendrait la suite dépendante de la machine. Les anciens noms sont dans la même
+# liste, après les nouveaux : un seul attribut à neutraliser, et l'ordre dit la
+# précédence — le nouveau nom gagne toujours sur l'ancien.
+SEARCH_PATHS: tuple[Path, ...] = (
+    Path("dialogforge.toml"),
+    Path.home() / ".dialogforge" / "reglages.toml",
+    Path("iabinome.toml"),
+    Path.home() / ".iabinome.toml",
+)
+
+# Ancien nom → ce qu'il faut écrire désormais. Sert le message, jamais la
+# lecture : le fichier est lu tel qu'il est, personne ne le renomme à votre place.
+_RENAMED: dict[str, str] = {
+    "iabinome.toml": "dialogforge.toml",
+    ".iabinome.toml": "~/.dialogforge/reglages.toml",
+}
 
 # Type attendu par clé. `float` accepte aussi un entier TOML — `timeout = 600`
 # est la forme qu'on écrit naturellement.
@@ -61,10 +85,15 @@ class SettingsError(ValueError):
 
 @dataclass(frozen=True)
 class Settings:
-    """`path` est `None` quand aucun fichier n'a été trouvé — cas normal."""
+    """`path` est `None` quand aucun fichier n'a été trouvé — cas normal.
+
+    `legacy_note` porte la phrase à afficher quand le fichier trouvé porte un
+    ancien nom : le réglage s'applique, et l'utilisateur sait quoi renommer.
+    """
 
     path: Path | None
     values: dict[str, Any]
+    legacy_note: str | None = None
 
 
 def load(explicit: str | None = None) -> Settings:
@@ -78,8 +107,18 @@ def load(explicit: str | None = None) -> Settings:
         return Settings(path=path, values=_parse(path))
     for candidate in SEARCH_PATHS:
         if candidate.is_file():
-            return Settings(path=candidate, values=_parse(candidate))
+            return Settings(
+                path=candidate, values=_parse(candidate), legacy_note=_legacy_note(candidate)
+            )
     return Settings(path=None, values={})
+
+
+def _legacy_note(path: Path) -> str | None:
+    """Rien à dire pour un nom courant ; sinon, le nom à écrire désormais."""
+    renamed = _RENAMED.get(path.name)
+    if renamed is None:
+        return None
+    return f"{path} : ancien nom de fichier, lu quand même — renommez-le en {renamed}"
 
 
 def _parse(path: Path) -> dict[str, Any]:

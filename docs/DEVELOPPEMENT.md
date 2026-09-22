@@ -20,7 +20,7 @@ est le rapport à la taille du projet servi (règle 1 de `POURQUOI.md`), pas ce 
 | Commit de départ | `4a11cc7eae47a4920b845fda6e65937557a967cf` — *docs: cloturer le plan correctif et preparer la session CONTEXT_ONLY* |
 | Branche de travail | `v2-socle` |
 | Destination de push | Aucune. Le remote `origin` a été retiré après le clone : impossible d'écrire dans IAbinome par erreur |
-| Non importés | Environnement virtuel, fichiers non suivis, configuration personnelle (`iabinome.toml`, ignoré par Git) |
+| Non importés | Environnement virtuel, fichiers non suivis, fichier de réglages local (ignoré par Git) |
 
 Les dépôts sources — IAbinome et DialogForge — restent inchangés ; ce dépôt ne réécrit pas les missions
 historiques.
@@ -40,13 +40,22 @@ autonome après fermeture du programme.
 
 ## Nom du package
 
-Le produit s'appelle DialogForge, mais le package et la commande s'appellent encore `iabinome`. Le
-renommage est **prévu à la fin du développement V2**, en une passe distincte : le faire au fil des lots
-mélangerait changements fonctionnels et renommage. Quand il aura lieu, il touchera le package
-(`src/iabinome`), la commande `python -m iabinome`, `iabinome.toml` et `.iabinome.toml`, `pyproject.toml`, et
-la documentation (`README.md`, `docs/`, `exemples/`). **Aucun test ne surveille ce nom** — `tests/test_docs.py`
-compare les commandes et options, pas le nom du programme : `grep -rn iabinome README.md docs exemples`
-donne la liste des endroits à passer en revue.
+**Ce que l'utilisateur voit s'appelle DialogForge ; le package importable garde le nom `iabinome`.**
+C'est délibéré, et décidé par le PO le 2026-09-22 : la question n'était pas « renommer le code » mais
+« ne pas exposer IAbinome ». La surface exposée — la commande `dialogforge`, l'aide, le nom de
+distribution, le fichier de réglages, le dossier jetable, la documentation — porte donc le nom du
+produit ; le reste est une affaire de développement, que personne d'autre ne lit.
+
+En échange, un renommage du package n'a plus d'urgence : ~35 fichiers de `src/` et `tests/`, sans
+aucun gain visible pour l'utilisateur. Il se fera si un jour le nom interne gêne à la lecture, pas
+avant. `python -m iabinome` reste un point d'entrée fonctionnel, volontairement absent de la
+documentation utilisateur.
+
+Ce qui subsiste sous l'ancien nom, et qui se voit : les balises de contrat `IABINOME:DOCUMENT`,
+`IABINOME:QUESTION` et `IABINOME:REPONSES`, présentes dans les prompts et dans `echanges/`. Les
+renommer casserait la relecture des collaborations existantes (`resume --reprocess`) et les revues
+réelles que `tests/test_objections.py` rejoue : ce serait un changement de contrat, avec une phase à
+deux balises, pas un renommage. **À décider séparément.**
 
 ## Où est quoi
 
@@ -77,7 +86,7 @@ rendre le code `0`.
 ## Tenir la documentation à jour
 
 `tests/test_docs.py` échoue si une commande ou une option de la CLI n'est pas décrite dans
-`docs/COMMANDES.md`, si une clé de `iabinome.toml` ne l'est pas dans `docs/CONFIGURATION.md`, si une
+`docs/COMMANDES.md`, si une clé de `dialogforge.toml` ne l'est pas dans `docs/CONFIGURATION.md`, si une
 option n'a pas de texte d'aide, si un exemple n'est plus accepté par `new`, ou si un lien relatif est
 cassé. Il ne vérifie pas que le texte est **vrai** : ajouter une option, c'est aussi relire la page qui
 la décrit. `docs/LIMITES.md` se met à jour à chaque mesure réelle (lot 3).

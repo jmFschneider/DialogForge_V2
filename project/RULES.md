@@ -231,6 +231,12 @@
 
 **Une décision actée peut être rouverte, mais jamais en silence :** signaler, tracer, faire re-décider.
 
+**Ce qui se renomme, c'est la surface exposée — pas le code.**
+*Motif (PO, 2026-09-22) : la question n'était pas « renommer `iabinome` » mais « ne pas exposer IAbinome à l'utilisateur ». Renommer le paquet aurait touché ~35 fichiers de `src/` et `tests/` pour un gain nul côté utilisateur ; renommer ce qu'il **tape, écrit et lit** — commande `dialogforge` (point d'entrée `[project.scripts]`), aide, nom de distribution, fichier de réglages, préfixe du dossier jetable, documentation — a coûté une quinzaine de lignes. Le paquet importable reste `iabinome`, et `python -m iabinome` reste fonctionnel sans être documenté. Corollaire : un fichier cherché dans le **dossier courant** porte le nom du produit et non une généralité (`reglages.toml`), parce qu'une clé inconnue y est un refus — un homonyme d'un autre outil ferait échouer les commandes au lieu d'être ignoré ; dans le dossier personnel, c'est `~/.dialogforge/` qui porte le nom et le fichier qui porte sa fonction.*
+
+**Un nom d'usage qui change laisse l'ancien lisible, et le dit.**
+*Motif (2026-09-22) : après le passage à `dialogforge.toml`, un `iabinome.toml` resté en place aurait cessé d'agir sans un mot, et l'erreur visible aurait été `valeur(s) absente(s) : --agent-a…` — on cherche la panne ailleurs. Les anciens noms restent donc dans `SEARCH_PATHS`, en dernier recours, avec un message nommant le remplaçant. C'est la même règle que « un réglage inconnu est refusé, jamais ignoré », appliquée au nom du fichier plutôt qu'à son contenu. Les balises de contrat `IABINOME:*` échappent à cette passe : les renommer casserait `resume --reprocess` sur les collaborations existantes — changement de contrat, décision distincte.*
+
 **Une page de limites se rédige depuis les mesures consignées, pas depuis un document écrit avant elles.**
 *Motif mesuré le 2026-09-20 : `docs/LIMITES.md` a d'abord repris de `FRONTIERE_ROLES.md` (écrit avant les essais) que les options d'isolation n'avaient « jamais été éprouvées ». Le journal du 2026-09-19 montrait qu'elles avaient été **acceptées** par les deux outils en réel, authentification conservée. Deux faits distincts — « accepté » et « appliqué » — et seul le second est resté non mesuré. Une page qui l'aurait confondu aurait sous-déclaré ce qui est acquis, ce qui est aussi faux que le sur-déclarer.*
 

@@ -121,7 +121,10 @@ def _merge_settings(args: argparse.Namespace) -> str | None:
     if found.path is None:
         return None
     retenu = ", ".join(applied) if applied else "rien de neuf"
-    return f"configuration : {found.path} ({retenu})"
+    line = f"configuration : {found.path} ({retenu})"
+    # L'ancien nom de fichier est lu, **et dit** : un réglage qui cesserait
+    # d'agir en silence ferait chercher la panne ailleurs.
+    return line if found.legacy_note is None else f"{found.legacy_note}\n{line}"
 
 
 def _from_settings(path: Path | None, key: str, value: Any) -> Any:
@@ -533,14 +536,17 @@ codes de sortie : 0 terminé · 1 refus avant toute modification · 2 erreur d'u
                   3 interrompu · 4 erreur · 5 en attente de vous · 6 pause demandée
 documentation   : docs/PRISE_EN_MAIN.md · docs/COMMANDES.md · docs/CONFIGURATION.md"""
 
-_CONFIG_HELP = "fichier de configuration à utiliser (sinon ./iabinome.toml, puis ~/.iabinome.toml)"
+_CONFIG_HELP = (
+    "fichier de configuration à utiliser"
+    " (sinon ./dialogforge.toml, puis ~/.dialogforge/reglages.toml)"
+)
 _TIMEOUT_HELP = "délai dur par appel, en secondes (défaut : fichier de configuration, sinon 1800)"
 _EFFORT_HELP = "effort de raisonnement de {} ; le vocabulaire est celui de l'outil, facultatif"
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m iabinome",
+        prog="dialogforge",
         description="Deux agents IA en ligne de commande : A produit, B critique, vous arbitrez.",
         epilog=_EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter,
     )

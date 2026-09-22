@@ -8,7 +8,7 @@ Deux garanties tenues ici, et elles ne sont pas du même ordre :
    silencieusement ignoré est pire qu'un réglage absent, parce qu'on croit
    l'avoir posé (`C2b`).
 
-`settings.SEARCH_PATHS` est vidé partout : sans cela, un `iabinome.toml` du
+`settings.SEARCH_PATHS` est vidé partout : sans cela, un `dialogforge.toml` du
 dépôt ou du dossier personnel rendrait ces tests dépendants de la machine.
 """
 
@@ -25,6 +25,10 @@ from unittest import mock
 from iabinome import cli, demande, settings
 from iabinome.models import Role
 from tests import fakes
+
+# Saisi **avant** que `setUp` ne vide l'attribut : c'est l'ordre de recherche
+# réel du programme, celui que ces tests ont à vérifier.
+DEFAULT_SEARCH_PATHS = settings.SEARCH_PATHS
 
 
 class SettingsCase(unittest.TestCase):
@@ -46,7 +50,7 @@ class SettingsCase(unittest.TestCase):
         self.addCleanup(blank.stop)
 
     def write_config(self, body: str) -> str:
-        path = self.root / "iabinome.toml"
+        path = self.root / "dialogforge.toml"
         path.write_text(body, encoding="utf-8")
         return str(path)
 
@@ -78,6 +82,29 @@ class TestLoading(SettingsCase):
         real.write_text('model_a = "opus"\n', encoding="utf-8")
         with mock.patch.object(settings, "SEARCH_PATHS", (self.root / "absent.toml", real)):
             self.assertEqual(settings.load(None).path, real)
+
+    def test_the_search_order_puts_the_current_names_before_the_former_ones(self) -> None:
+        """Le nouveau nom gagne toujours ; l'ancien n'est qu'un dernier recours."""
+        names = [path.name for path in DEFAULT_SEARCH_PATHS]
+        self.assertEqual(names, ["dialogforge.toml", "reglages.toml",
+                                 "iabinome.toml", ".iabinome.toml"])
+
+    def test_a_former_file_name_is_still_read_and_says_so(self) -> None:
+        """Decision du PO (2026-09-22) : cesser de le lire **en silence** ferait
+        chercher la panne ailleurs — le reglage s'applique, et on dit quoi
+        renommer."""
+        former = self.root / "iabinome.toml"
+        former.write_text('model_a = "opus"\n', encoding="utf-8")
+        with mock.patch.object(settings, "SEARCH_PATHS", (former,)):
+            found = settings.load(None)
+        self.assertEqual(found.values, {"model_a": "opus"})
+        self.assertIsNotNone(found.legacy_note)
+        self.assertIn("dialogforge.toml", str(found.legacy_note))
+
+    def test_the_current_name_is_read_without_a_word(self) -> None:
+        current = Path(self.write_config("timeout = 60\n"))
+        with mock.patch.object(settings, "SEARCH_PATHS", (current,)):
+            self.assertIsNone(settings.load(None).legacy_note)
 
     def test_an_explicit_config_that_does_not_exist_is_an_error(self) -> None:
         """Le demander et ne pas l'avoir n'est pas un silence : `--config` est
@@ -132,6 +159,23 @@ class TestPrecedence(SettingsCase):
             argv += ["--config", config]
         code: int = cli.main([*argv, *extra])
         return code
+
+    def test_the_former_file_name_is_announced_before_what_it_supplied(self) -> None:
+        """Le fichier agit, et la commande dit **les deux** : qu'il porte un
+        ancien nom, et ce qu'elle y a pris."""
+        former = self.root / "iabinome.toml"
+        former.write_text(
+            'agent_a = "fake-a"\nagent_b = "fake-b"\n'
+            'kind = "conception"\nreviewer_access = "consult"\n',
+            encoding="utf-8",
+        )
+        err = io.StringIO()
+        with mock.patch.object(settings, "SEARCH_PATHS", (former,)), redirect_stderr(err):
+            code = self.new()
+        self.assertEqual(code, 0, err.getvalue())
+        self.assertIn("ancien nom de fichier", err.getvalue())
+        self.assertIn("dialogforge.toml", err.getvalue())
+        self.assertIn("configuration :", err.getvalue())
 
     def test_the_file_supplies_what_the_command_line_omits(self) -> None:
         path = self.write_config(

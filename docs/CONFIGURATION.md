@@ -1,7 +1,7 @@
 # Configuration
 
-Sept drapeaux à chaque `new`, c'est six de trop. Un fichier **`iabinome.toml`** en fournit les valeurs
-par défaut. Un modèle commenté est fourni : [`iabinome.toml.exemple`](../iabinome.toml.exemple).
+Sept drapeaux à chaque `new`, c'est six de trop. Un fichier **`dialogforge.toml`** en fournit les valeurs
+par défaut. Un modèle commenté est fourni : [`dialogforge.toml.exemple`](../dialogforge.toml.exemple).
 
 ```toml
 agent_a = "codex"
@@ -12,19 +12,28 @@ reviewer_access = "consult"
 ```
 
 ```
-python -m iabinome new ./ma-collab --demande ./demande.md
+dialogforge new ./ma-collab --demande ./demande.md
 ```
 
 ## Où il est cherché
 
-Dans l'ordre : `--config <chemin>`, puis `./iabinome.toml`, puis `~/.iabinome.toml`. **Le premier
+Dans l'ordre : `--config <chemin>`, puis `./dialogforge.toml`, puis `~/.dialogforge/reglages.toml`. **Le premier
 trouvé gagne ; les autres sont ignorés, jamais fusionnés** — fusionner rendrait indevinable l'origine
 d'une valeur. `--config` exige que le fichier existe. La commande annonce sur la sortie d'erreur quel
 fichier a servi et ce qu'elle y a pris :
 
 ```
-configuration : iabinome.toml (agent_a, agent_b, max_revisions)
+configuration : dialogforge.toml (agent_a, agent_b, max_revisions)
 ```
+
+Le nom du fichier porte celui du produit, et ce n'est pas une coquetterie : il est cherché **là où
+vous lancez la commande**, et une clé inconnue y est un refus — un fichier homonyme appartenant à un
+autre outil ferait donc échouer vos commandes au lieu d'être ignoré. Dans votre dossier personnel,
+c'est le dossier `~/.dialogforge/` qui porte le nom, et le fichier sa fonction.
+
+**Anciens noms.** `iabinome.toml` et `~/.iabinome.toml` sont **encore lus**, en dernier recours,
+avec un message qui dit par quoi les remplacer. Rien ne cesse d'agir en silence ; renommez-les quand
+vous voulez.
 
 **Précédence :** drapeau de la ligne de commande > fichier > défaut du programme > défaut de
 l'adaptateur (pour les modèles seulement).
@@ -62,7 +71,7 @@ Ce n'est pas une lacune, c'est délibéré.
 - **Aucun chemin ne s'y règle** — ni corpus, ni demande. Un chemin dans un fichier global rendrait la
   collaboration non reproductible d'une machine à l'autre.
 - **Il ne touche jamais une collaboration existante.** Une fois `new` passé, `configuration.json` est
-  la seule vérité : éditer `iabinome.toml` ne déplace rien de ce qui tourne. Seul `timeout` est relu, à
+  la seule vérité : éditer `dialogforge.toml` ne déplace rien de ce qui tourne. Seul `timeout` est relu, à
   chaque `run`, `resume` et `decide --correct`.
 - **Il n'y a qu'un seul fichier.** Pas de fusion entre celui du dossier et celui de votre profil.
 

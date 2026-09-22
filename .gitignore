@@ -5,8 +5,10 @@ __pycache__/
 .ruff_cache/
 .obsidian/
 
-# Reglages locaux : le modele versionne est iabinome.toml.exemple.
-# Un iabinome.toml commite changerait le comportement du `new` de chacun.
+# Reglages locaux : le modele versionne est dialogforge.toml.exemple.
+# Un fichier de reglages commite changerait le comportement du `new` de chacun.
+# L'ancien nom reste ignore tant que le programme sait encore le lire.
+dialogforge.toml
 iabinome.toml
 .venv/
 .pytest_cache/

@@ -1,9 +1,16 @@
 [project]
-name = "iabinome"
+name = "dialogforge"
 version = "0.1.0"
 description = "Deux agents IA en CLI : l'un produit, l'autre critique, l'humain arbitre."
 requires-python = ">=3.12"
 dependencies = []
+
+# La commande que l'utilisateur tape. Le paquet importable garde son nom
+# historique (`iabinome`) : c'est une affaire de développement, jamais une
+# surface exposée — `docs/DEVELOPPEMENT.md` dit pourquoi. `python -m iabinome`
+# continue de fonctionner, sans être documenté.
+[project.scripts]
+dialogforge = "iabinome.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]

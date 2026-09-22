@@ -1,8 +1,10 @@
-# Exemple de fichier de configuration IAbinome.
+# Exemple de fichier de reglages DialogForge.
 #
-# Copier sous `iabinome.toml` (dossier courant) ou `~/.iabinome.toml`,
-# ou le designer par `--config <chemin>`. Le premier trouve gagne ;
-# les autres sont ignores, jamais fusionnes.
+# Copier sous `dialogforge.toml` (dossier courant) ou
+# `~/.dialogforge/reglages.toml`, ou le designer par `--config <chemin>`.
+# Le premier trouve gagne ; les autres sont ignores, jamais fusionnes.
+# Les anciens noms (`iabinome.toml`, `~/.iabinome.toml`) sont encore lus,
+# en dernier recours, avec un message qui dit de les renommer.
 #
 # Precedence : drapeau de la ligne de commande > ce fichier > defaut du
 # programme > defaut de l'adaptateur (pour les modeles).

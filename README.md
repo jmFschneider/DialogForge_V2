@@ -13,9 +13,6 @@ A et B sont chacun Claude ou Codex, choisis au lancement. Le livrable est **exac
 B a examinée** ; « terminé » n'est jamais « accepté » : l'acceptation est votre décision, datée, sur une
 version précise.
 
-> **Le nom de la commande.** Le package et la commande s'appellent encore `iabinome` : le renommage en
-> DialogForge est prévu à la fin du développement V2. Partout, la commande est `python -m iabinome`.
-
 ## Installer
 
 Python 3.12, **aucune dépendance**. Les deux outils d'agents (`claude`, `codex`) doivent être sur le
@@ -23,16 +20,16 @@ Python 3.12, **aucune dépendance**. Les deux outils d'agents (`claude`, `codex`
 
 ```
 pip install -e .
-python -m iabinome --help
+dialogforge --help
 ```
 
 ## En quatre commandes
 
 ```
-python -m iabinome new ./ma-collab --demande ./demande.md --kind conception --reviewer-access consult --agent-a codex --agent-b claude
-python -m iabinome run ./ma-collab
-python -m iabinome show ./ma-collab
-python -m iabinome decide ./ma-collab --accept
+dialogforge new ./ma-collab --demande ./demande.md --kind conception --reviewer-access consult --agent-a codex --agent-b claude
+dialogforge run ./ma-collab
+dialogforge show ./ma-collab
+dialogforge decide ./ma-collab --accept
 ```
 
 `demande.md` est votre texte : ce que vous voulez, et **à quoi vous reconnaîtrez que c'est fini**.
@@ -53,7 +50,7 @@ le message nomme la commande qui en sort.
 | Essayer sans rien payer | `python reference/cycle_sans_fournisseur.py` (faux agents) |
 | Travailler sur l'outil lui-même | [`docs/DEVELOPPEMENT.md`](docs/DEVELOPPEMENT.md) |
 
-`python -m iabinome <commande> --help` donne l'aide de chaque commande.
+`dialogforge <commande> --help` donne l'aide de chaque commande.
 
 ## Ce que l'outil ne fait pas
 

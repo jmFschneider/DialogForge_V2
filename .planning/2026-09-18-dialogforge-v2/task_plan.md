@@ -6,8 +6,11 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Revue de documentation faite, validée et commitée le 2026-09-22 (`a059348`) — choisir le sujet
-suivant en début de session.**
+**Renommage de la surface exposée fait le 2026-09-22, non commité — puis choisir le sujet suivant.**
+
+La commande est désormais `dialogforge` ; le paquet reste `iabinome`, délibérément. Validation
+complète verte (ruff, mypy strict, **580 tests / 2 ignorés**, scénario rc=0, `dialogforge --help`
+vérifié après réinstallation). Détail dans `progress.md`.
 
 La documentation est alignée sur le code de `v0.1.0` : surface CLI vérifiée une à une, sept
 affirmations fausses corrigées, `LIMITES.md` condensé. **Le dépassement des ~1 500 lignes est assumé
@@ -15,11 +18,14 @@ par le PO** (3 253 lignes de code dans `src/`) — chiffre porté dans `CLAUDE.m
 `docs/DEVELOPPEMENT.md` et `project/RULES.md`, note datée validée sous la règle 1 de `POURQUOI.md`.
 Détail exhaustif dans `progress.md`, session « revue de documentation contre le code ».
 
-1. **Renommage `iabinome` → `DialogForge`**, question à trancher, pas à supposer. `docs/DEVELOPPEMENT.md`
-   et `README.md` le placent explicitement « à la fin du développement V2 ». J3 clôt le lot 3 (dernier
-   lot du plan de mise en œuvre initial) : est-ce ce repère, ou le PO le voit-il autrement (par exemple
-   après le lot 4) ? Décision à demander avant d'y toucher — impact large si oui (package, commande,
-   `iabinome.toml`, toute la documentation).
+1. **Renommage — tranché autrement, et fait le 2026-09-22.** Le PO a recadré la question : l'enjeu
+   n'est pas de renommer le code mais que **l'utilisateur ne voie jamais IAbinome**. Seule la surface
+   exposée a donc changé — commande `dialogforge`, aide, nom de distribution, `dialogforge.toml` /
+   `~/.dialogforge/reglages.toml` (anciens noms encore lus, avec message), préfixe du dossier jetable,
+   documentation. **Le paquet reste `iabinome`**, sans échéance : voir `docs/DEVELOPPEMENT.md`.
+   **Reste ouvert, à décider séparément** : les balises `IABINOME:DOCUMENT` / `QUESTION` / `REPONSES`,
+   visibles dans `echanges/`. Les changer est un changement de contrat (phase à deux balises pour ne
+   pas casser `resume --reprocess` ni les revues rejouées par `tests/test_objections.py`).
 2. **Lot 4 — Développement assisté** : seule extension déjà nommée dans ce plan (§ Extension identifiée),
    conditionnée à une décision explicite du PO. Ne pas l'ouvrir sans elle.
 

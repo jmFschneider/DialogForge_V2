@@ -88,7 +88,7 @@ def neutral_workdir(collab: Path) -> Iterator[Path]:
 
     Supprimé à la sortie, y compris sur exception : rien n'y survit à l'appel.
     """
-    with tempfile.TemporaryDirectory(prefix="iabinome-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="dialogforge-") as tmp:
         root = Path(tmp)
         source = collab / "corpus" / "fichiers"
         if source.is_dir():

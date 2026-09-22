@@ -1018,3 +1018,44 @@ rc=0. Aucun appel fournisseur, aucun commit (arbre sale, en attente de decision 
 **Regle nouvelle** (`RULES.md`, Conduite de projet) : `test_docs.py` garantit la forme, jamais la
 verite — une documentation se confronte au code et aux mesures, et les commentaires du code
 vieillissent avec elle.
+
+## Session: 2026-09-22 (suite) — la surface exposee passe a DialogForge
+
+**Recadrage du PO** : la question n'etait pas « renommer iabinome » mais « IAbinome ne doit pas etre
+expose frontalement a l'utilisateur ». Consequence : **le paquet n'est pas renomme**. Seul change ce
+que l'utilisateur tape, ecrit ou lit. PyCharm n'a servi a rien : aucun import touche, aucun
+`Maj+F6` (l'option etait de renommer `src/iabinome` et 25 fichiers de tests, pour un gain nul).
+
+**Fait** :
+- `pyproject.toml` : `name = "dialogforge"` et `[project.scripts] dialogforge = "iabinome.cli:main"`.
+  `python -m iabinome` reste fonctionnel, volontairement absent de la documentation.
+- `cli.py` : `prog="dialogforge"`, aide de `--config` reecrite.
+- `settings.py` : recherche `./dialogforge.toml`, puis `~/.dialogforge/reglages.toml`, puis les deux
+  anciens noms **en dernier recours**. Un ancien nom est **lu et signale** (`legacy_note`, affiche
+  sur stderr avant la ligne `configuration : …`). Un seul attribut `SEARCH_PATHS` a neutraliser dans
+  les tests, comme avant. Decision du PO sur les deux points (emplacement, transition).
+- `isolation.py` : dossier jetable `dialogforge-…` (visible dans Temp et dans les traces relues).
+- `iabinome.toml.exemple` → `dialogforge.toml.exemple` (`git mv`), en-tete reecrit ; `.gitignore`
+  couvre les deux noms.
+- Documentation : `README.md`, `PRISE_EN_MAIN.md`, `COMMANDES.md`, `CONFIGURATION.md` passent a
+  `dialogforge` ; **les deux encadres « le package s'appelle encore iabinome » sont supprimes** ;
+  `CONFIGURATION.md` gagne le motif du nom (collision dans le dossier courant + cle inconnue =
+  refus) et la note sur les anciens noms ; `DEVELOPPEMENT.md` §« Nom du package » entierement
+  reecrit : ce qui est expose, ce qui ne l'est pas, et pourquoi le renommage du paquet n'a plus
+  d'urgence.
+- Tests : 4 ajoutes (`test_settings.py`) — ordre de recherche, ancien nom lu et signale, nom courant
+  silencieux, annonce sur stderr au niveau CLI. `test_docs.py` suit le nouveau nom d'exemple.
+
+**Laisse en place, a decider separement** : les balises `IABINOME:DOCUMENT` / `QUESTION` /
+`REPONSES`, visibles dans `echanges/`. Les renommer casserait `resume --reprocess` sur les
+collaborations de `C:\Projets\essais-3-1` et les revues reelles rejouees par `test_objections.py` :
+changement de contrat (phase a deux balises), pas un renommage.
+
+**Validation** : ruff vert ; mypy strict vert (48 fichiers) ; pytest **580 reussis, 2 ignores** ;
+scenario sans fournisseur rc=0 ; `pip uninstall iabinome` puis `pip install -e .` dans le venv, et
+`dialogforge --help` verifie. Verification live de la transition : le `iabinome.toml` reel du depot
+est toujours lu, avec le message « ancien nom de fichier … renommez-le en dialogforge.toml ».
+Aucun appel fournisseur.
+
+**Regles nouvelles** (`RULES.md`, Conduite de projet) : « ce qui se renomme, c'est la surface
+exposee, pas le code » ; « un nom d'usage qui change laisse l'ancien lisible, et le dit ».

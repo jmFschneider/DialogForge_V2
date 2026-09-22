@@ -1,7 +1,7 @@
 # Commandes
 
 Référence des huit commandes, des statuts et des codes de sortie. Pour un premier parcours,
-commencez par [`PRISE_EN_MAIN.md`](PRISE_EN_MAIN.md). `python -m iabinome <commande> --help` donne la
+commencez par [`PRISE_EN_MAIN.md`](PRISE_EN_MAIN.md). `dialogforge <commande> --help` donne la
 même information en ligne.
 
 | Commande | Rôle | Appelle les agents ? |
@@ -19,7 +19,7 @@ même information en ligne.
 
 ## new
 
-`python -m iabinome new <dossier> (--demande <fichier> | --cadrer) [options]`
+`dialogforge new <dossier> (--demande <fichier> | --cadrer) [options]`
 
 Crée le dossier (qui ne doit pas exister) et fige les réglages dans `configuration.json`. Tout est
 vérifié avant toute écriture : un refus ne laisse rien derrière lui, un cadrage interrompu non plus.
@@ -46,7 +46,7 @@ corpus, et un corpus vide est refusé.
 
 ## run
 
-`python -m iabinome run <dossier> [--timeout <secondes>] [--config <fichier>]`
+`dialogforge run <dossier> [--timeout <secondes>] [--config <fichier>]`
 
 Lance le cycle, ou le reprend là où il s'est arrêté. C'est le seul moteur : il s'exécute dans votre
 terminal, s'arrête à la fin et ne laisse rien tourner. Avant chaque appel il vérifie l'état du
@@ -62,7 +62,7 @@ perdu, code `6`), le second interrompt l'appel en cours, qui a pu être payé (`
 
 ## resume
 
-`python -m iabinome resume <dossier> [--answer <fichier> | --retry-call <uuid> | --reprocess <uuid>] [--reason-file <fichier>]`
+`dialogforge resume <dossier> [--answer <fichier> | --retry-call <uuid> | --reprocess <uuid>] [--reason-file <fichier>]`
 
 Applique **une** intervention humaine sous le verrou, remet le dossier dans un état admissible, puis
 reprend le cycle. Sans option, il se comporte comme `run`.
@@ -81,7 +81,7 @@ touchées, et un échec laisse le statut `ERROR`.
 
 ## status
 
-`python -m iabinome status <dossier> [--json]`
+`dialogforge status <dossier> [--json]`
 
 Dit où en est la collaboration : genre, statut, phase, révision, objections ouvertes, âge du corpus,
 dernier incident, décision courante et **prochaine action**. Strictement en lecture seule.
@@ -92,7 +92,7 @@ dernier incident, décision courante et **prochaine action**. Strictement en lec
 
 ## show
 
-`python -m iabinome show <dossier> [--no-document]`
+`dialogforge show <dossier> [--no-document]`
 
 Ce qu'il faut lire avant de décider : la décision courante, les corrections principales, les
 réserves (les objections restées ouvertes, et les vôtres), la prochaine action, puis le document.
@@ -104,7 +104,7 @@ Lecture seule.
 
 ## decide
 
-`python -m iabinome decide <dossier> (--accept | --accept-with-reserves <texte> | --correct <fichier> | --stop) [--reason <texte>]`
+`dialogforge decide <dossier> (--accept | --accept-with-reserves <texte> | --correct <fichier> | --stop) [--reason <texte>]`
 
 Une décision, et une seule, par commande. Elle est **datée** et porte sur une **version précise** du
 livrable (empreintes du livrable, de la revue et de la demande) dans `decisions.json`. Accepter ne
@@ -121,7 +121,7 @@ change pas le statut du moteur : `AWAITING_APPROVAL` reste `AWAITING_APPROVAL`.
 
 ## plan
 
-`python -m iabinome plan <dossier> [--link <id-du-plan> [--plan-root <dossier>] | --unlink]`
+`dialogforge plan <dossier> [--link <id-du-plan> [--plan-root <dossier>] | --unlink]`
 
 Relie **facultativement** une collaboration à un plan PWF. Sans option, imprime le résumé à reporter
 **à la main** dans le plan : statut, décision, prochaine action, chemins du dossier, du document et de
@@ -138,7 +138,7 @@ fonctionne comme avant.
 
 ## list
 
-`python -m iabinome list <dossier-racine>`
+`dialogforge list <dossier-racine>`
 
 Énumère les collaborations d'un dossier, **calculées** depuis les dossiers : pas d'index, rien à garder
 à jour. Un dossier illisible est nommé plutôt que caché.

@@ -1,7 +1,7 @@
 """La documentation utilisateur ne dérive pas en silence (plan V2, 3.3).
 
 Ce que ces tests **vérifient** : que chaque commande et chaque option de la CLI est nommée dans
-`docs/COMMANDES.md`, que chaque clé de `iabinome.toml` l'est dans `docs/CONFIGURATION.md`, que
+`docs/COMMANDES.md`, que chaque clé de `dialogforge.toml` l'est dans `docs/CONFIGURATION.md`, que
 chaque option a un texte d'aide, que les exemples sont acceptés par `new`, et que les liens
 relatifs de la documentation mènent quelque part.
 
@@ -75,14 +75,14 @@ class TestCommandsAreDocumented(unittest.TestCase):
                     self.assertIn(f"`{option}", section)
 
     def test_every_setting_is_documented_and_exemplified(self) -> None:
-        exemple = (ROOT / "iabinome.toml.exemple").read_text(encoding="utf-8")
+        exemple = (ROOT / "dialogforge.toml.exemple").read_text(encoding="utf-8")
         for key in settings._SPEC:
             with self.subTest(key=key):
                 self.assertIn(f"`{key}`", CONFIGURATION)
                 self.assertRegex(exemple, rf"(?m)^#?\s*{key}\s*=")
 
     def test_the_example_settings_file_is_accepted(self) -> None:
-        loaded = settings.load(str(ROOT / "iabinome.toml.exemple"))
+        loaded = settings.load(str(ROOT / "dialogforge.toml.exemple"))
         self.assertIn("agent_a", loaded.values)
 
 

@@ -2,10 +2,6 @@
 
 Un premier cycle, de la demande à la décision. Durée de lecture : dix minutes.
 
-> **Le nom de la commande.** Le produit s'appelle DialogForge ; son package et sa commande
-> s'appellent encore `iabinome` (renommage prévu à la fin du développement V2). Partout dans
-> cette documentation, `python -m iabinome` est donc la commande à taper.
-
 ## Ce qu'il faut avoir
 
 - **Python 3.12.** Aucune autre dépendance.
@@ -17,10 +13,10 @@ Un premier cycle, de la demande à la décision. Durée de lecture : dix minutes
 
 ```
 pip install -e .
-python -m iabinome --help
+dialogforge --help
 ```
 
-`--help` liste les commandes ; `python -m iabinome <commande> --help` détaille chacune.
+`--help` liste les commandes ; `dialogforge <commande> --help` détaille chacune.
 
 ## 1. Écrire la demande
 
@@ -41,7 +37,7 @@ l'interrompez.
 ## 2. Créer la collaboration
 
 ```
-python -m iabinome new ./essai --demande ./exemples/demande-conception.md --kind conception --reviewer-access consult --agent-a codex --agent-b claude --max-revisions 1
+dialogforge new ./essai --demande ./exemples/demande-conception.md --kind conception --reviewer-access consult --agent-a codex --agent-b claude --max-revisions 1
 ```
 
 `new` ne consomme aucun quota : il crée le dossier `./essai`, qui ne doit pas exister, et fige les
@@ -54,7 +50,7 @@ réglages dans `configuration.json`.
 | `--reviewer-access` | `consult` laisse à B les outils de sa CLI ; `context-only` les lui retire. |
 | `--max-revisions` | Le nombre maximal de révisions. À `0`, B critique une fois et la proposition est livrée telle quelle. |
 
-Sept réglages à chaque `new`, c'est trop : un fichier [`iabinome.toml`](CONFIGURATION.md) en fournit
+Sept réglages à chaque `new`, c'est trop : un fichier [`dialogforge.toml`](CONFIGURATION.md) en fournit
 les valeurs par défaut, et `new` se réduit alors à un dossier et une demande.
 
 > **Chemin de `<dossier>`.** Toutes les commandes qui suivent (`run`, `show`, `decide`, `resume`,
@@ -69,7 +65,7 @@ les valeurs par défaut, et `new` se réduit alors à un dossier et une demande.
 relatifs à `--source-root` :
 
 ```
-python -m iabinome new ./etude --demande ./exemples/demande-recherche.md --kind recherche --reviewer-access consult --agent-a claude --agent-b codex --source-root ./exemples --source-list ./exemples/corpus.txt --max-revisions 1
+dialogforge new ./etude --demande ./exemples/demande-recherche.md --kind recherche --reviewer-access consult --agent-a claude --agent-b codex --source-root ./exemples --source-list ./exemples/corpus.txt --max-revisions 1
 ```
 
 Les fichiers sont **copiés octet pour octet** et hachés dans `corpus/manifeste.json`. Le corpus,
@@ -84,7 +80,7 @@ pas entrer, et en retirer un fait échouer la vérification.
 ## 3. Lancer le cycle
 
 ```
-python -m iabinome run ./essai
+dialogforge run ./essai
 ```
 
 `run` est la seule commande qui appelle les agents, et **chaque appel consomme le quota de votre
@@ -111,14 +107,14 @@ pouvez vous arrêter proprement :
   le statut devient `INTERRUPTED`, et rien n'est jamais rejoué tout seul.
 
 À la fin, `run` affiche le statut et la **prochaine action**. Il n'y a pas d'autre état caché :
-`python -m iabinome status ./essai` redonne le même point à tout moment, sans rien modifier.
+`dialogforge status ./essai` redonne le même point à tout moment, sans rien modifier.
 
 ## 4. Lire, puis décider
 
 **« Terminé » n'est pas « accepté ».** Le cycle s'arrête en `AWAITING_APPROVAL` sans rien approuver.
 
 ```
-python -m iabinome show ./essai
+dialogforge show ./essai
 ```
 
 `show` affiche la décision courante, les corrections principales, les réserves, la prochaine action,
