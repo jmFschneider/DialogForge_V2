@@ -6,25 +6,45 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Phase 5 (GUI V1) ouverte le 2026-09-23 ; lot 1 (5.1) fait, non commité — prochaine étape : lot 2
-(5.2, `ExecutionControl`), après validation du lot 1 par le PO et commit sur sa demande.**
+**Phase 5 (GUI V1) : lots 1 et 2 faits et commités le 2026-09-23 (`38abbca`, `6c77953` ; décision
+`12b4b8e`). Prochaine étape : ouvrir le lot 3 (5.3) — accueil, récents non métier, ouverture,
+suivi en lecture seule, sous-état « version acceptée ».**
 
-- Décision écrite : interdit « Pas de GUI » levé pour la seule GUI V1 (`CLAUDE.md` §2,
-  `project/RULES.md` § Périmètre, table des décisions ci-dessous). Conception copiée dans
-  `conception/GUI_V1.md`. **L'acceptation formelle du livrable** (`dialogforge decide
-  C:\Projets\essais-3-1\gui-v1\collab --accept`) reste au PO.
-- Lot 1 : `decisions.ActionId` / `AllowedAction` / `allowed_actions` = **la** table d'actions ;
-  `next_action` en dérive ses phrases (inchangées, figées par `tests/test_actions.py`). Retirés en
-  échange : `incidents.action`, `incidents.received` (sans appelant), `workflow._WAY_OUT` (la porte
-  d'état nomme sa sortie depuis la table), `workflow._RELAUNCHABLE` et la méthode `relaunchable`
-  (règle unique : `incidents.relaunchable`), le doublon « déjà accepté » de `workflow.decide`.
-  Délai : `settings.resolve_timeout(explicit, override, base)` rend valeur **et origine** ; la CLI
-  s'en sert pour `run`/`resume`/`decide`. `docs/COMMANDES.md` corrigé (`B-reprocess-012`).
-- Taille : **+83 lignes de code effectif dans `src/`** (3 282 → 3 365, même compteur sur `HEAD` et
-  l'arbre ; plafond +900). Validation : ruff, mypy strict, **595 passés / 2 ignorés**, scénario rc=0.
-- **Lot 2 — points déjà connus** : la pause existe (`workflow.run(pause=…)`, `cli._PauseSwitch`) ;
-  l'interruption passe par `KeyboardInterrupt` (`transport.py:275`). Remplacer les deux par un
-  `ExecutionControl` (deux `Event`), sans changer statuts, codes de sortie (6 = pause) ni preuves.
+**Reprise du lot 3 — à lire avant de coder** :
+- Références : `conception/GUI_V1.md` §3 (principes), §4-5 (navigation, accueil, récents), §7
+  (suivi, activité honnête, rafraîchissement), §8.7 (version acceptée), §10.3-10.4 (instantané,
+  contrôleur), §12, §15.1-15.2 (tests) ; critères AC-01 à AC-05, AC-15 à AC-17, AC-20, AC-21,
+  AC-30, AC-33. Plafonds §11 : vue ≤ 400 lignes, pas de framework de widgets ni de bus d'événements.
+- Déjà disponible : `decisions.allowed_actions` / `accepted` / `describe` / `render`,
+  `incidents.explain`, `settings.resolve_timeout(explicit, override, base)`,
+  `transport.ExecutionControl`, `workflow.run(control=…)`. Le lot 3 est en **lecture seule** :
+  aucun appel de `workflow.run` avant le lot 4/5.
+- À construire avec son appelant : `inspect_collaboration(path) -> CollaborationSnapshot` (§10.3,
+  relit le disque, jamais de cache du statut) — testable sans Tk.
+- Mesuré le 2026-09-23 : Tkinter 8.6 disponible dans le `.venv`, racine `Tk()` masquée
+  (`withdraw`) utilisable sous Windows pour les tests de vues.
+- **Questions à poser au PO au début du lot 3** (non tranchées par la conception) : point d'entrée
+  (sous-commande `dialogforge gui` ou script séparé `dialogforge-gui` dans `[project.scripts]`) ;
+  emplacement du fichier des récents (proposition : `~/.dialogforge/recents.json`, à côté de
+  `reglages.toml`, jamais lu par une commande métier).
+
+- **Lot 1** : `decisions.allowed_actions` = la table d'actions ; phrases CLI inchangées
+  (`tests/test_actions.py`) ; `settings.resolve_timeout` rend valeur et origine. Détail :
+  `progress.md`.
+- **Lot 2** : `transport.ExecutionControl` (deux `Event`) remplace le rappel `pause` du moteur et le
+  `KeyboardInterrupt` du Ctrl+C (`6c77953`). Le transport surveille `interrupt_requested` dans sa boucle
+  d'attente ; le moteur arrête à la frontière d'appel sur l'une ou l'autre demande, et lève
+  `workflow.Stopped` si l'interruption est posée avant qu'un appel ne parte (rien de lancé) ; le
+  Ctrl+C de la CLI pose les deux demandes (`cli._CtrlC`), codes de sortie inchangés (6 = pause ou
+  arrêt hors appel, 3 = appel interrompu). Le `except KeyboardInterrupt` du transport reste en filet
+  (Ctrl+C brut sans la CLI : l'arbre est quand même terminé). Testé moteur **dans un fil
+  secondaire** (`tests/test_control.py`).
+- Taille cumulée : 3 282 → 3 379 lignes de code effectif (+97 ; plafond +900). Validation : ruff,
+  mypy strict, **602 passés / 2 ignorés**, scénario rc=0.
+- **Rappel** : l'acceptation formelle du livrable GUI (`decide … --accept`) reste au PO.
+- **Lot 3 — à savoir** : la façade §10.1 (`inspect_collaboration`, instantané §10.3) se construit
+  avec l'écran de suivi qui l'appelle ; les récents vivent dans un fichier de préférences non métier
+  (§5.2), jamais lu par une commande métier.
 
 **Historique — 2026-09-22 : renommage de la surface exposée fait et commité (`9a9824c`).**
 
@@ -146,7 +166,7 @@ Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la se
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 5 (GUI V1) — ouverte le 2026-09-23, lot 1 fait, lot 2 à ouvrir. Phase 4 complète (J3, `v0.1.0`).
+Phase 5 (GUI V1) — ouverte le 2026-09-23, lots 1 et 2 faits, lot 3 à ouvrir. Phase 4 complète (J3, `v0.1.0`).
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -226,15 +246,15 @@ ouvertes). Le PO l'a retenue comme plan à mettre en œuvre ; son acceptation fo
 lui appartient. Plafonds (§11) : **1 200 lignes logiques de production, +900 lignes nettes dans
 `src/`** — référence de mesure : 3 253 lignes de code au 2026-09-22.
 - [x] 5.1 Lot 1 — actions structurées (`ActionId`, `AllowedAction`), textes CLI dérivés, parité ;
-      résolution du délai centralisée *(2026-09-23, non commité ; résultats structurés de la
+      résolution du délai centralisée *(2026-09-23, `38abbca` ; résultats structurés de la
       façade reportés aux lots qui les consomment — voir Decisions Made)*
-- [ ] 5.2 Lot 2 — `ExecutionControl` : transport, workflow, Ctrl+C de la CLI (la pause existe déjà,
-      voir `B-pause-010`)
+- [x] 5.2 Lot 2 — `ExecutionControl` : transport, workflow, Ctrl+C de la CLI (la pause existe déjà,
+      voir `B-pause-010`) *(2026-09-23, `6c77953`)*
 - [ ] 5.3 Lot 3 — accueil, récents non métier, ouverture, suivi en lecture seule, sous-état accepté
 - [ ] 5.4 Lot 4 — création : formulaire, provenance compatible, configuration/lancement séparés
 - [ ] 5.5 Lot 5 — interventions et décisions
 - [ ] 5.6 Lot 6 — recette : faux agents, compatibilité CLI/GUI, atomicité, périmètre, taille
-- **Status:** in_progress — 5.1 fait (non commité), 5.2 à ouvrir
+- **Status:** in_progress — 5.1 et 5.2 commités, 5.3 à ouvrir
 
 ## Extension identifiée (hors phases)
 

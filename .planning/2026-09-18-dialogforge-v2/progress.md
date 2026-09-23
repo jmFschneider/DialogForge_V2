@@ -1108,3 +1108,40 @@ scenario sans fournisseur rc=0 ; `git diff --check` propre. **Taille** : 3 282 �
 code effectif dans `src/` (+83 ; compteur tokenize sans docstrings, le meme sur `HEAD` et l'arbre —
 il donne 3 282 pour `HEAD` la ou le releve de J3 disait 3 253 avant `9a9824c` : comparer les
 deltas, pas les absolus). Aucun appel fournisseur. **Non commite.**
+
+**Commit du lot 1** (demande du PO « commites puis continues ») : `38abbca` (code, tests,
+`COMMANDES.md`) et `12b4b8e` (decision, conception, plan).
+
+## 2026-09-23 — Lot 2 GUI : `ExecutionControl`
+
+- `transport.ExecutionControl` : `pause_requested`, `interrupt_requested` (`threading.Event`),
+  `stopping()`. `transport.run(control=…)` : `_wait` teste l'interruption a chaque tour, comme le
+  delai → `_terminate_tree`, `INTERRUPTED_BY_USER`. Le `except KeyboardInterrupt` reste, en filet.
+- `workflow.run(control=…)` remplace `pause: Callable` ; frontiere d'appel : `control.stopping()`
+  → `READY`. `_Engine.control` ; `new_call` leve `workflow.Stopped` si l'interruption est deja
+  posee, **avant toute ecriture de l'appel** (verrou rendu, `etat.json` intact).
+- `cli._CtrlC` remplace `_PauseSwitch` : 1er signal = pause (message inchange), 2e = interruption ;
+  plus aucune exception depuis le gestionnaire. `_drive` attrape `workflow.Stopped` au lieu de
+  `KeyboardInterrupt` (meme message, code 6).
+- Tests : `tests/test_control.py` (7) — transport interrompu depuis un autre fil ; pause ignoree
+  par le transport ; moteur **dans un fil secondaire** : pause pendant l'appel de A (A applique,
+  `READY`, 1 seul appel lance), interruption pendant l'appel (`INTERRUPTED_BY_USER`), interruption
+  avant l'appel (`Stopped`, 0 appel, etat intact, verrou rendu), interruption entre deux appels
+  (`READY`) ; CLI : arret demande avant tout appel = code 6, 0 appel. Tests existants adaptes
+  (`test_incidents.py` pause et Ctrl+C, `test_actions.py`). Le test reel « deux `interrupt_main` »
+  passe inchange.
+- Erreur de test corrigee : ma premiere condition « entre deux appels » (`launched_calls >= 1`)
+  etait vraie **pendant** l'appel de A — le transport l'interrompait. Remplacee par la phase
+  publiee.
+- **Contre-epreuves** (script hors depot, sources restaurees) : transport sans test
+  d'interruption, moteur sans test de frontiere, `new_call` sans test d'interruption, second
+  Ctrl+C inoperant — **4 vues sur 4**.
+
+**Validation** : ruff vert ; mypy strict vert (50 fichiers) ; pytest **602 passes, 2 ignores** ;
+scenario sans fournisseur rc=0 ; `git diff --check` propre. **Taille** : 3 365 → 3 379 (+14 ; +97
+depuis le debut de la phase 5). Aucun appel fournisseur. **Non commite.**
+
+**Commit du lot 2** (demande du PO) : `6c77953`. Reprise preparee dans `task_plan.md` § Next Step :
+references du lot 3, briques deja disponibles, deux questions a poser au PO (point d'entree de la
+GUI, emplacement des recents). Mesure : Tkinter 8.6 present dans le `.venv`, `Tk()` masquee
+utilisable sous Windows.
