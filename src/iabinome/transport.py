@@ -19,7 +19,7 @@ import subprocess
 import threading
 import time
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import IO, Any
@@ -45,6 +45,28 @@ CLEANUP_LIMIT_SECONDS = 2 * _GRACE_SECONDS + _TERMINATE_WAIT_SECONDS
 
 class TransportError(RuntimeError):
     """Le sous-processus n'a pas pu être lancé."""
+
+
+@dataclass(frozen=True)
+class ExecutionControl:
+    """La commande d'une exécution depuis l'extérieur, **partagée par la CLI et la
+    GUI** (`conception/GUI_V1.md` §9.1). Deux demandes, rien d'autre :
+
+    - `pause_requested` : l'appel en cours se termine, le cycle s'arrête à la
+      frontière d'appel, en `READY` — rien n'est perdu ;
+    - `interrupt_requested` : l'appel en cours est interrompu tout de suite
+      (`INTERRUPTED_BY_USER`, possiblement payé), et aucun autre ne part.
+
+    Des `Event` parce qu'une GUI les pose depuis un autre fil que celui du moteur,
+    que `KeyboardInterrupt` n'atteint pas. Ni statut, ni preuve, ni règle de
+    reprise ne changent : ce sont les mêmes arrêts, commandés explicitement.
+    """
+
+    pause_requested: threading.Event = field(default_factory=threading.Event)
+    interrupt_requested: threading.Event = field(default_factory=threading.Event)
+
+    def stopping(self) -> bool:
+        return self.pause_requested.is_set() or self.interrupt_requested.is_set()
 
 
 class Outcome(Enum):
@@ -95,6 +117,7 @@ def run(
     stdin_text: str | None = None,
     limit_bytes: int = OUTPUT_LIMIT_BYTES,
     env: Mapping[str, str] | None = None,
+    control: ExecutionControl | None = None,
 ) -> CallResult:
     """Lance `command` dans `cwd`, écrit ses flux sous `call_dir`, et n'y écrit
     `resultat.json` que si le processus est sorti de lui-même.
@@ -107,6 +130,9 @@ def run(
 
     `env` remplace l'environnement hérité (2.2) ; absent, le sous-processus hérite
     de celui du parent, comme avant.
+
+    `control.interrupt_requested` est surveillé pendant l'attente, comme le délai :
+    posé, il termine l'arbre et rend `INTERRUPTED_BY_USER`.
     """
     # Validé avant `Popen` : avec `nan`, `time.monotonic() >= deadline` reste
     # faux et le délai dur ne se déclencherait jamais (C-08).
@@ -145,7 +171,7 @@ def run(
         pump.start()
     unclosed = False
     try:
-        outcome = _wait(proc, pumps, started + timeout_seconds)
+        outcome = _wait(proc, pumps, started + timeout_seconds, control)
     finally:
         unclosed = _drain(proc, pumps)
     # Un flux peut déborder dans ce qu'il restait à vider après la sortie.
@@ -259,10 +285,14 @@ def _check_stream(path: Path, size: int, digest: str) -> None:
 
 
 def _wait(
-    proc: subprocess.Popen[bytes], pumps: tuple[_Pump, ...], deadline: float
+    proc: subprocess.Popen[bytes], pumps: tuple[_Pump, ...], deadline: float,
+    control: ExecutionControl | None,
 ) -> Outcome:
     try:
         while True:
+            if control is not None and control.interrupt_requested.is_set():
+                _terminate_tree(proc)
+                return Outcome.INTERRUPTED_BY_USER
             if any(p.overflowed for p in pumps):
                 _terminate_tree(proc)
                 return Outcome.OUTPUT_LIMIT
@@ -273,6 +303,8 @@ def _wait(
                 return Outcome.TIMEOUT
             time.sleep(_POLL_SECONDS)
     except KeyboardInterrupt:
+        # Filet, pas un second modèle : un Ctrl+C brut (moteur importé sans la CLI,
+        # qui, elle, passe par `ExecutionControl`) ne doit jamais laisser l'arbre vivant.
         _terminate_tree(proc)
         return Outcome.INTERRUPTED_BY_USER
 

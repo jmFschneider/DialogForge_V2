@@ -275,17 +275,17 @@ def _drive(
     collab: Path, *, timeout_seconds: float, command_label: str,
     intervention: workflow.Intervention | None = None,
 ) -> int:
-    switch = _PauseSwitch()
-    previous = _install(switch)
+    ctrl_c = _CtrlC()
+    previous = _install(ctrl_c)
     try:
         state = workflow.run(
             collab, adapters=ADAPTERS, timeout_seconds=timeout_seconds,
-            command_label=command_label, intervention=intervention, pause=switch,
+            command_label=command_label, intervention=intervention, control=ctrl_c.control,
         )
-    except KeyboardInterrupt:
-        # Ctrl+C **hors** d'un appel (préflight, verrou, écriture) : aucun appel
-        # n'était en cours, l'état est celui d'avant ou d'après une publication
-        # atomique — rien n'est perdu et rien n'a été payé par cet arrêt.
+    except workflow.Stopped:
+        # Arrêt demandé **hors** d'un appel (préflight, verrou, écriture) : aucun
+        # appel n'était en cours, l'état est celui d'avant ou d'après une
+        # publication atomique — rien n'est perdu et rien n'a été payé.
         print(
             "arrêt immédiat entre deux appels : aucun appel n'était en cours, rien n'est perdu ;"
             f" `run {collab}` reprend", file=sys.stderr,
@@ -315,29 +315,27 @@ _PAUSE_ASKED = (
 )
 
 
-class _PauseSwitch:
-    """Le Ctrl+C à deux temps. Le premier demande une **pause à la frontière
-    d'appel** — l'appel en cours se termine, rien n'est perdu. Le second est un
-    **arrêt immédiat** : l'appel en cours est interrompu, ses conséquences sont
-    affichées (`incidents`). Instance appelable : c'est la valeur de `pause`."""
+class _CtrlC:
+    """Le Ctrl+C à deux temps, traduit en `ExecutionControl` — le mécanisme même
+    de la GUI. Le premier demande une **pause à la frontière d'appel** : l'appel
+    en cours se termine, rien n'est perdu. Le second demande l'**arrêt immédiat** :
+    l'appel en cours est interrompu, ses conséquences sont affichées (`incidents`).
+    Aucune exception n'est levée depuis le gestionnaire de signal."""
 
     def __init__(self) -> None:
-        self.requested = False
-
-    def __call__(self) -> bool:
-        return self.requested
+        self.control = transport.ExecutionControl()
 
     def on_signal(self, signum: int, frame: Any) -> None:
-        if not self.requested:
-            self.requested = True
+        if not self.control.pause_requested.is_set():
+            self.control.pause_requested.set()
             print(_PAUSE_ASKED, file=sys.stderr)
             return
-        raise KeyboardInterrupt
+        self.control.interrupt_requested.set()
 
 
-def _install(switch: _PauseSwitch) -> Any:
+def _install(ctrl_c: _CtrlC) -> Any:
     try:
-        return signal.signal(signal.SIGINT, switch.on_signal)
+        return signal.signal(signal.SIGINT, ctrl_c.on_signal)
     except ValueError:  # hors du fil principal : pas de gestion de Ctrl+C
         return None
 

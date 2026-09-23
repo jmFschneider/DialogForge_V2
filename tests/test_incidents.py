@@ -317,8 +317,10 @@ class TestAnAnswerBadlyPresentedIsRecovered(IncidentCase):
 class TestPauseAtTheCallBoundary(IncidentCase):
     def test_a_pause_stops_between_two_calls_and_a_plain_run_resumes_there(self) -> None:
         collab = self.build(a=(_DOC,), b=(review_v2("ACCEPTER"),))
+        control = transport.ExecutionControl()
+        control.pause_requested.set()
         state = workflow.run(
-            collab, adapters=self.adapters, timeout_seconds=30.0, pause=lambda: True
+            collab, adapters=self.adapters, timeout_seconds=30.0, control=control
         )
         self.assertEqual(state.status.value, "READY")
         self.assertEqual(
@@ -333,11 +335,15 @@ class TestPauseAtTheCallBoundary(IncidentCase):
         seen: list[tuple[int, int]] = []
         collab = self.build(a=(_DOC,), b=(review_v2("ACCEPTER"),))
 
-        def pause() -> bool:
-            seen.append((self.a.calls, self.b.calls))
-            return False
+        case = self
 
-        workflow.run(collab, adapters=self.adapters, timeout_seconds=30.0, pause=pause)
+        class _Watched(threading.Event):
+            def is_set(self) -> bool:
+                seen.append((case.a.calls, case.b.calls))
+                return False
+
+        control = transport.ExecutionControl(pause_requested=_Watched())
+        workflow.run(collab, adapters=self.adapters, timeout_seconds=30.0, control=control)
         self.assertEqual(seen, [(1, 0)], "consultée hors de la frontière d'un appel")
 
     def test_no_pause_means_the_cycle_runs_through(self) -> None:
@@ -348,16 +354,21 @@ class TestPauseAtTheCallBoundary(IncidentCase):
 
 class TestCtrlCInTwoSteps(CliCase):
     def test_the_first_signal_asks_for_a_pause_the_second_stops_at_once(self) -> None:
-        switch = cli._PauseSwitch()
-        self.assertFalse(switch())
+        """GUI V1, lot 2 : le Ctrl+C pose les demandes de l'`ExecutionControl` que la
+        GUI posera elle-même — un seul mécanisme, et plus aucune exception levée
+        depuis le gestionnaire de signal."""
+        ctrl_c = cli._CtrlC()
+        control = ctrl_c.control
+        self.assertFalse(control.stopping())
         with redirect_stderr(io.StringIO()) as err:
-            switch.on_signal(2, None)
-        self.assertTrue(switch())
+            ctrl_c.on_signal(2, None)
+        self.assertTrue(control.pause_requested.is_set())
+        self.assertFalse(control.interrupt_requested.is_set())
         self.assertIn("pause demandée", err.getvalue())
         self.assertIn("Ctrl+C encore = arrêt immédiat", err.getvalue())
         self.assertIn("pourra avoir été payé", err.getvalue())
-        with self.assertRaises(KeyboardInterrupt):
-            switch.on_signal(2, None)
+        ctrl_c.on_signal(2, None)
+        self.assertTrue(control.interrupt_requested.is_set())
 
     def new(self) -> None:
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
@@ -368,12 +379,12 @@ class TestCtrlCInTwoSteps(CliCase):
         self.a.responses = [_DOC]
         self.b.responses = [review_v2("ACCEPTER")]
 
-        class _AlreadyAsked(cli._PauseSwitch):
+        class _AlreadyAsked(cli._CtrlC):
             def __init__(self) -> None:
                 super().__init__()
-                self.requested = True
+                self.control.pause_requested.set()
 
-        with mock.patch.object(cli, "_PauseSwitch", _AlreadyAsked):
+        with mock.patch.object(cli, "_CtrlC", _AlreadyAsked):
             with redirect_stdout(io.StringIO()) as out:
                 code = cli.main(["run", str(self.collab)])
         self.assertEqual(code, 6)

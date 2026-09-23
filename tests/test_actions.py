@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from iabinome import decisions, workflow
+from iabinome import decisions, transport, workflow
 from iabinome.decisions import ActionId
 from tests import fakes
 from tests.test_decision import _DOC, _QUESTION, DecisionCase
@@ -32,7 +32,9 @@ class ActionsCase(DecisionCase):
 
     def ready_paused(self) -> Path:
         collab = self.build(a=(_DOC,), b=(fakes.review("REVISER"),))
-        self.run_engine(collab, pause=lambda: True)
+        control = transport.ExecutionControl()
+        control.pause_requested.set()
+        self.run_engine(collab, control=control)
         return collab
 
     def running(self) -> Path:

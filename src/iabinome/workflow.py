@@ -25,7 +25,7 @@ import hashlib
 import json
 import os
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -63,11 +63,16 @@ from .models import (
     Status,
     positive_seconds,
 )
-from .transport import Outcome
+from .transport import ExecutionControl, Outcome
 
 
 class WorkflowError(RuntimeError):
     """Prévol refusé, intervention refusée, ou état modifié sous le verrou."""
+
+
+class Stopped(RuntimeError):
+    """Arrêt immédiat demandé **avant** qu'un appel ne parte : aucun n'est lancé,
+    l'état est celui de la dernière publication — rien n'est perdu ni payé."""
 
 
 @dataclass(frozen=True)
@@ -145,15 +150,17 @@ def run(
     timeout_seconds: float,
     command_label: str = "run",
     intervention: Intervention | None = None,
-    pause: Callable[[], bool] | None = None,
+    control: ExecutionControl | None = None,
 ) -> State:
     """L'unique moteur synchrone. Il enchaîne les appels tant que l'état reste
     `READY` ; toute autre valeur rend la main à l'humain.
 
-    **Pause à la frontière d'appel** : `pause()` n'est consultée qu'**entre** deux
-    appels, une fois le précédent appliqué. Elle rend l'état `READY` tel quel — rien
-    n'est perdu, `run` reprend au même endroit. Ce n'est pas l'arrêt immédiat, qui
-    interrompt l'appel en cours (`INTERRUPTED_BY_USER`, possiblement payé).
+    **Commande coopérative** (`control`, partagé avec la CLI et la GUI). La pause
+    n'est consultée qu'**entre** deux appels, une fois le précédent appliqué : elle
+    rend l'état `READY` tel quel — rien n'est perdu, `run` reprend au même endroit.
+    L'interruption arrête l'appel en cours (`INTERRUPTED_BY_USER`, possiblement
+    payé, vu par le transport) ; demandée avant qu'un appel ne parte, elle lève
+    `Stopped` sans rien lancer ; entre deux appels, elle arrête comme la pause.
 
     L'intervention humaine est appliquée **sous le verrou**, entre la relecture
     et la porte d'état, puis consommée — comme la relance l'était déjà, elle ne
@@ -168,6 +175,7 @@ def run(
     timeout_seconds = positive_seconds(timeout_seconds)
     while True:
         engine, state = _preflight(collab, adapters, timeout_seconds, intervention)
+        engine = replace(engine, control=control)
         with lock.acquire(collab / "verrou.json", command_label):      # étape 2
             engine.recheck(state)                                      # étape 3
             # Avant l'intervention, donc **avant toute mutation** : un corpus qui
@@ -183,7 +191,7 @@ def run(
         intervention = None
         if state.status is not Status.READY:
             return state
-        if pause is not None and pause():
+        if control is not None and control.stopping():
             return state
 
 
@@ -309,6 +317,7 @@ class _Engine:
     answer: contracts.Normalized | None = None
     answer_source: str | None = None
     composed: contracts.Normalized | None = None
+    control: ExecutionControl | None = None
 
     # -- Prévol et relecture sous verrou --
 
@@ -529,6 +538,9 @@ class _Engine:
     # -- Étapes 4 à 7 : un appel --
 
     def new_call(self, state: State, retry: _Retry | None) -> State:
+        # Avant toute écriture de l'appel : un arrêt demandé ici ne lance rien.
+        if self.control is not None and self.control.interrupt_requested.is_set():
+            raise Stopped("arrêt demandé avant le lancement de l'appel : aucun appel n'est parti")
         role = _ROLE_OF_PHASE.get(state.phase)
         if role is None:
             raise WorkflowError(f"phase {state.phase.value} : aucun appel n'y est prévu")
@@ -591,7 +603,7 @@ class _Engine:
                 result = transport.run(
                     argv, cwd=workdir, call_dir=self.collab / rel_dir,
                     timeout_seconds=self.timeout_seconds, stdin_text=prompt,
-                    env=env,
+                    env=env, control=self.control,
                 )
         except transport.TransportError as exc:
             # `Popen` a échoué : l'appel **n'est pas parti**. Le déclarer
