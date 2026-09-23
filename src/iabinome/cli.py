@@ -1,11 +1,12 @@
 """Surface CLI — neuf commandes (CONCEPTION_FINALE.md §7, étendue en V2 par 1.4, 2.3 et
-la GUI V1, lot 3).
+la GUI V1, lots 3 et 4).
 
-`new` fait tous ses prévols dans un répertoire temporaire frère puis publie
-par renommage ; `run` est l'unique moteur synchrone ; `resume` n'en contient
-pas un second — il **transmet** l'intervention humaine au moteur, qui
-l'applique sous le verrou, remet l'état dans une phase admissible, puis
-enchaîne le cycle ; `status` est strictement en lecture seule.
+`new` obtient sa demande puis délègue la création à `facade.create_collaboration`
+(§6.1, §6.5 : « validation autoritaire », partagée avec la GUI) ; `run` est l'unique
+moteur synchrone ; `resume` n'en contient pas un second — il **transmet**
+l'intervention humaine au moteur, qui l'applique sous le verrou, remet l'état dans
+une phase admissible, puis enchaîne le cycle ; `status` est strictement en lecture
+seule.
 
 Aucune commande ne mute la collaboration hors du verrou : `resume` ne garde
 que la validation de ses arguments (D-4).
@@ -15,19 +16,16 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import signal
 import sys
-import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from . import (
-    contracts,
-    corpus,
     decisions,
     demande,
+    facade,
     lock,
     planlink,
     settings,
@@ -35,24 +33,17 @@ from . import (
     transport,
     workflow,
 )
-from .adapters.base import AdapterError, AgentAdapter
-from .adapters.claude import ClaudeAdapter
-from .adapters.codex import CodexAdapter
+from .adapters.base import AdapterError
 from .models import (
-    SCHEMA_VERSION,
-    AgentSpec,
     Configuration,
     MissionKind,
-    Phase,
     ReviewerAccess,
-    Role,
     SchemaError,
     State,
     Status,
     positive_seconds,
 )
-
-ADAPTERS: dict[str, AgentAdapter] = {"claude": ClaudeAdapter(), "codex": CodexAdapter()}
+from .registry import ADAPTERS
 
 _KIND = {"conception": MissionKind.CONCEPTION, "recherche": MissionKind.RECHERCHE}
 _ACCESS = {"context-only": ReviewerAccess.CONTEXT_ONLY, "consult": ReviewerAccess.CONSULT}
@@ -154,35 +145,34 @@ def cmd_new(args: argparse.Namespace) -> int:
             f"valeur(s) absente(s) : {' '.join(missing)} — sur la ligne de commande"
             " ou dans le fichier de configuration"
         )
-    if dest.exists():
-        return _fail(f"{dest} existe deja")
-    if bool(args.source_root) != bool(args.source_list):
-        return _fail("--source-root et --source-list vont ensemble")
-    kind = _KIND[args.kind]
-    if kind is MissionKind.RECHERCHE and not args.source_root:
-        return _fail("mission de recherche sans corpus (--source-root et --source-list requis)")
-    # La demande est obtenue **avant** le dossier temporaire : un cadrage
-    # interrompu ne laisse rien derrière lui.
+    # La demande est obtenue **avant** la création : un cadrage interrompu ne
+    # laisse rien derrière lui.
     try:
         demande_text, origin = _obtain_demande(args)
     except EOFError:
         return _fail("cadrage interrompu : rien n'a été créé")
     except (OSError, ValueError) as exc:
         return _fail(str(exc))
-    tmp = dest.parent / f".new-{dest.name}-{uuid.uuid4().hex}"
-    tmp.mkdir(parents=True)
+    request = facade.CreationRequest(
+        collab=dest,
+        demande=facade.DemandeSource(demande_text, str(origin["source"]), origin["path"]),
+        kind=_KIND[args.kind], reviewer_access=_ACCESS[args.reviewer_access],
+        agent_a=args.agent_a, agent_b=args.agent_b, max_revisions=args.max_revisions,
+        model_a=args.model_a, model_b=args.model_b,
+        effort_a=args.effort_a, effort_b=args.effort_b, web_access=bool(args.web_access),
+        source_root=Path(args.source_root) if args.source_root else None,
+        source_list=Path(args.source_list) if args.source_list else None,
+        source_label=args.source_label,
+    )
     try:
-        _build_new(tmp, dest, args, kind, _ACCESS[args.reviewer_access], demande_text, origin)
-    except (corpus.CorpusError, OSError, ValueError) as exc:
-        shutil.rmtree(tmp, ignore_errors=True)
+        result = facade.create_collaboration(request, adapters=ADAPTERS)
+    except facade.CreationError as exc:
         return _fail(str(exc))
-    tmp.rename(dest)
-    print(f"collaboration creee : {dest}")
-    absent = demande.missing(demande_text)
-    if absent:
+    print(f"collaboration creee : {result.path}")
+    if result.missing_sections:
         # Un repère, pas une porte : A rend une QUESTION si l'absence compte.
         print(
-            f"demande : section(s) absente(s) ou vide(s) — {', '.join(absent)}."
+            f"demande : section(s) absente(s) ou vide(s) — {', '.join(result.missing_sections)}."
             " La production démarre quand même.", file=sys.stderr,
         )
     return 0
@@ -196,54 +186,6 @@ def _obtain_demande(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
     path = Path(args.demande)
     text, _ = storage.read_text(path)
     return text, {"source": "fichier", "path": str(path.resolve())}
-
-
-def _build_new(
-    tmp: Path, dest: Path, args: argparse.Namespace, kind: MissionKind, access: ReviewerAccess,
-    demande_text: str, origin: dict[str, Any],
-) -> None:
-    normalized = contracts.normalize(demande_text)
-    storage.write_atomic_text(tmp / "demande.md", normalized.text)
-    demande.record(tmp, {**origin, "sha256": normalized.sha256})
-    corpus_sha: str | None = None
-    if args.source_root:
-        manifest = corpus.build(
-            Path(args.source_root), Path(args.source_list), tmp / "corpus",
-            args.source_label or Path(args.source_root).name,
-        )
-        if not manifest.entries and kind is MissionKind.RECHERCHE:
-            raise ValueError("corpus vide pour une mission de recherche")
-        manifest_text, _ = storage.read_text(tmp / "corpus" / "manifeste.json")
-        corpus_sha = contracts.normalize(manifest_text).sha256
-    agent_a, agent_b = ADAPTERS[args.agent_a], ADAPTERS[args.agent_b]
-    for who, adapter, effort in (
-        ("A", agent_a, args.effort_a), ("B", agent_b, args.effort_b)
-    ):
-        levels = adapter.capabilities.effort_levels
-        if effort is not None and effort not in levels:
-            raise ValueError(
-                f"effort {who} : {effort!r} refusé par {adapter.adapter_id} —"
-                f" attendu : {', '.join(levels) or 'aucun'}"
-            )
-    config = Configuration(
-        schema_version=SCHEMA_VERSION, collaboration_id=dest.name, mission_kind=kind,
-        reviewer_access=access, max_revisions=args.max_revisions,
-        agent_a=AgentSpec(
-            args.agent_a, args.model_a or agent_a.default_model(Role.A), args.effort_a
-        ),
-        agent_b=AgentSpec(
-            args.agent_b, args.model_b or agent_b.default_model(Role.B), args.effort_b
-        ),
-        initial_demande_sha256=normalized.sha256, corpus_manifest_sha256=corpus_sha,
-        created_at=_now(), web_access=bool(args.web_access),
-    )
-    state = State(
-        schema_version=SCHEMA_VERSION, status=Status.READY, phase=Phase.PROPOSAL_A, revision=0,
-        demande_sha256=normalized.sha256, current_document=None, latest_review=None,
-        open_finding_ids=[], current_call=None, last_incident=None, updated_at=_now(),
-    )
-    _write_json(tmp / "configuration.json", config.to_dict())
-    _write_json(tmp / "etat.json", state.to_dict())
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -485,7 +427,6 @@ _BORDER_ERRORS = (
     workflow.WorkflowError,
     lock.LockError,
     transport.TransportError,
-    corpus.CorpusError,
     OSError,
     json.JSONDecodeError,
     UnicodeDecodeError,
@@ -507,14 +448,6 @@ def _fail(message: str) -> int:
 def _read_json(path: Path) -> Any:
     text, _ = storage.read_text(path)
     return json.loads(text)
-
-
-def _write_json(path: Path, payload: dict[str, object]) -> None:
-    storage.write_atomic_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
-
-
-def _now() -> str:
-    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _timeout(text: str) -> float:

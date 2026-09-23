@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from ..controller import Controller
 
 _PLACEHOLDER = "Sélectionnez un document ci-dessus pour le lire."
+_POLL_MS = 500
 
 
 class SuiviView(ttk.Frame):
@@ -27,8 +28,19 @@ class SuiviView(ttk.Frame):
         super().__init__(master)
         self._controller = controller
         self._path = path
+        self._after_id: str | None = None
         self._build()
+        self._set_viewer(_PLACEHOLDER)
         self._refresh()
+
+    def destroy(self) -> None:
+        """Une actualisation programmée ne doit jamais s'exécuter contre une
+        vue détruite — §9 : fermer n'abandonne aucun fil, mais n'en laisse pas
+        non plus un réveiller un widget disparu."""
+        if self._after_id is not None:
+            self.after_cancel(self._after_id)
+            self._after_id = None
+        super().destroy()
 
     def _build(self) -> None:
         header = ttk.Frame(self)
@@ -68,9 +80,14 @@ class SuiviView(ttk.Frame):
 
     def _refresh(self) -> None:
         """Relit intégralement le dossier (§3.3) : aucune écriture, jamais de
-        cache du statut ou de la phase."""
+        cache du statut ou de la phase. Tant que cette fenêtre possède une
+        exécution sur ce dossier (`iabinome.gui.controller.Controller.
+        start_run`), un fil unique la relit périodiquement (§7.3) ; sans lui,
+        `Actualiser` reste la seule façon de rafraîchir l'écran."""
+        self._after_id = None
+        running = self._controller.is_running(self._path)
         try:
-            snapshot = self._controller.inspect(self._path)
+            snapshot = self._controller.inspect(self._path, owned_by_this_gui=running)
         except facade.InspectionError as exc:
             self._title.configure(text=self._path.name)
             self._subtitle.configure(text=f"Dossier illisible : {exc}")
@@ -92,12 +109,16 @@ class SuiviView(ttk.Frame):
                 self._documents_row, text=Path(document).name,
                 command=self._document_handler(document),
             ).pack(side="left", padx=(0, 4))
-        self._set_viewer(_PLACEHOLDER)
+        if running:
+            self._after_id = self.after(_POLL_MS, self._refresh)
 
     def _activity_text(self, snapshot: facade.CollaborationSnapshot) -> str:
         lines = [f"Dernier état du dossier : {snapshot.state.updated_at}"]
         if snapshot.incident:
             lines.append(snapshot.incident)
+        error = self._controller.run_error(self._path)
+        if error:
+            lines.append(f"Le lancement n'a pas pu partir : {error}")
         return "\n".join(lines)
 
     def _result_text(self, snapshot: facade.CollaborationSnapshot) -> str:

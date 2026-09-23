@@ -19,7 +19,7 @@ from iabinome import decisions, workflow
 from iabinome.gui import recents
 from iabinome.gui.controller import Controller
 from iabinome.gui.views.accueil import AccueilView
-from iabinome.gui.views.stub import StubView
+from iabinome.gui.views.creation import CreationView
 from iabinome.gui.views.suivi import SuiviView
 from tests import fakes
 
@@ -110,12 +110,12 @@ class TestAccueilView(ViewCase):
         show_error.assert_called_once()
         self.assertIs(self.controller._frame, view)
 
-    def test_the_new_collaboration_button_opens_the_lot4_stub(self) -> None:
+    def test_the_new_collaboration_button_opens_the_creation_form(self) -> None:
         self.controller.show_accueil()
         view = self.controller._frame
         assert isinstance(view, AccueilView)
         _find_button(view, "Nouvelle collaboration").invoke()
-        self.assertIsInstance(self.controller._frame, StubView)
+        self.assertIsInstance(self.controller._frame, CreationView)
 
 
 class TestSuiviView(ViewCase):

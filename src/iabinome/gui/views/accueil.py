@@ -60,7 +60,7 @@ class AccueilView(ttk.Frame):
         actions = ttk.Frame(self)
         actions.pack(fill="x", padx=16, pady=8)
         new_button = ttk.Button(
-            actions, text="Nouvelle collaboration", command=self._controller.show_creation_stub,
+            actions, text="Nouvelle collaboration", command=self._controller.show_creation,
             underline=0,
         )
         new_button.pack(side="left")
@@ -87,7 +87,7 @@ class AccueilView(ttk.Frame):
             footer, text="Afficher dans le dossier", command=self._reveal_selected,
         ).pack(side="left", padx=(8, 0))
 
-        self.bind_all("<Control-n>", lambda _event: self._controller.show_creation_stub())
+        self.bind_all("<Control-n>", lambda _event: self._controller.show_creation())
         self.bind_all("<Control-o>", lambda _event: self._ask_open())
 
     def _fill_recents(self) -> None:

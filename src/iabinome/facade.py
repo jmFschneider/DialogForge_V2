@@ -1,22 +1,45 @@
 """Façade applicative commune à la CLI et à la GUI (`conception/GUI_V1.md` §10.1,
-§10.3). Lot 3 : seule `inspect_collaboration` existe — une façade sans appelant
-serait une API spéculative (voir `task_plan.md`, Decisions Made). Elle ne mute
-rien : charger, valider, présenter.
+§10.3). Une façade sans appelant serait une API spéculative (`task_plan.md`,
+Decisions Made) : chaque fonction ici vient avec l'écran qui l'appelle.
 
-**Le dossier fait foi, jamais une mémoire de fenêtre** (§3.3) : chaque appel
-relit `configuration.json` et `etat.json`, sans cache du statut ni de la phase.
+`inspect_collaboration` ne mute rien : charger, valider, présenter. **Le
+dossier fait foi, jamais une mémoire de fenêtre** (§3.3) — chaque appel relit
+`configuration.json` et `etat.json`, sans cache du statut ni de la phase.
+
+`create_collaboration` (lot 4) est la **création partagée** (§6.1, §6.5) : la
+CLI et la GUI y rassemblent la même requête structurée, jamais un
+`argparse.Namespace` ni un formulaire Tkinter — une seule autorité pour ce
+qu'une collaboration a le droit de contenir.
 """
 
 from __future__ import annotations
 
 import json
+import shutil
+import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import decisions, incidents, settings, storage
+from . import contracts, corpus, decisions, incidents, settings, storage
+from . import demande as demande_module
+from .adapters.base import AgentAdapter
 from .decisions import AllowedAction
-from .models import CallStatus, Configuration, Phase, SchemaError, State, Status
+from .models import (
+    SCHEMA_VERSION,
+    AgentSpec,
+    CallStatus,
+    Configuration,
+    MissionKind,
+    Phase,
+    ReviewerAccess,
+    Role,
+    SchemaError,
+    State,
+    Status,
+)
 
 _STATUS_LABELS = {
     Status.RUNNING: "En cours",
@@ -229,6 +252,147 @@ def _readable_documents(path: Path, state: State) -> tuple[str, ...]:
         if candidate and candidate not in seen and (path / candidate).is_file():
             seen.append(candidate)
     return tuple(seen)
+
+
+# -- Création (lot 4, §6) --
+
+
+@dataclass(frozen=True)
+class DemandeSource:
+    """Le texte de la demande tel qu'un écran l'a obtenu, et sa provenance
+    (§6.2) : « fichier » pour un import laissé inchangé, « cadrage » pour une
+    saisie directe ou un import modifié dans la GUI — les deux seuls chemins
+    que `provenance_demande.json` connaît déjà, la GUI n'en ajoute aucun."""
+
+    text: str
+    origin: str
+    imported_path: str | None = None
+
+
+@dataclass(frozen=True)
+class CreationRequest:
+    """Ce qu'un écran — CLI ou GUI — a rassemblé avant de créer (§6.1). Ni
+    `argparse.Namespace`, ni formulaire Tkinter : une seule forme, que
+    `create_collaboration` seule sait interpréter."""
+
+    collab: Path
+    demande: DemandeSource
+    kind: MissionKind
+    reviewer_access: ReviewerAccess
+    agent_a: str
+    agent_b: str
+    max_revisions: int
+    model_a: str | None = None
+    model_b: str | None = None
+    effort_a: str | None = None
+    effort_b: str | None = None
+    web_access: bool = False
+    source_root: Path | None = None
+    source_list: Path | None = None
+    source_label: str | None = None
+
+
+@dataclass(frozen=True)
+class CreationResult:
+    path: Path
+    missing_sections: tuple[str, ...]
+
+
+class CreationError(RuntimeError):
+    """Refus avant toute écriture (§6.5) : rien n'est créé, l'écran qui a
+    appelé reste tel quel — formulaire intact, ligne de commande inchangée."""
+
+
+def create_collaboration(
+    request: CreationRequest, *, adapters: Mapping[str, AgentAdapter],
+) -> CreationResult:
+    """La création **partagée** (§6.1, §6.6) : mêmes vérifications, même
+    écriture, que la CLI et la GUI appellent l'une comme l'autre — la
+    « validation autoritaire » du §6.5. Tout est vérifié avant la première
+    écriture ; un refus ne laisse aucun dossier partiel derrière lui (AC-12).
+    """
+    dest = request.collab
+    if dest.exists():
+        raise CreationError(f"{dest} existe deja")
+    if bool(request.source_root) != bool(request.source_list):
+        raise CreationError("--source-root et --source-list vont ensemble")
+    if request.kind is MissionKind.RECHERCHE and not request.source_root:
+        raise CreationError(
+            "mission de recherche sans corpus (--source-root et --source-list requis)"
+        )
+    for who, adapter_id, effort in (
+        ("A", request.agent_a, request.effort_a), ("B", request.agent_b, request.effort_b),
+    ):
+        adapter = adapters.get(adapter_id)
+        if adapter is None:
+            raise CreationError(f"adaptateur inconnu : {adapter_id!r}")
+        levels = adapter.capabilities.effort_levels
+        if effort is not None and effort not in levels:
+            raise CreationError(
+                f"effort {who} : {effort!r} refusé par {adapter_id} — attendu : "
+                f"{', '.join(levels) or 'aucun'}"
+            )
+    tmp = dest.parent / f".new-{dest.name}-{uuid.uuid4().hex}"
+    tmp.mkdir(parents=True)
+    try:
+        _write_collaboration(tmp, dest, request, adapters)
+    except (corpus.CorpusError, OSError, ValueError) as exc:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise CreationError(str(exc)) from exc
+    tmp.rename(dest)
+    return CreationResult(
+        path=dest, missing_sections=tuple(demande_module.missing(request.demande.text)),
+    )
+
+
+def _write_collaboration(
+    tmp: Path, dest: Path, request: CreationRequest, adapters: Mapping[str, AgentAdapter],
+) -> None:
+    normalized = contracts.normalize(request.demande.text)
+    storage.write_atomic_text(tmp / "demande.md", normalized.text)
+    demande_module.record(tmp, {
+        "source": request.demande.origin, "path": request.demande.imported_path,
+        "sha256": normalized.sha256,
+    })
+    corpus_sha: str | None = None
+    if request.source_root:
+        assert request.source_list is not None
+        manifest = corpus.build(
+            request.source_root, request.source_list, tmp / "corpus",
+            request.source_label or request.source_root.name,
+        )
+        if not manifest.entries and request.kind is MissionKind.RECHERCHE:
+            raise ValueError("corpus vide pour une mission de recherche")
+        manifest_text, _ = storage.read_text(tmp / "corpus" / "manifeste.json")
+        corpus_sha = contracts.normalize(manifest_text).sha256
+    agent_a, agent_b = adapters[request.agent_a], adapters[request.agent_b]
+    config = Configuration(
+        schema_version=SCHEMA_VERSION, collaboration_id=dest.name, mission_kind=request.kind,
+        reviewer_access=request.reviewer_access, max_revisions=request.max_revisions,
+        agent_a=AgentSpec(
+            request.agent_a, request.model_a or agent_a.default_model(Role.A), request.effort_a
+        ),
+        agent_b=AgentSpec(
+            request.agent_b, request.model_b or agent_b.default_model(Role.B), request.effort_b
+        ),
+        initial_demande_sha256=normalized.sha256, corpus_manifest_sha256=corpus_sha,
+        created_at=_now(), web_access=request.web_access,
+    )
+    state = State(
+        schema_version=SCHEMA_VERSION, status=Status.READY, phase=Phase.PROPOSAL_A, revision=0,
+        demande_sha256=normalized.sha256, current_document=None, latest_review=None,
+        open_finding_ids=[], current_call=None, last_incident=None, updated_at=_now(),
+    )
+    _write_json(tmp / "configuration.json", config.to_dict())
+    _write_json(tmp / "etat.json", state.to_dict())
+
+
+def _now() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    storage.write_atomic_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
 
 
 def _read_json(path: Path) -> Any:
