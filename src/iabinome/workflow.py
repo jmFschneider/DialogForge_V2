@@ -35,6 +35,7 @@ from . import (
     contracts,
     corpus,
     decisions,
+    incidents,
     isolation,
     lock,
     objections,
@@ -126,22 +127,6 @@ _ROLE_OF_PHASE = {
 # déjà ouverts (§2).
 _RESUME_PHASE = {Phase.REVIEW_B: Phase.REVISION_A}
 
-# La porte d'état nomme la commande qui sort du statut refusé : un refus qui
-# n'indique pas la suite renvoie l'humain au code source.
-_WAY_OUT = {
-    Status.WAITING_HUMAN: "resume --answer <fichier>",
-    Status.INTERRUPTED: "resume --retry-call <uuid> --reason-file <fichier>",
-    Status.ERROR: "resume --retry-call <uuid> --reason-file <fichier>",
-    Status.AWAITING_APPROVAL: (
-        "aucune, le cycle est allé à son terme ; décision humaine :"
-        " decide --accept | --accept-with-reserves <texte> | --correct <fichier> | --stop"
-    ),
-    Status.STOPPED: "aucune, la collaboration a été arrêtée par décision humaine",
-}
-
-# Sortie de ERROR : **table fermée**, jamais héritée du statut (N-01). Toute
-# autre famille d'erreur devra y être ajoutée explicitement.
-_RELAUNCHABLE = frozenset({"CONTRACT_ERROR", "DECODE_FAILED"})
 
 _NOT_APPROVED = (
     "> Ce document n'est pas approuvé : sa présence prouve que le cycle s'est"
@@ -477,7 +462,7 @@ class _Engine:
         call = state.current_call
         if call is None or call.call_id != request.call_id:
             raise WorkflowError(f"aucun appel courant {request.call_id!r} à relancer")
-        if not self.relaunchable(state, call):
+        if not incidents.relaunchable(self.collab, state):
             raise WorkflowError(f"statut {state.status.value} : aucun appel relançable")
         reason, _ = storage.read_text(request.reason_path)
         if not reason.strip():
@@ -503,7 +488,7 @@ class _Engine:
         call = state.current_call
         if state.status is not Status.ERROR or call is None or call.call_id != request.call_id:
             raise WorkflowError(f"aucun appel en erreur {request.call_id!r} à retraiter")
-        if not self.relaunchable(state, call):
+        if not incidents.relaunchable(self.collab, state):
             raise WorkflowError(
                 "cet incident n'est pas une erreur d'interprétation : un retraitement local"
                 " ne changerait rien (voir `status`)"
@@ -523,18 +508,6 @@ class _Engine:
         )
         return self.publish(replace(state, status=Status.RUNNING))
 
-    def relaunchable(self, state: State, call: CallState) -> bool:
-        """`INTERRUPTED` se relance ; `ERROR` ne sort que par la **table fermée**
-        des incidents relançables, et seulement pour son propre appel (N-01)."""
-        if state.status is Status.INTERRUPTED:
-            return True
-        if state.status is not Status.ERROR or state.last_incident is None:
-            return False
-        if not state.last_incident.startswith(f"{call.call_dir}/"):
-            return False
-        incident = _read_json(self.collab / state.last_incident)
-        return isinstance(incident, dict) and incident.get("kind") in _RELAUNCHABLE
-
     def gate(self, state: State) -> None:
         """Porte d'état, **après l'intervention** : seuls `READY` sans appel
         courant et `RUNNING` avec appel courant entrent dans le cycle. Le statut
@@ -543,9 +516,14 @@ class _Engine:
             return
         if state.status is Status.RUNNING and state.current_call is not None:
             return
+        # Le refus nomme la sortie, prise aux actions permises : un refus qui
+        # n'indique pas la suite renvoie l'humain au code source.
+        way_out = (
+            "corriger etat.json à la main" if state.status in (Status.READY, Status.RUNNING)
+            else decisions.next_action(self.collab, state)
+        )
         raise WorkflowError(
-            f"statut {state.status.value} : le cycle ne repart pas d'ici ; sortie :"
-            f" {_WAY_OUT.get(state.status, 'corriger etat.json à la main')}"
+            f"statut {state.status.value} : le cycle ne repart pas d'ici ; sortie : {way_out}"
         )
 
     # -- Étapes 4 à 7 : un appel --
@@ -1023,10 +1001,7 @@ def decide(
                     f"statut {state.status.value} : il n'y a rien à accepter tant que le cycle"
                     " n'est pas allé à son terme (AWAITING_APPROVAL)"
                 )
-            current = decisions.latest(collab)
-            if decisions.is_acceptance(current) and current is not None and (
-                decisions.applies_to_current(collab, current, state)
-            ):
+            if decisions.accepted(collab, state):
                 raise WorkflowError("ce résultat est déjà accepté : la décision ne se répète pas")
             if kind == decisions.ACCEPTED_WITH_RESERVES and not (reserves or "").strip():
                 raise WorkflowError("l'acceptation avec réserves exige le texte des réserves")

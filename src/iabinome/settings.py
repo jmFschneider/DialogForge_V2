@@ -42,6 +42,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .models import positive_seconds
+
 # Attribut de module, comme `cli.ADAPTERS` : **tout test de la CLI doit le
 # neutraliser**, sans quoi un `dialogforge.toml` du dépôt ou du dossier personnel
 # rendrait la suite dépendante de la machine. Les anciens noms sont dans la même
@@ -96,21 +98,61 @@ class Settings:
     legacy_note: str | None = None
 
 
-def load(explicit: str | None = None) -> Settings:
+def load(explicit: str | None = None, base: Path | None = None) -> Settings:
     """`--config` **exige** que le fichier existe : le demander et ne pas
     l'avoir est une erreur, pas un silence. Les emplacements implicites, eux,
-    sont absents sans conséquence."""
+    sont absents sans conséquence.
+
+    `base` fixe le dossier où chercher les noms relatifs : sans lui, c'est le
+    dossier courant, comme en ligne de commande. Une interface qui ne se lance
+    pas depuis un terminal le fixe elle-même, et le montre."""
     if explicit is not None:
         path = Path(explicit)
         if not path.is_file():
             raise SettingsError(f"--config : fichier introuvable : {path}")
         return Settings(path=path, values=_parse(path))
     for candidate in SEARCH_PATHS:
+        if base is not None:
+            candidate = base / candidate  # un chemin absolu reste lui-même
         if candidate.is_file():
             return Settings(
                 path=candidate, values=_parse(candidate), legacy_note=_legacy_note(candidate)
             )
     return Settings(path=None, values={})
+
+
+DEFAULT_TIMEOUT = 1800.0
+FROM_COMMAND = "option de la commande"
+FROM_PROGRAM = "défaut du programme"
+
+
+@dataclass(frozen=True)
+class Timeout:
+    """Le délai d'un lancement et **d'où il vient** : l'option de la commande, le
+    chemin du fichier retenu (ancien nom compris), ou le défaut du programme.
+    Résolu à chaque lancement, jamais écrit dans la collaboration."""
+
+    seconds: float
+    origin: str
+    settings: Settings
+
+
+def resolve_timeout(
+    explicit: str | None, override: float | None, base: Path | None = None
+) -> Timeout:
+    """Option > fichier > défaut du programme. Le fichier est chargé même quand
+    l'option tranche : un fichier invalide reste un refus, quelle que soit la
+    valeur retenue."""
+    found = load(explicit, base)
+    if override is not None:
+        return Timeout(positive_seconds(override, "--timeout"), FROM_COMMAND, found)
+    if "timeout" in found.values:
+        try:
+            seconds = positive_seconds(float(found.values["timeout"]), "timeout")
+        except ValueError as exc:
+            raise SettingsError(f"{found.path} : {exc}") from exc
+        return Timeout(seconds, str(found.path), found)
+    return Timeout(DEFAULT_TIMEOUT, FROM_PROGRAM, found)
 
 
 def _legacy_note(path: Path) -> str | None:

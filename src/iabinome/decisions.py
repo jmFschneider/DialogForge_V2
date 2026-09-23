@@ -7,6 +7,9 @@ base ni index. Chaque entrée est **datée et porte sur une version précise** :
 empreintes du livrable, de la revue et de la demande au moment de décider. Une
 décision qui ne correspond plus à ce qui est sur le disque le dit.
 
+Il dit aussi **ce que l'humain peut faire** (`allowed_actions`) : la seule table
+d'actions, que la CLI rend en phrases et la GUI en boutons.
+
 Le module ne mute rien d'autre : l'état est publié par `workflow`, sous verrou.
 """
 
@@ -14,7 +17,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -128,30 +133,155 @@ def incident_line(collab: Path, state: State) -> str | None:
     return f"{incident['kind']} — {incident.get('detail') or 'sans détail'}"
 
 
-def next_action(collab: Path, state: State) -> str:
-    """Ce que l'humain fait maintenant, sans ouvrir un journal."""
-    status = state.status
+class ActionId(Enum):
+    START = "START"
+    RESUME = "RESUME"
+    ANSWER_AND_RESUME = "ANSWER_AND_RESUME"
+    RETRY_CALL = "RETRY_CALL"
+    REPROCESS_AND_RESUME = "REPROCESS_AND_RESUME"
+    ACCEPT = "ACCEPT"
+    ACCEPT_WITH_RESERVES = "ACCEPT_WITH_RESERVES"
+    CORRECT = "CORRECT"
+    STOP = "STOP"
+
+
+@dataclass(frozen=True)
+class AllowedAction:
+    """Une action que le moteur accepte **maintenant** (`conception/GUI_V1.md` §10.2).
+
+    `may_call` : la commande peut atteindre un appel fournisseur — à confirmer
+    avant, jamais présenté comme gratuit. `local_step` : une étape sans appel la
+    précède (écrire une réponse, relire une réponse conservée, reprendre depuis
+    les preuves). `primary` : ce qui est proposé ; une action secondaire reste
+    permise sans être la suite attendue. Aucune action principale = rien à faire.
+    """
+
+    id: ActionId
+    may_call: bool
+    local_step: bool = False
+    primary: bool = True
+    inputs: tuple[str, ...] = ()
+    call_id: str | None = None
+
+
+def accepted(collab: Path, state: State) -> bool:
+    """Une acceptation porte-t-elle sur ce qui est sur le disque ? Le sous-état
+    « version acceptée » en dérive ; il n'est jamais un statut."""
+    decision = latest(collab)
+    return is_acceptance(decision) and decision is not None and applies_to_current(
+        collab, decision, state
+    )
+
+
+def allowed_actions(collab: Path, state: State) -> tuple[AllowedAction, ...]:
+    """**La** table de ce que l'humain peut faire, statut par statut. Elle suit
+    les portes du moteur (`workflow`) : une action annoncée ici est une action
+    qu'il accepte. La CLI et la GUI en dérivent leurs phrases et leurs boutons."""
+    status, call = state.status, state.current_call
+    call_id = None if call is None else call.call_id
+    stop = AllowedAction(ActionId.STOP, may_call=False)
+    if status is Status.STOPPED:
+        return ()
     if status is Status.READY:
-        return "lancer `run <dossier>`"
+        first = state.current_document is None and state.latest_review is None
+        start = ActionId.START if first else ActionId.RESUME
+        return AllowedAction(start, may_call=True), replace(stop, primary=False)
     if status is Status.RUNNING:
         return (
-            "un appel est en cours, ou le processus s'est arrêté en cours d'appel :"
-            " `run <dossier>` reprend localement, sans repayer d'appel"
+            AllowedAction(ActionId.RESUME, may_call=True, local_step=True),
+            replace(stop, primary=False),
         )
     if status is Status.WAITING_HUMAN:
-        return _waiting_human(collab, state)
+        answer = AllowedAction(
+            ActionId.ANSWER_AND_RESUME, may_call=True, local_step=True, inputs=("réponse",)
+        )
+        return answer, stop
     if status in (Status.INTERRUPTED, Status.ERROR):
-        return incidents.action(collab, state)
-    if status is Status.STOPPED:
-        return "aucune : la collaboration a été arrêtée par décision humaine"
-    decision = latest(collab)
-    if is_acceptance(decision) and decision is not None and applies_to_current(
-        collab, decision, state
-    ):
-        return "aucune : le résultat est accepté"
+        if not incidents.relaunchable(collab, state):
+            return (stop,)
+        retry = AllowedAction(
+            ActionId.RETRY_CALL, may_call=True, inputs=("motif",), call_id=call_id
+        )
+        if status is Status.INTERRUPTED:
+            return retry, stop
+        reprocess = AllowedAction(
+            ActionId.REPROCESS_AND_RESUME, may_call=True, local_step=True, inputs=("motif",),
+            call_id=call_id,
+        )
+        return reprocess, replace(retry, primary=False), stop
+    correct = AllowedAction(
+        ActionId.CORRECT, may_call=True, local_step=True, inputs=("instruction",)
+    )
+    if accepted(collab, state):
+        return replace(correct, primary=False), replace(stop, primary=False)
     return (
-        "lire `livrables/bilan.md` puis décider : `decide <dossier> --accept`,"
-        " `--accept-with-reserves <texte>`, `--correct <fichier>` ou `--stop`"
+        AllowedAction(ActionId.ACCEPT, may_call=False),
+        AllowedAction(ActionId.ACCEPT_WITH_RESERVES, may_call=False, inputs=("réserves",)),
+        correct, stop,
+    )
+
+
+def next_action(collab: Path, state: State) -> str:
+    """Ce que l'humain fait maintenant, sans ouvrir un journal — dit en phrases
+    de terminal à partir de `allowed_actions`, qui seule en fixe les règles."""
+    actions = allowed_actions(collab, state)
+    offered = {action.id: action for action in actions if action.primary}
+    if not offered:
+        if state.status is Status.STOPPED:
+            return "aucune : la collaboration a été arrêtée par décision humaine"
+        return "aucune : le résultat est accepté"
+    resume = offered.get(ActionId.START) or offered.get(ActionId.RESUME)
+    if resume is not None:
+        if resume.local_step:
+            return (
+                "un appel est en cours, ou le processus s'est arrêté en cours d'appel :"
+                " `run <dossier>` reprend localement, sans repayer d'appel"
+            )
+        return "lancer `run <dossier>`"
+    if ActionId.ANSWER_AND_RESUME in offered:
+        return _waiting_human(collab, state)
+    if ActionId.ACCEPT in offered:
+        return (
+            "lire `livrables/bilan.md` puis décider : `decide <dossier> --accept`,"
+            " `--accept-with-reserves <texte>`, `--correct <fichier>` ou `--stop`"
+        )
+    return _after_incident(collab, state, {action.id for action in actions})
+
+
+def _after_incident(collab: Path, state: State, allowed: set[ActionId]) -> str:
+    """La sortie d'un incident, en une phrase — jamais un rejeu tout seul. Le
+    genre d'incident donne le contexte ; les actions permises, les commandes."""
+    found = incidents.incident(collab, state)
+    call = state.current_call
+    who = "" if call is None else f" (appel `{call.call_id}`)"
+    name = "incident inconnu" if found is None else str(found["kind"])
+    kind = incidents.KINDS.get(name)
+    stop = "`decide <dossier> --stop`"
+    if ActionId.RETRY_CALL not in allowed:
+        return f"{name}{who} : aucune relance possible depuis cet état ; {stop}"
+    retry = (
+        "`resume <dossier> --retry-call <id> --reason-file <fichier>` (nouvel appel"
+        " payant ; le fichier dit pourquoi)"
+    )
+    if ActionId.REPROCESS_AND_RESUME in allowed:
+        return (
+            f"{name}{who} : la réponse brute est conservée dans `appels/`. Gratuit et local :"
+            " `resume <dossier> --reprocess <id> --reason-file <fichier>` (relit la réponse"
+            f" conservée, sans appel — utile si la lecture a été corrigée) ; ou {retry} ; ou {stop}"
+        )
+    if name == "SOURCES_MODIFIED":
+        return (
+            f"{name}{who} : le corpus ne correspond plus à son manifeste. Le rétablir (le"
+            " contrôle avant chaque appel refuse sinon), puis "
+            f"{retry} ; sinon {stop}"
+        )
+    if kind is not None and kind.paid == "non":
+        return (
+            f"{name}{who} : rien n'a été payé. Corriger la cause, puis {retry} ; sinon {stop}"
+        )
+    return (
+        f"{name}{who} : l'appel a pu être payé, aucun rejeu automatique. Si vous décidez de le"
+        f" relancer : {retry} ; sinon {stop}"
     )
 
 

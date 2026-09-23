@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 from unittest import mock
 
-from iabinome import incidents, isolation, workflow
+from iabinome import decisions, incidents, isolation, workflow
 from iabinome.adapters.base import CallSpec, EnvPolicy
 from iabinome.adapters.claude import ClaudeAdapter
 from iabinome.adapters.codex import CodexAdapter
@@ -319,7 +319,7 @@ class TestSourcesAreChecked(SeparationCase):
         text = self.explained(collab)
         self.assertIn("SOURCES_MODIFIED", text)
         self.assertIn("Payé ? : peut-être", text)
-        action = incidents.action(collab, self.state(collab))
+        action = decisions.next_action(collab, self.state(collab))
         self.assertIn("rétablir", action)
         self.assertIn("--retry-call", action)
 

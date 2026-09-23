@@ -143,7 +143,8 @@ class TestStateGate(InterventionCase):
         self.assertIs(self.drive(), Status.AWAITING_APPROVAL)
         message = self.refused()
         self.assertIn("AWAITING_APPROVAL", message)
-        self.assertIn("terme", message)
+        # La sortie nommée vient des actions permises (GUI V1, lot 1) : décider.
+        self.assertIn("decide <dossier> --accept", message)
 
     def test_a_second_run_after_an_interruption_never_replays_by_itself(self) -> None:
         self.a.sleep_seconds = 5.0

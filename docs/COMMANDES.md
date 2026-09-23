@@ -8,7 +8,7 @@ même information en ligne.
 |---|---|---|
 | [`new`](#new) | Créer une collaboration | non |
 | [`run`](#run) | Lancer ou reprendre le cycle | **oui** (quota) |
-| [`resume`](#resume) | Sortir d'un arrêt | `--answer` et `--retry-call` : **oui** ; `--reprocess` : non |
+| [`resume`](#resume) | Sortir d'un arrêt | **oui** — `--reprocess` relit sans appel, mais la reprise qui suit peut appeler |
 | [`status`](#status) | Dire où en est la collaboration | non, lecture seule |
 | [`show`](#show) | Lire le résultat avant de décider | non, lecture seule |
 | [`decide`](#decide) | Consigner votre décision | seulement `--correct` |

@@ -344,5 +344,57 @@ class TestScope(SettingsCase):
         self.assertEqual(caught.exception.code, 2)
 
 
+class TestTheTimeoutOfALaunch(SettingsCase):
+    """GUI V1, lot 1 : le délai se résout **en un seul endroit**, avec son origine,
+    pour que la CLI et la GUI annoncent la même valeur (`conception/GUI_V1.md` §6.4)."""
+
+    def test_the_command_option_wins_and_says_so(self) -> None:
+        path = self.write_config("timeout = 600\n")
+        timeout = settings.resolve_timeout(path, 42.0)
+        self.assertEqual((timeout.seconds, timeout.origin), (42.0, settings.FROM_COMMAND))
+
+    def test_the_file_supplies_the_value_and_is_named(self) -> None:
+        path = self.write_config("timeout = 600\n")
+        timeout = settings.resolve_timeout(path, None)
+        self.assertEqual((timeout.seconds, timeout.origin), (600.0, path))
+
+    def test_the_program_default_is_named_as_such(self) -> None:
+        timeout = settings.resolve_timeout(None, None)
+        self.assertEqual(
+            (timeout.seconds, timeout.origin), (settings.DEFAULT_TIMEOUT, settings.FROM_PROGRAM)
+        )
+
+    def test_a_former_file_name_is_the_origin_shown(self) -> None:
+        """`B-origine-011` : l'origine est le chemin retenu, jamais une liste fermée."""
+        former = self.root / "iabinome.toml"
+        former.write_text("timeout = 90\n", encoding="utf-8")
+        with mock.patch.object(settings, "SEARCH_PATHS", (former,)):
+            timeout = settings.resolve_timeout(None, None)
+        self.assertEqual((timeout.seconds, timeout.origin), (90.0, str(former)))
+
+    def test_an_invalid_file_is_refused_even_when_the_option_decides(self) -> None:
+        path = self.write_config('timeout = "long"\n')
+        with self.assertRaises(settings.SettingsError):
+            settings.resolve_timeout(path, 42.0)
+
+    def test_a_nan_in_the_file_is_refused_with_the_file_named(self) -> None:
+        path = self.write_config("timeout = nan\n")
+        with self.assertRaises(settings.SettingsError) as caught:
+            settings.resolve_timeout(path, None)
+        self.assertIn(path, str(caught.exception))
+
+    def test_a_fixed_base_replaces_the_current_directory(self) -> None:
+        """La GUI ne dépend pas du dossier d'où on l'a lancée : elle fixe la base."""
+        base = self.root / "collaborations"
+        base.mkdir()
+        (base / "dialogforge.toml").write_text("timeout = 300\n", encoding="utf-8")
+        with mock.patch.object(settings, "SEARCH_PATHS", (Path("dialogforge.toml"),)):
+            here = settings.resolve_timeout(None, None, base)
+            nowhere = settings.resolve_timeout(None, None, self.root)
+        self.assertEqual(here.seconds, 300.0)
+        self.assertEqual(here.origin, str(base / "dialogforge.toml"))
+        self.assertEqual(nowhere.origin, settings.FROM_PROGRAM)
+
+
 if __name__ == "__main__":
     unittest.main()

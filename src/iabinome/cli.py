@@ -68,20 +68,17 @@ _EXIT_CODE = {
     Status.READY: 6,  # pause demandée par l'humain (Ctrl+C) : reprendre par `run`
 }
 
-# Réglages que le fichier de configuration peut fournir, par commande. Une clé
-# absente d'ici reste hors de sa portée, même si `settings` sait la lire.
-_SETTABLE = {
-    "new": ("agent_a", "agent_b", "model_a", "model_b", "effort_a", "effort_b", "web_access",
-            "kind", "reviewer_access", "max_revisions"),
-    "run": ("timeout",),
-    "resume": ("timeout",),
-    "decide": ("timeout",),
-}
+# Réglages que le fichier de configuration peut fournir à `new`. Une clé absente
+# d'ici reste hors de sa portée, même si `settings` sait la lire. Le délai des
+# commandes qui lancent le cycle se résout à part (`settings.resolve_timeout`).
+_SETTABLE_NEW = ("agent_a", "agent_b", "model_a", "model_b", "effort_a", "effort_b",
+                 "web_access", "kind", "reviewer_access", "max_revisions")
+_LAUNCHING = ("run", "resume", "decide")
 
 # Défauts du programme, dernier maillon : drapeau CLI > fichier > ceci >
 # `default_model()` de l'adaptateur pour les modèles. Ils ne sont plus déclarés
 # à `argparse`, qui doit rendre `None` pour qu'on sache si l'humain a tranché.
-_FALLBACK: dict[str, object] = {"max_revisions": 2, "timeout": 1800.0}
+_FALLBACK: dict[str, object] = {"max_revisions": 2}
 
 # Sans valeur, la commande `new` n'a pas de sens : ni drapeau, ni fichier, ni
 # défaut du programme ne peut la deviner.
@@ -105,19 +102,24 @@ def _merge_settings(args: argparse.Namespace) -> str | None:
     toujours quel fichier a servi et ce qu'il en a pris** : un réglage qui agit
     sans se montrer est la moitié d'un état caché.
     """
-    settable = _SETTABLE.get(args.command, ())
-    if not settable:
-        return None
-    found = settings.load(args.config)
     applied: list[str] = []
-    for key in settable:
-        if getattr(args, key) is not None:
-            continue
-        if key in found.values:
-            setattr(args, key, _from_settings(found.path, key, found.values[key]))
-            applied.append(key)
-        elif key in _FALLBACK:
-            setattr(args, key, _FALLBACK[key])
+    if args.command in _LAUNCHING:
+        timeout = settings.resolve_timeout(args.config, args.timeout)
+        args.timeout, found = timeout.seconds, timeout.settings
+        if timeout.origin == str(found.path):
+            applied.append("timeout")
+    elif args.command == "new":
+        found = settings.load(args.config)
+        for key in _SETTABLE_NEW:
+            if getattr(args, key) is not None:
+                continue
+            if key in found.values:
+                setattr(args, key, _from_settings(found.path, key, found.values[key]))
+                applied.append(key)
+            elif key in _FALLBACK:
+                setattr(args, key, _FALLBACK[key])
+    else:
+        return None
     if found.path is None:
         return None
     retenu = ", ".join(applied) if applied else "rien de neuf"
@@ -138,13 +140,8 @@ def _from_settings(path: Path | None, key: str, value: Any) -> Any:
         raise settings.SettingsError(
             f"{path} : {key} = {value!r} — attendu : {sorted(domain)}"
         )
-    try:
-        if key == "timeout":
-            return positive_seconds(float(value), "timeout")
-        if key == "max_revisions" and int(value) < 0:
-            raise ValueError("max_revisions : entier positif ou nul attendu")
-    except ValueError as exc:
-        raise settings.SettingsError(f"{path} : {exc}") from exc
+    if key == "max_revisions" and int(value) < 0:
+        raise settings.SettingsError(f"{path} : max_revisions : entier positif ou nul attendu")
     return value
 
 
@@ -540,7 +537,10 @@ _CONFIG_HELP = (
     "fichier de configuration à utiliser"
     " (sinon ./dialogforge.toml, puis ~/.dialogforge/reglages.toml)"
 )
-_TIMEOUT_HELP = "délai dur par appel, en secondes (défaut : fichier de configuration, sinon 1800)"
+_TIMEOUT_HELP = (
+    "délai dur par appel, en secondes (défaut : fichier de configuration, sinon"
+    f" {settings.DEFAULT_TIMEOUT:g})"
+)
 _EFFORT_HELP = "effort de raisonnement de {} ; le vocabulaire est celui de l'outil, facultatif"
 
 

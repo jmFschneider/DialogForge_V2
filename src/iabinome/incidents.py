@@ -33,7 +33,7 @@ class Kind:
     meaning: str
 
 
-_KINDS = {
+KINDS = {
     "LAUNCH_FAILED": Kind(
         "non",
         "l'outil n'a pas démarré (exécutable introuvable ou refusé par le système) : l'appel"
@@ -119,7 +119,7 @@ def explain(collab: Path, state: State) -> list[str]:
     found = incident(collab, state)
     if found is None:
         return []
-    kind = _KINDS.get(found["kind"])
+    kind = KINDS.get(found["kind"])
     lines = [f"Incident : {found['kind']} — {found.get('detail') or 'sans détail'}"]
     if kind is None:
         return lines + ["  Payé ? : inconnu (incident d'un genre non catalogué)"]
@@ -130,40 +130,19 @@ def explain(collab: Path, state: State) -> list[str]:
     return lines
 
 
-def action(collab: Path, state: State) -> str:
-    """Ce que l'humain fait, en une phrase — jamais un rejeu tout seul."""
-    found = incident(collab, state)
+def relaunchable(collab: Path, state: State) -> bool:
+    """L'appel courant peut-il sortir de son arrêt ? `INTERRUPTED` se relance ;
+    `ERROR` seulement par la **table fermée** des réponses reçues mais mal lues,
+    et pour son propre appel (N-01). Le moteur et les actions permises lisent
+    cette règle ici, et nulle part ailleurs."""
     call = state.current_call
-    who = "" if call is None else f" (appel `{call.call_id}`)"
-    name = "incident inconnu" if found is None else str(found["kind"])
-    kind = _KINDS.get(name)
-    retry = (
-        "`resume <dossier> --retry-call <id> --reason-file <fichier>` (nouvel appel"
-        " payant ; le fichier dit pourquoi)"
-    )
-    stop = "`decide <dossier> --stop`"
-    if state.status is Status.ERROR and name in _RECEIVED:
-        return (
-            f"{name}{who} : la réponse brute est conservée dans `appels/`. Gratuit et local :"
-            " `resume <dossier> --reprocess <id> --reason-file <fichier>` (relit la réponse"
-            f" conservée, sans appel — utile si la lecture a été corrigée) ; ou {retry} ; ou {stop}"
-        )
-    if name == "SOURCES_MODIFIED":
-        return (
-            f"{name}{who} : le corpus ne correspond plus à son manifeste. Le rétablir (le"
-            " contrôle avant chaque appel refuse sinon), puis "
-            f"{retry} ; sinon {stop}"
-        )
-    if kind is not None and kind.paid == "non":
-        return (
-            f"{name}{who} : rien n'a été payé. Corriger la cause, puis {retry} ; sinon {stop}"
-        )
-    return (
-        f"{name}{who} : l'appel a pu être payé, aucun rejeu automatique. Si vous décidez de le"
-        f" relancer : {retry} ; sinon {stop}"
-    )
-
-
-def received(state: State) -> bool:
-    """La réponse est-elle arrivée (donc payée) et déjà sur disque ?"""
-    return state.status is Status.ERROR and state.current_call is not None
+    if call is None:
+        return False
+    if state.status is Status.INTERRUPTED:
+        return True
+    if state.status is not Status.ERROR or state.last_incident is None:
+        return False
+    if not state.last_incident.startswith(f"{call.call_dir}/"):
+        return False
+    found = incident(collab, state)
+    return isinstance(found, dict) and found.get("kind") in _RECEIVED

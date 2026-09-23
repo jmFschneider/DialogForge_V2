@@ -22,7 +22,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from iabinome import cli, contracts, incidents, transport, workflow
+from iabinome import cli, contracts, decisions, incidents, transport, workflow
 from iabinome.adapters.base import CallSpec
 from iabinome.models import State
 from tests import fakes
@@ -101,7 +101,7 @@ class TestWhatWasReceivedWhatWasNotLaunchedWhatIsUnknown(IncidentCase):
         self.assertIn("LAUNCH_FAILED", text)
         self.assertIn("Payé ? : non", text)
         self.assertIn("n'est pas parti", text)
-        self.assertIn("rien n'a été payé", incidents.action(collab, self.state(collab)))
+        self.assertIn("rien n'a été payé", decisions.next_action(collab, self.state(collab)))
         self.assertEqual(self.launched(collab), 0)
 
     def test_a_timeout_may_have_been_paid_and_no_amount_is_invented(self) -> None:
@@ -110,7 +110,7 @@ class TestWhatWasReceivedWhatWasNotLaunchedWhatIsUnknown(IncidentCase):
         workflow.run(collab, adapters=self.adapters, timeout_seconds=0.05)
         text = self.explained(collab)
         self.assertIn("Payé ? : peut-être", text)
-        self.assertIn("a pu être payé", incidents.action(collab, self.state(collab)))
+        self.assertIn("a pu être payé", decisions.next_action(collab, self.state(collab)))
         self.assertNotRegex(text, r"[€$]|euros?|tokens?\b")
 
     def test_a_crash_during_a_call_is_unknown_and_never_replayed(self) -> None:
@@ -149,7 +149,7 @@ class TestWhatWasReceivedWhatWasNotLaunchedWhatIsUnknown(IncidentCase):
         text = self.explained(collab)
         self.assertIn("CONTRACT_ERROR", text)
         self.assertIn("Payé ? : oui", text)
-        action = incidents.action(collab, self.state(collab))
+        action = decisions.next_action(collab, self.state(collab))
         self.assertLess(action.index("--reprocess"), action.index("--retry-call"))
         self.assertIn("sans appel", action)
 
