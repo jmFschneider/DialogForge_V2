@@ -107,8 +107,10 @@ class TestSuiviPolling(ExecutionCase):
 
 
 class TestCloseGuard(unittest.TestCase):
-    """§9.2-9.3, partiel : « continuer à suivre » et « interrompre maintenant »
-    seulement — la pause différée reste au lot 5/6 (voir `app.py`)."""
+    """§9.3, les trois branches : continuer à suivre, interrompre maintenant,
+    et terminer l'appel courant puis fermer — celle-ci attend `has_active_run()`
+    sans jamais appeler `join()` sur le fil principal (`app._wait_then_close`,
+    piloté par `after()`, ici simulé par un appel direct)."""
 
     def test_closing_without_an_active_run_destroys_immediately(self) -> None:
         root, controller = mock.Mock(), mock.Mock()
@@ -117,18 +119,41 @@ class TestCloseGuard(unittest.TestCase):
         root.destroy.assert_called_once()
         controller.interrupt_active_run.assert_not_called()
 
-    def test_cancelling_the_close_confirmation_keeps_the_window_open(self) -> None:
+    def test_choosing_to_keep_watching_closes_nothing(self) -> None:
         root, controller = mock.Mock(), mock.Mock()
         controller.has_active_run.return_value = True
-        with mock.patch("iabinome.gui.app.dialogs.confirm", return_value=False):
+        with mock.patch("iabinome.gui.app.dialogs.choose", return_value=app._CONTINUE):
             app._on_close(root, controller)
         root.destroy.assert_not_called()
         controller.interrupt_active_run.assert_not_called()
+        controller.pause_active_run.assert_not_called()
 
-    def test_confirming_interrupts_then_destroys(self) -> None:
+    def test_dismissing_the_dialog_is_the_same_as_continuing(self) -> None:
         root, controller = mock.Mock(), mock.Mock()
         controller.has_active_run.return_value = True
-        with mock.patch("iabinome.gui.app.dialogs.confirm", return_value=True):
+        with mock.patch("iabinome.gui.app.dialogs.choose", return_value=None):
+            app._on_close(root, controller)
+        root.destroy.assert_not_called()
+
+    def test_interrupting_now_stops_and_destroys_right_away(self) -> None:
+        root, controller = mock.Mock(), mock.Mock()
+        controller.has_active_run.return_value = True
+        with mock.patch("iabinome.gui.app.dialogs.choose", return_value=app._INTERRUPT):
             app._on_close(root, controller)
         controller.interrupt_active_run.assert_called_once()
+        controller.pause_active_run.assert_not_called()
+        root.destroy.assert_called_once()
+
+    def test_pause_then_close_waits_for_the_thread_before_destroying(self) -> None:
+        root, controller = mock.Mock(), mock.Mock()
+        # 1er appel : `_on_close`. 2e : le premier `_wait_then_close`, encore
+        # actif. 3e : le rappel programmé par `after()`, le fil est fini.
+        controller.has_active_run.side_effect = [True, True, False]
+        with mock.patch("iabinome.gui.app.dialogs.choose", return_value=app._PAUSE_THEN_CLOSE):
+            app._on_close(root, controller)
+        controller.pause_active_run.assert_called_once()
+        root.destroy.assert_not_called()
+        self.assertEqual(root.after.call_count, 1)
+        (_, callback), _ = root.after.call_args
+        callback()
         root.destroy.assert_called_once()

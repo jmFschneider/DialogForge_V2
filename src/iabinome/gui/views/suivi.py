@@ -1,8 +1,7 @@
-"""Écran de suivi — **lecture seule** au lot 3 (`conception/GUI_V1.md` §7).
-
-Répondre, relancer, retraiter, corriger et décider sont des interventions du
-lot 5 : cet écran observe et actualise, sans jamais muter. `Actualiser` relit
-le dossier — comme toute action de cette vue, sans écriture (§7.3, AC-30).
+"""Écran de suivi (`conception/GUI_V1.md` §7-§8) : observer, actualiser, et
+depuis le lot 5, agir — les actions offertes viennent **uniquement** de
+`decisions.allowed_actions` (§10.2), câblées via `views.intervention`. Cet
+écran ne décide jamais lui-même ce qui est permis.
 """
 
 from __future__ import annotations
@@ -15,6 +14,8 @@ from tkinter.scrolledtext import ScrolledText
 from typing import TYPE_CHECKING
 
 from ... import facade, storage
+from ...decisions import AllowedAction
+from . import intervention
 
 if TYPE_CHECKING:
     from ..controller import Controller
@@ -59,6 +60,12 @@ class SuiviView(ttk.Frame):
         self._result = ttk.Label(self, justify="left", wraplength=560)
         self._result.pack(anchor="w", padx=16, pady=(0, 8))
 
+        actions = ttk.Frame(self)
+        actions.pack(fill="x", padx=16, pady=(0, 8))
+        ttk.Label(actions, text="Actions :").pack(side="left")
+        self._actions_row = ttk.Frame(actions)
+        self._actions_row.pack(side="left", padx=(8, 0))
+
         documents = ttk.Frame(self)
         documents.pack(fill="x", padx=16)
         ttk.Label(documents, text="Documents :").pack(side="left")
@@ -102,6 +109,13 @@ class SuiviView(ttk.Frame):
             ttk.Label(self._progression, text=f"{symbol} {label}").pack(side="left", padx=(0, 12))
         self._activity.configure(text=self._activity_text(snapshot))
         self._result.configure(text=self._result_text(snapshot))
+        for child in self._actions_row.winfo_children():
+            child.destroy()
+        for action in snapshot.presentation.allowed_actions:
+            ttk.Button(
+                self._actions_row, text=intervention.label(action.id),
+                command=self._action_handler(action),
+            ).pack(side="left", padx=(0, 4))
         for child in self._documents_row.winfo_children():
             child.destroy()
         for document in snapshot.presentation.readable_documents:
@@ -128,6 +142,18 @@ class SuiviView(ttk.Frame):
             return text
         changed = "" if decision.applies_to_current_version else " — le livrable a changé depuis"
         return f"Décision : {decision.kind} le {decision.at}{changed}\n{text}"
+
+    def _action_handler(self, action: AllowedAction) -> Callable[[], None]:
+        """Comme `_document_handler` : un objet par action, jamais une
+        fermeture sur la variable de boucle. `_refresh()` après coup montre
+        l'effet immédiat — une décision locale, ou une exécution qui démarre
+        et que le fil de rafraîchissement (§7.3) prendra ensuite en charge."""
+
+        def handler() -> None:
+            intervention.run(self, self._controller, self._path, action)
+            self._refresh()
+
+        return handler
 
     def _document_handler(self, relative: str) -> Callable[[], None]:
         """Un objet par document, jamais une fermeture sur la variable de

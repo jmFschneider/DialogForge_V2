@@ -88,10 +88,18 @@ class Controller:
             return None
         return self._run_error
 
-    def start_run(self, path: Path, *, timeout_seconds: float) -> None:
+    def start_run(
+        self, path: Path, *, timeout_seconds: float,
+        intervention: workflow.Intervention | None = None,
+    ) -> None:
         """Lance le cycle dans son propre fil (§9.1, comme `tests/test_control.py`
         le fait déjà côté tests). Sans effet si une exécution est déjà active
-        sur ce dossier — jamais une seconde reprise concurrente (§8.2)."""
+        sur ce dossier — jamais une seconde reprise concurrente (§8.2).
+
+        `intervention` transmet une réponse, une correction, une relance ou un
+        retraitement (§8.3-8.6) — le moteur l'applique sous le verrou, comme
+        `resume`/`decide --correct` en CLI ; ce fil ne fait qu'appeler
+        `workflow.run`, exactement comme pour « créer et démarrer »."""
         if self.is_running(path):
             return
         control = ExecutionControl()
@@ -99,8 +107,12 @@ class Controller:
 
         def worker() -> None:
             try:
-                workflow.run(path, adapters=ADAPTERS, timeout_seconds=timeout_seconds,
-                              control=control)
+                workflow.run(
+                    path, adapters=ADAPTERS, timeout_seconds=timeout_seconds,
+                    intervention=intervention, control=control,
+                )
+            except workflow.Stopped:
+                pass  # rien n'est parti (§9.1) : rien à signaler comme échec
             except Exception as exc:
                 self._run_error = str(exc)
 
@@ -116,3 +128,10 @@ class Controller:
         payé — c'est le transport, pas ce contrôleur, qui termine l'arbre."""
         if self._run_control is not None:
             self._run_control.interrupt_requested.set()
+
+    def pause_active_run(self) -> None:
+        """§9.3, branche « Terminer l'appel courant, mettre en pause, puis
+        fermer » : rien n'est perdu, le moteur s'arrête à la frontière d'appel
+        (READY) — à l'appelant d'attendre `has_active_run()` avant de fermer."""
+        if self._run_control is not None:
+            self._run_control.pause_requested.set()
