@@ -1059,3 +1059,52 @@ Aucun appel fournisseur.
 
 **Regles nouvelles** (`RULES.md`, Conduite de projet) : « ce qui se renomme, c'est la surface
 exposee, pas le code » ; « un nom d'usage qui change laisse l'ancien lisible, et le dit ».
+
+## 2026-09-23 — Phase 5 ouverte (GUI V1), lot 1 fait
+
+**Demande du PO** : « passer a la mise en place de ce plan » —
+`C:\Projets\essais-3-1\gui-v1\collab\livrables\version_finale.md` (conception GUI V1, cycle clos,
+B `ACCEPTER`, 3 `NOTE` ouvertes, **pas de `decisions.json`** : non acceptee formellement).
+Constat avant tout code : la GUI est un des cinq interdits de `CLAUDE.md` §2. Question posee au PO,
+reponses : **j'ecris la decision** (il accepte lui-meme le livrable par `decide`) ; **perimetre :
+plan + lot 1**.
+
+**Decision ecrite** : `CLAUDE.md` §2 (ligne de l'interdit), `project/RULES.md` § Perimetre (regle
+« la GUI V1 est une surface de plus sur le meme moteur »), `task_plan.md` (phase 5, table des
+decisions, dispositions des trois `NOTE`). Conception copiee octet pour octet dans
+`conception/GUI_V1.md` (sha256 `8c87908893697198dbd77e6d68a0acd61a78405233d95118ec8fa780c143ea39`).
+
+**Lot 1** :
+- Reference verte avant tout changement : 580 passes, 2 ignores.
+- `tests/test_actions.py` ecrit **d'abord** : phrases de `next_action` relevees sur `ba5c0a4` pour
+  12 situations (READY neuf / en pause, RUNNING, question, BLOQUANT accepte, TIMEOUT,
+  LAUNCH_FAILED, CONTRACT_ERROR, AWAITING_APPROVAL, accepte, accepte puis livrable modifie,
+  STOPPED), vert sur l'ancien code. Piege rencontre : deux collaborations sous la meme racine de
+  test partagent la numerotation des echanges (`0002-question-A.md` au lieu de `0001`) — un
+  dossier par situation.
+- `decisions.py` : `ActionId`, `AllowedAction(id, may_call, local_step, primary, inputs, call_id)`,
+  `accepted()`, `allowed_actions()` ; `next_action` choisit sa phrase **d'apres les actions
+  permises**, plus d'apres le statut ; la phrase d'incident (ex-`incidents.action`) y est deplacee.
+  Pas de `ActionId.NONE` : « aucune action principale » le dit.
+- Retraits : `incidents.action`, `incidents.received` (aucun appelant), `workflow._WAY_OUT`,
+  `workflow._RELAUNCHABLE` + `_Engine.relaunchable` (regle unique `incidents.relaunchable`),
+  doublon « deja accepte » de `workflow.decide`.
+- **Texte change, un seul** : le refus de la porte d'etat nomme desormais sa sortie via
+  `next_action`. En `AWAITING_APPROVAL` : « sortie : lire `livrables/bilan.md` puis decider : … »
+  au lieu de « aucune, le cycle est alle a son terme ; decision humaine : … ». En `ERROR` il
+  propose aussi `--reprocess` (l'ancienne table ne nommait que `--retry-call`). Assertion de
+  `test_intervention.py` adaptee (« terme » → la sortie `decide <dossier> --accept`).
+- Delai : `settings.resolve_timeout(explicit, override, base)` → `Timeout(seconds, origin,
+  settings)` ; `settings.load(explicit, base)` ; `cli._merge_settings` s'en sert pour
+  `run`/`resume`/`decide` (sortie stderr identique). `_FALLBACK["timeout"]` supprime, aide
+  derivee de `settings.DEFAULT_TIMEOUT`. 7 tests (`TestTheTimeoutOfALaunch`).
+- `docs/COMMANDES.md` : ligne `resume` du tableau corrigee (`B-reprocess-012`).
+- **Contre-epreuves** (mutation de `decisions.py`, script hors depot) : READY offrant ACCEPT,
+  STOPPED offrant STOP, phrase d'incident sans `--stop`, RETRY principal en ERROR, correction sans
+  etape locale — **5 vues sur 5**, fichier restaure.
+
+**Validation** : ruff vert ; mypy strict vert (49 fichiers) ; pytest **595 passes, 2 ignores** ;
+scenario sans fournisseur rc=0 ; `git diff --check` propre. **Taille** : 3 282 → 3 365 lignes de
+code effectif dans `src/` (+83 ; compteur tokenize sans docstrings, le meme sur `HEAD` et l'arbre —
+il donne 3 282 pour `HEAD` la ou le releve de J3 disait 3 253 avant `9a9824c` : comparer les
+deltas, pas les absolus). Aucun appel fournisseur. **Non commite.**

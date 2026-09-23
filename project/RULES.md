@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-09-22 (revue de documentation après J3)
+> Dernière mise à jour : 2026-09-23 (levée de l'interdit GUI pour la GUI V1)
 
 ## Index
 
@@ -40,6 +40,9 @@
 
 **Le livrable de la boucle est un document, jamais une exécution.**
 *Motif : l'exécution autonome n'a jamais mené une implémentation au bout — 1 tâche sur 7 sur FloraPi, 1 sur 10 sur DialogForge.*
+
+**La GUI V1 est une surface de plus sur le même moteur, jamais un second moteur.** Levée de l'interdit « Pas de GUI » par le PO le 2026-09-23, **limitée à `conception/GUI_V1.md`** : Tkinter/ttk de la bibliothèque standard, une fenêtre, une collaboration, une exécution, aucun worker ni processus détaché (§13). Plafonds : 1 200 lignes logiques de production pour la GUI et sa façade, +900 lignes nettes dans `src/` ; un dépassement se re-décide, il ne se constate pas. Les règles d'action (quelle commande est permise, laquelle peut payer) vivent dans `decisions.allowed_actions`, que la CLI et la GUI rendent chacune à sa façon — jamais une table propre à Tkinter.
+*Motif : l'interdit tenait parce qu'une interface qui possède l'exécution tend à reconstruire l'autonomie — la conception retenue écarte explicitement « les mécanismes d'autonomie de l'ancienne GUI » (§11, §17). La levée ne vaut que si la GUI ne décide rien que la CLI ne décide déjà.*
 
 **Aucune dépendance de production.** Une dépendance nouvelle exige une nécessité démontrée et une décision humaine.
 *Motif : DialogForge a tenu deux mois avec `dependencies = []`. C'est tenable.*

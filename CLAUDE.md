@@ -63,7 +63,7 @@ Ce sont les cinq choses qui ont fait exploser le prédécesseur. Aucune ne rentr
 | **Pas de base de données** | Fichiers sur disque, `etat.json` lisible à l'œil. |
 | **Pas de worker, bail, ni tâche planifiée** | On lance, ça tourne, on ferme le terminal. |
 | **Pas de budget, réservation ni quota interne** | Les plafonds fournisseur suffisent. |
-| **Pas de GUI** | CLI seule. |
+| **Pas de GUI** — *levé le 2026-09-23 par le PO, pour la seule GUI V1* | Tkinter local, mono-exécution, bornée par `conception/GUI_V1.md` (§11 plafonds, §13 non-objectifs). Rien au-delà sans nouvelle décision. |
 
 Toute demande qui commence par « et si on ajoutait un petit contrôle pour… » **doit** être opposée à ce tableau avant d'être implémentée.
 

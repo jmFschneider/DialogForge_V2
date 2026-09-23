@@ -6,8 +6,27 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Renommage de la surface exposée fait et commité le 2026-09-22 (`9a9824c`) — choisir le sujet
-suivant en début de session.**
+**Phase 5 (GUI V1) ouverte le 2026-09-23 ; lot 1 (5.1) fait, non commité — prochaine étape : lot 2
+(5.2, `ExecutionControl`), après validation du lot 1 par le PO et commit sur sa demande.**
+
+- Décision écrite : interdit « Pas de GUI » levé pour la seule GUI V1 (`CLAUDE.md` §2,
+  `project/RULES.md` § Périmètre, table des décisions ci-dessous). Conception copiée dans
+  `conception/GUI_V1.md`. **L'acceptation formelle du livrable** (`dialogforge decide
+  C:\Projets\essais-3-1\gui-v1\collab --accept`) reste au PO.
+- Lot 1 : `decisions.ActionId` / `AllowedAction` / `allowed_actions` = **la** table d'actions ;
+  `next_action` en dérive ses phrases (inchangées, figées par `tests/test_actions.py`). Retirés en
+  échange : `incidents.action`, `incidents.received` (sans appelant), `workflow._WAY_OUT` (la porte
+  d'état nomme sa sortie depuis la table), `workflow._RELAUNCHABLE` et la méthode `relaunchable`
+  (règle unique : `incidents.relaunchable`), le doublon « déjà accepté » de `workflow.decide`.
+  Délai : `settings.resolve_timeout(explicit, override, base)` rend valeur **et origine** ; la CLI
+  s'en sert pour `run`/`resume`/`decide`. `docs/COMMANDES.md` corrigé (`B-reprocess-012`).
+- Taille : **+83 lignes de code effectif dans `src/`** (3 282 → 3 365, même compteur sur `HEAD` et
+  l'arbre ; plafond +900). Validation : ruff, mypy strict, **595 passés / 2 ignorés**, scénario rc=0.
+- **Lot 2 — points déjà connus** : la pause existe (`workflow.run(pause=…)`, `cli._PauseSwitch`) ;
+  l'interruption passe par `KeyboardInterrupt` (`transport.py:275`). Remplacer les deux par un
+  `ExecutionControl` (deux `Event`), sans changer statuts, codes de sortie (6 = pause) ni preuves.
+
+**Historique — 2026-09-22 : renommage de la surface exposée fait et commité (`9a9824c`).**
 
 La commande est désormais `dialogforge` ; le paquet reste `iabinome`, délibérément. Validation
 complète verte (ruff, mypy strict, **580 tests / 2 ignorés**, scénario rc=0, `dialogforge --help`
@@ -127,8 +146,7 @@ Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la se
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 4 (lot 3) — complète, J3 atteint le 2026-09-22, `v0.1.0`. Prochaine étape hors phase :
-extension du lot 4 (§ Extension identifiée), sur décision du PO.
+Phase 5 (GUI V1) — ouverte le 2026-09-23, lot 1 fait, lot 2 à ouvrir. Phase 4 complète (J3, `v0.1.0`).
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -201,6 +219,23 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 - **Status:** complete — 3.1, 3.2 et 3.3 faits ; J3 atteint
 - **Jalon :** **J3 atteint le 2026-09-22** — première livraison utilisable, `v0.1.0`.
 
+### Phase 5: GUI V1 — ouverte par le PO le 2026-09-23
+Conception : `conception/GUI_V1.md`, copie octet pour octet du livrable de la collaboration
+`C:\Projets\essais-3-1\gui-v1\collab` (sha256 `8c879088…3ea39`, cycle clos, B `ACCEPTER`, 3 `NOTE`
+ouvertes). Le PO l'a retenue comme plan à mettre en œuvre ; son acceptation formelle (`decide`)
+lui appartient. Plafonds (§11) : **1 200 lignes logiques de production, +900 lignes nettes dans
+`src/`** — référence de mesure : 3 253 lignes de code au 2026-09-22.
+- [x] 5.1 Lot 1 — actions structurées (`ActionId`, `AllowedAction`), textes CLI dérivés, parité ;
+      résolution du délai centralisée *(2026-09-23, non commité ; résultats structurés de la
+      façade reportés aux lots qui les consomment — voir Decisions Made)*
+- [ ] 5.2 Lot 2 — `ExecutionControl` : transport, workflow, Ctrl+C de la CLI (la pause existe déjà,
+      voir `B-pause-010`)
+- [ ] 5.3 Lot 3 — accueil, récents non métier, ouverture, suivi en lecture seule, sous-état accepté
+- [ ] 5.4 Lot 4 — création : formulaire, provenance compatible, configuration/lancement séparés
+- [ ] 5.5 Lot 5 — interventions et décisions
+- [ ] 5.6 Lot 6 — recette : faux agents, compatibilité CLI/GUI, atomicité, périmètre, taille
+- **Status:** in_progress — 5.1 fait (non commité), 5.2 à ouvrir
+
 ## Extension identifiée (hors phases)
 
 **Lot 4 — Développement assisté.** Spécification acceptée exportée vers l'agent de développement,
@@ -208,7 +243,8 @@ paquet de revue à partir d'une base Git identifiée, boucle de dispositions ré
 une modification limitée et réversible. **Ne s'ouvre qu'après J3** et n'introduit ni worker, ni
 commit, ni déploiement automatique dans le moteur documentaire.
 
-Également conditionnelles après J3, et non engagées : interface graphique légère, recherche externe.
+Également conditionnelle après J3, et non engagée : recherche externe. (L'interface graphique
+légère est engagée depuis le 2026-09-23 : phase 5.)
 
 ## Decisions Made
 | Decision | Rationale |
@@ -235,6 +271,9 @@ commit, ni déploiement automatique dans le moteur documentaire.
 | **Ctrl+C à deux temps** (2.1) | Premier = pause à la frontière d'appel (`workflow.run(pause=…)`, `READY`, code 6) ; second = arrêt immédiat (`INTERRUPTED_BY_USER`). Pas de worker, pas de tâche planifiée : c'est le terminal de l'humain |
 | Verrou : rien de changé (2.1) | L'exclusion et le refus d'un verrou ambigu étaient déjà là ; ajout de tests au niveau CLI (détenteur vivant, verrou illisible : jamais effacé) |
 | **Documentation utilisateur** : README court + `docs/` (5 pages) + `exemples/` + `--help` (3.3 partiel, PO, 2026-09-20) | Le README de 350 lignes mêlait mode d'emploi, justification et historique mesuré. Le PO a confirmé : ouvrir 3.3 dans ces termes, retirer l'historique et l'origine du code du README (passés dans `docs/DEVELOPPEMENT.md`), et **un test de cohérence** `tests/test_docs.py` (option ↔ section de sa commande, clé de réglage, aide, exemples rejoués par `new`, liens et ancres) — un contrôle de plus, **accepté en connaissance de cause** (`POURQUOI.md` règle 2), qui ne vérifie pas que le texte est *vrai*. Le renommage en DialogForge est reporté à la **fin du développement V2** : la documentation écrit `python -m iabinome` partout |
+| **Levée de l'interdit « Pas de GUI », pour la seule GUI V1** (PO, 2026-09-23) | Le PO a demandé la mise en œuvre de la conception GUI V1 et choisi que la décision soit écrite dans `CLAUDE.md` §2, `project/RULES.md` et ici. Portée bornée à `conception/GUI_V1.md` (§13 non-objectifs, §11 plafonds). Passe **avant** le lot 4 « développement assisté », qui reste conditionnel |
+| Dispositions des trois `NOTE` ouvertes de B sur la conception GUI (2026-09-23) | `B-pause-010` **acceptée, vérifiée dans le code** : `workflow.run(pause=…)` et `cli._PauseSwitch` existent ; le lot 2 remplace ce mécanisme par `ExecutionControl` au lieu d'en créer un, et ses tests couvrent code 6 et `READY`. `B-origine-011` **acceptée** : l'origine affichée du délai est le chemin effectivement retenu par `settings` (anciens noms compris), jamais une liste fermée. `B-reprocess-012` **acceptée** : `docs/COMMANDES.md` disait « `--reprocess` : non » (n'appelle pas les agents) alors que `resume` reprend ensuite le cycle — corrigé au lot 1 |
+| Lot 1 GUI : la façade se construit avec son consommateur | Le lot 1 livre les actions structurées et la résolution du délai, dont la CLI se sert déjà. `create_collaboration`, `inspect_collaboration` et le reste de la façade §10.1 viennent aux lots 3 à 5, quand la GUI les appelle — une façade sans appelant serait une API spéculative (`POURQUOI.md` règle 2) |
 | `ruff format` hors de la porte de validation | Le projet ne l'a jamais utilisé ; reformater 26 fichiers brouillerait les diffs du lot 1 sans rien prouver |
 
 ## Errors Encountered
