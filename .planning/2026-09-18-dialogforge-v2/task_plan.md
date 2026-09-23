@@ -6,29 +6,62 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Phase 5 (GUI V1) : lots 1 à 3 faits. Lot 3 fait le 2026-09-23, non commité — voir**
-**`progress.md`. Prochaine étape : ouvrir le lot 4 (5.4) — formulaire de création,**
-**provenance compatible, configuration/lancement séparés, création seule, création et démarrage.**
+**Phase 5 (GUI V1) : lots 1 à 4 faits. Lot 4 fait le 2026-09-23, non commité — voir**
+**`progress.md`. Prochaine étape : ouvrir le lot 5 (5.5) — interventions et décisions :**
+**réponse humaine, reprise, retraitement, relance, correction, acceptation et arrêt.**
 
-**Reprise du lot 4 — à lire avant de coder** :
-- Références : `conception/GUI_V1.md` §6 (écran de création), §6.1-6.5 (champs, provenance,
-  réglages avancés/de lancement, validation), §6.6-6.7 (créer seul / créer et démarrer) ; critères
-  AC-06 à AC-14. Plafonds §11 inchangés : vue ≤ 400 lignes.
-- Déjà disponible : `iabinome.facade.inspect_collaboration` (lot 3) rend un `CollaborationSnapshot`
-  prêt à afficher après création ; `iabinome.gui.controller.Controller.show_suivi(path)` navigue
-  vers le suivi ; `demande.complete`/`demande.record`, `corpus.build`, la construction de
-  `Configuration`/`State` dans `cli._build_new` (à réutiliser depuis la façade, pas dupliquer).
-  `settings.resolve_timeout(explicit, override, base)` résout le délai — le lot 4 doit l'appeler
-  avec `base = <dossier parent de la collaboration>` (§6.4), jamais le répertoire courant du
-  processus GUI.
-- À construire : `create_collaboration(command) -> CreationResult` (façade §10.1), consommée par
-  l'écran de création — pas de table de validation propre à Tkinter, la même que `new` (§6.5).
-  `StubView` (`iabinome/gui/views/stub.py`) est le point d'entrée actuel du bouton « Nouvelle
-  collaboration » : il se retire quand ce lot le remplace.
-- **Le lot 4 reste en lecture seule côté exécution du cycle** sauf pour « créer et démarrer » (§6.7),
-  qui est la première fois que la GUI appelle `workflow.run` — sous confirmation explicite (§3.5),
-  avec l'`ExecutionControl` du lot 2 (aucun fil moteur n'existe encore côté GUI : à construire ici,
-  un fil au plus, comme `tests/test_control.py::_Threaded` le fait déjà côté tests).
+**Reprise du lot 5 — à lire avant de coder** :
+- Références : `conception/GUI_V1.md` §8 (actions par statut, §8.1-8.8 en détail — WAITING_HUMAN,
+  INTERRUPTED, ERROR, AWAITING_APPROVAL avec/sans acceptation applicable), §9.2-9.3 (fermeture
+  pendant une exécution, la partie non faite au lot 4 : la pause différée avant fermeture) ;
+  critères AC-15 à AC-29 (ceux non déjà couverts par le lot 3 : AC-18, AC-19, AC-22 à AC-29).
+- Déjà disponible et à réutiliser tel quel : `iabinome.gui.controller.Controller.start_run`/
+  `is_running`/`run_error`/`has_active_run`/`interrupt_active_run` (lot 4 : le fil moteur unique,
+  construit pour « créer et démarrer », sert identiquement à toute reprise) ; `iabinome.gui.dialogs.
+  confirm` (§3.5, déjà utilisé par l'écran de création) ; `decisions.allowed_actions` donne déjà,
+  pour chaque statut, les `ActionId` à câbler (`ANSWER_AND_RESUME`, `RETRY_CALL`,
+  `REPROCESS_AND_RESUME`, `CORRECT`, `ACCEPT`, `ACCEPT_WITH_RESERVES`, `STOP`) — aucune nouvelle
+  table à écrire côté GUI.
+- À construire : les widgets d'intervention sur `views/suivi.py` (zone multiligne pour répondre,
+  motif obligatoire pour relancer/retraiter/corriger, boutons d'acceptation) — `workflow.Answer`/
+  `Correct`/`Reprocess`/`RetryCall` et `workflow.decide` sont déjà la même façade que `resume`/
+  `decide` en CLI, rien à ajouter côté moteur. La correction ciblée (`CORRECT`) et la reprise après
+  incident repassent par `Controller.start_run`, comme la création.
+- **Fermeture pendant une exécution (§9.3), branche restée non faite au lot 4** : la pause
+  « terminer l'appel courant, puis fermer » — `app._on_close` ne gère aujourd'hui que « continuer à
+  suivre » et « interrompre maintenant ». Ajouter la troisième branche exige d'attendre la fin du
+  fil sans geler Tk (poll par `after()`, pas un `join()` bloquant sur le fil principal).
+- **Budget de taille** : plafond de croissance nette dans `src/` porté à **2 500 lignes** par le PO
+  le 2026-09-23 (`conception/GUI_V1.md` §11, amendement ; `RULES.md`) — mesuré à 4 320 lignes
+  effectives après le lot 4 (contre 3 274 avant la phase 5). Le plafond de 1 200 lignes logiques
+  (façade + `gui/`) n'a pas bougé et n'est pas approché (~1 000 lignes) : à surveiller au lot 5, qui
+  ajoute le plus gros du reste de l'interaction.
+
+- **Lot 4** (2026-09-23, non commité) : `facade.create_collaboration(request, *, adapters) ->
+  CreationResult` — la création **partagée** (§6.1, §6.5) : `cli.cmd_new` délègue désormais à cette
+  fonction (`_build_new` retiré de `cli.py`, `_write_json`/`_now` devenus inutiles, retirés aussi) ;
+  `corpus.CorpusError` retiré de `cli._BORDER_ERRORS`, devenu inatteignable depuis la CLI (absorbé
+  par la façade). `iabinome/registry.py` (nouveau) : `ADAPTERS`, une seule instanciation partagée par
+  `cli.py` et `iabinome/gui/controller.py`/`views/creation.py` (évite deux sources de vérité sur les
+  adaptateurs disponibles).
+  `iabinome/gui/views/creation.py` (nouveau, remplace `views/stub.py`, retiré) : dossier, demande
+  (saisie/import, provenance §6.2), type, agents, révisions, corpus (recherche seulement, AC-08),
+  réglages avancés repliables (§6.3) et réglages du prochain lancement repliables (§6.4, délai
+  jamais écrit dans `configuration.json`, AC-10) ; validation locale minimale (§6.5 niveau 1) puis
+  autoritaire via la façade ; « Créer seulement » (AC-13) et « Créer et démarrer » (AC-14, dialogue
+  de confirmation `iabinome/gui/dialogs.py` nommant agent/phase/délai/origine, AC-11).
+  `iabinome.gui.controller.Controller` : **premier fil moteur côté GUI** (`start_run`, un thread
+  daemon + `ExecutionControl`, comme `tests/test_control.py::_Threaded` côté tests) ; `is_running`/
+  `run_error` pour l'écran de suivi, `has_active_run`/`interrupt_active_run` pour la fermeture.
+  `views/suivi.py` : relit avec `owned_by_this_gui` quand cette fenêtre possède l'exécution, se
+  reprogramme via `after()` toutes les 500 ms tant qu'elle tourne (§7.3), s'arrête d'elle-même à la
+  fin. `app.py` : garde de fermeture partielle (§9.2-9.3, deux branches sur trois — voir Next Step).
+  Vérifié en réel (script hors suite) : formulaire → confirmation → création → suivi → cycle en fil
+  secondaire avec de faux agents → « Cycle terminé — décision requise », 2 appels lancés.
+  Validation : ruff, mypy strict, **672 passés / 2 ignorés**, scénario rc=0. Taille : 469 lignes
+  effectives ajoutées ; voir Budget de taille ci-dessus pour le cumul et la décision du PO.
+  **Non fait, volontairement** : répondre/relancer/retraiter/corriger/accepter/arrêter depuis la GUI
+  (lot 5) ; la branche de fermeture « pause puis fermeture » (lot 5, voir ci-dessus).
 
 - **Lot 3** (2026-09-23, non commité) : `iabinome/facade.py` — `inspect_collaboration(path,
   *, owned_by_this_gui=False, runner_alive=None) -> CollaborationSnapshot` (§10.3 : décision
@@ -195,8 +228,8 @@ Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la se
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 5 (GUI V1) — ouverte le 2026-09-23, lots 1 à 3 faits (lot 3 non commité), lot 4 à ouvrir.
-Phase 4 complète (J3, `v0.1.0`).
+Phase 5 (GUI V1) — ouverte le 2026-09-23, lots 1 à 4 faits (lots 3 et 4 non commités), lot 5 à
+ouvrir. Phase 4 complète (J3, `v0.1.0`).
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -273,8 +306,9 @@ d'avancement : on ne coche pas une seconde liste dans `astra/`.
 Conception : `conception/GUI_V1.md`, copie octet pour octet du livrable de la collaboration
 `C:\Projets\essais-3-1\gui-v1\collab` (sha256 `8c879088…3ea39`, cycle clos, B `ACCEPTER`, 3 `NOTE`
 ouvertes). Le PO l'a retenue comme plan à mettre en œuvre ; son acceptation formelle (`decide`)
-lui appartient. Plafonds (§11) : **1 200 lignes logiques de production, +900 lignes nettes dans
-`src/`** — référence de mesure : 3 253 lignes de code au 2026-09-22.
+lui appartient. Plafonds (§11) : **1 200 lignes logiques de production, +2 500 lignes nettes dans
+`src/`** (porté de +900 à +2 500 par le PO le 2026-09-23 après le lot 4 — voir Decisions Made) —
+référence de mesure : 3 274 lignes de code effectif juste avant l'ouverture de la phase 5.
 - [x] 5.1 Lot 1 — actions structurées (`ActionId`, `AllowedAction`), textes CLI dérivés, parité ;
       résolution du délai centralisée *(2026-09-23, `38abbca` ; résultats structurés de la
       façade reportés aux lots qui les consomment — voir Decisions Made)*
@@ -283,10 +317,12 @@ lui appartient. Plafonds (§11) : **1 200 lignes logiques de production, +900 li
 - [x] 5.3 Lot 3 — accueil, récents non métier, ouverture, suivi en lecture seule, sous-état accepté
       *(2026-09-23, non commité : `iabinome/facade.py`, `iabinome/gui/`, sous-commande `dialogforge
       gui` — voir Next Step et Decisions Made)*
-- [ ] 5.4 Lot 4 — création : formulaire, provenance compatible, configuration/lancement séparés
+- [x] 5.4 Lot 4 — création : formulaire, provenance compatible, configuration/lancement séparés
+      *(2026-09-23, non commité : `facade.create_collaboration`, `views/creation.py`, premier fil
+      moteur du contrôleur — voir Next Step et Decisions Made)*
 - [ ] 5.5 Lot 5 — interventions et décisions
 - [ ] 5.6 Lot 6 — recette : faux agents, compatibilité CLI/GUI, atomicité, périmètre, taille
-- **Status:** in_progress — 5.1 à 5.3 faits (5.3 non commité), 5.4 à ouvrir
+- **Status:** in_progress — 5.1 à 5.4 faits (5.3 et 5.4 non commités), 5.5 à ouvrir
 
 ## Extension identifiée (hors phases)
 
@@ -331,8 +367,14 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 | Fichier des récents : `~/.dialogforge/recents.json` (PO, 2026-09-23, lot 3) | À côté de `reglages.toml`, jamais lu par une commande métier (§5.2). Confirme la proposition de la conception, sans variante |
 | `Presentation.phase_steps` calculé dans la façade, pas dans la vue Tkinter (lot 3) | §15.1 exige que « les quatre phases » se testent sans Tk ; la barre de progression (✓ ● ○ ! —) ne dépend que de `State`, donc `facade._phase_steps` la rend testable et réutilisable par une future sortie CLI sans dupliquer la règle dans `views/suivi.py` |
 | Une fois `Phase.CLOSED` atteinte, la dernière phase se lit « faite » (`✓`), jamais « courante » (`●`) (lot 3) | Rien n'est plus « en cours » une fois le cycle terminé (§8.6, §8.7) ; réserver `●` aux trois phases qui précèdent une exécution encore possible garde la légende du §7.1 lisible sans ambiguïté |
+| `facade.create_collaboration` remplace `cli._build_new` plutôt que de le dupliquer (lot 4) | §6.1/§6.5 exigent la « création partagée » ; `cli.cmd_new` délègue désormais à la façade, qui absorbe aussi `corpus.CorpusError` (retiré de `cli._BORDER_ERRORS`, devenu inatteignable). Un seul chemin de validation pour `new` et l'écran de création, mesuré par `tests/test_facade_creation.py` et la suite `test_cli.py`/`test_effort.py` inchangée |
+| `iabinome/registry.py` : une seule instanciation d'`ADAPTERS`, partagée par `cli.py` et `iabinome/gui/` (lot 4) | Le registre des adaptateurs est un « registre partagé » au sens du §6.1 ; l'alternative (dupliquer `{"claude": ClaudeAdapter(), "codex": CodexAdapter()}` dans `gui/controller.py`) aurait recréé exactement la duplication que `decisions.allowed_actions` évite déjà côté actions |
+| Le contrôleur GUI porte le premier fil moteur au lot 4, pas au lot 5 (2026-09-23) | « Créer et démarrer » (§6.7) est la première commande GUI qui peut appeler `workflow.run` ; le fil, l'`ExecutionControl` et le polling de `views/suivi.py` construits ici pour ce seul cas sont directement réutilisables par les interventions du lot 5, sans reconstruction |
+| Fermeture de fenêtre pendant une exécution (§9.2-9.3) : seulement 2 branches sur 3 au lot 4 (2026-09-23) | « Continuer à suivre » et « interrompre maintenant » sont couvertes (`app._on_close`) ; la troisième (« terminer l'appel courant, mettre en pause, puis fermer ») demande d'attendre la fin du fil sans geler Tk — repoussée au lot 5, qui touche de toute façon à la pause coopérative pour les interventions |
+| **Plafond de croissance nette dans `src/` porté de +900 à +2 500 lignes** (PO, 2026-09-23, après le lot 4) | Mesuré avec un compteur cohérent d'un lot à l'autre (hors commentaires/docstrings) : +1 046 lignes depuis le début de la phase 5, 146 au-delà du plafond initial de `conception/GUI_V1.md` §11. Le PO a tranché que le plafond était trop bas plutôt que de réduire le lot 4 déjà livré et testé — même logique que l'amendement du plafond global à J3 (`POURQUOI.md` règle 1). Le plafond de 1 200 lignes logiques (façade + `gui/`) n'a pas bougé : ~1 000 lignes, non approché. Détail dans `conception/GUI_V1.md` §11 et `project/RULES.md` |
 
 ## Errors Encountered
 | Error | Resolution |
 |-------|------------|
 | `DECODE_FAILED` sur une réponse accentuée du faux agent | Le faux agent écrit dans l'encodage local (cp1252) d'un tube Windows, les adaptateurs décodent en UTF-8. Propriété du faux agent, pas du moteur : le scénario fixe `PYTHONIOENCODING=utf-8` |
+| **Trouvé au lot 4, non corrigé** : `corpus.build()` avec une liste source vide ne crée jamais le dossier `corpus/`, alors qu'il tente ensuite d'y écrire `manifeste.json` — `FileNotFoundError`, jamais le `ValueError("corpus vide pour une mission de recherche")` que le code semble promettre juste après. Branche morte préexistante (avant le lot 4), repérée en écrivant `tests/test_facade_creation.py` avec une assertion sur le message exact ; le comportement observable (refus, rien de créé) reste correct, donc non corrigé dans ce lot — signalé pour décision séparée, pas pour un correctif hors sujet |

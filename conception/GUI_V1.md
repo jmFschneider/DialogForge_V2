@@ -684,6 +684,16 @@ Ce qui est retiré ou remplacé en échange :
 
 Un dépassement n’est pas accepté silencieusement : il impose soit une réduction de périmètre, soit une décision humaine documentée modifiant ce garde-fou.
 
+> **Amendement du 2026-09-23 (PO), après les lots 3 et 4** : mesuré avec un
+> compteur cohérent (hors commentaires et docstrings) à chaque frontière de
+> lot depuis le début de la phase 5, la croissance nette de `src/` atteignait
+> +1 046 lignes après le lot 4, contre le plafond de +900 fixé ci-dessus — un
+> dépassement de 146 lignes, sans réduction de fonctionnalité livrée en face.
+> Le PO tranche : **le plafond de croissance nette est porté à +2 500 lignes
+> dans `src/`**, jugé trop bas à l'origine plutôt que le périmètre du lot 4
+> trop large. Le plafond de 1 200 lignes logiques (façade, contrôleur, vues)
+> n'est pas changé — il n'a pas été approché (~1 000 lignes après le lot 4).
+
 ## 12. Accessibilité et fluidité
 
 - navigation complète au clavier ;

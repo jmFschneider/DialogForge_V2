@@ -1220,3 +1220,103 @@ restante). Aucun appel fournisseur. **Non commité** : aucune demande de commit 
 **Non fait, volontairement** : `create_collaboration` (lot 4) ; toute intervention qui mute le
 cycle — répondre, relancer, retraiter, corriger, décider, démarrer (lot 5) ; suppression d'un
 récent (§5.1 ne demande que « Ouvrir » et « Afficher dans le dossier »).
+
+**Commité dans la même session, après un premier essai manuel du PO** : `223c04a` (code, tests,
+`COMMANDES.md`) et `89ba64b` (plan, `RULES.md`).
+
+## 2026-09-23 (suite) — Lot 4 GUI : création, premier fil moteur
+
+Enchaînement demandé par le PO (« on continue ») après le commit du lot 3. Scope du lot 5.4 —
+formulaire de création, provenance compatible, configuration/lancement séparés, créer seul, créer et
+démarrer — repris tel que préparé dans `task_plan.md` § Next Step.
+
+**Fait** :
+- `iabinome/registry.py` (nouveau) : `ADAPTERS`, une seule instanciation partagée. `cli.py` et
+  `iabinome/gui/` l'importent tous deux ; `mock.patch("iabinome.gui.controller.ADAPTERS", …)` reste
+  le point de substitution côté tests, comme `cli.ADAPTERS` déjà.
+- `facade.py` : `create_collaboration(request: CreationRequest, *, adapters) -> CreationResult`,
+  `DemandeSource`, `CreationError`. Reprend **exactement** les vérifications et l'écriture de
+  l'ancien `cli._build_new` (existence du dossier, corpus racine/liste ensemble, recherche sans
+  corpus, effort par adaptateur, `Configuration`/`State`, tmp + renommage atomique) — `cli.cmd_new`
+  délègue désormais à cette fonction ; `_build_new`, `cli._write_json`, `cli._now` supprimés, devenus
+  sans appelant. `corpus.CorpusError` retiré de `cli._BORDER_ERRORS` : absorbé par la façade, plus
+  jamais visible depuis la CLI.
+  **Contre-épreuve de non-régression** : suite complète rejouée après le refactor avant d'ajouter le
+  moindre test neuf — 637 passés, identique au chiffre d'avant (`tests/test_cli.py`,
+  `tests/test_effort.py` inchangés, verts).
+- `iabinome/gui/views/creation.py` (nouveau, remplace `views/stub.py`, supprimé) : dossier (texte +
+  sélecteur), demande (saisir/importer, la source affichée change avec la provenance §6.2), type
+  (bascule le bloc corpus, AC-08), agents (combobox sur `registry.ADAPTERS`), révisions, corpus
+  (recherche seulement), réglages avancés repliables (modèle/effort par rôle, accès web, accès du
+  critique — §6.3) et réglages du prochain lancement repliables (fichier explicite, surcharge de
+  délai, bouton « Résoudre » qui affiche délai effectif + origine sans rien créer — §6.4, AC-10) ;
+  validation locale (dossier/demande/révisions) puis autoritaire via la façade, refus affiché en
+  place, formulaire intact (AC-12).
+- `iabinome/gui/dialogs.py` (nouveau) : `confirm()`, modale bloquante à boutons nommés — jamais un
+  `messagebox.askyesno` générique (§3.5). Utilisée par « Créer et démarrer » (agent, phase
+  « proposition initiale », délai effectif, origine — AC-11) et prête pour les confirmations du
+  lot 5.
+- `iabinome/gui/controller.py` : **premier fil moteur côté GUI**. `start_run(path,
+  timeout_seconds=…)` lance `workflow.run` dans un `threading.Thread` daemon avec un
+  `ExecutionControl` propre ; `is_running`, `run_error` (ce que le fil a rapporté s'il s'est arrêté
+  **avant tout appel** — adaptateur absent, effort refusé) ; `has_active_run`,
+  `interrupt_active_run` pour la fermeture. Un seul fil à la fois : un second `start_run` sur le même
+  dossier pendant qu'un premier tourne est un no-op (§3.1, mesuré par contre-épreuve).
+- `views/suivi.py` : `_refresh` passe `owned_by_this_gui=controller.is_running(path)` à la façade,
+  se reprogramme via `self.after(500, self._refresh)` tant que le fil tourne, s'arrête d'elle-même à
+  la fin ; le message d'un lancement resté sans appel (`run_error`) s'affiche dans le bloc activité.
+  `destroy()` annule le rappel programmé — jamais un `after()` sur un widget disparu.
+- `app.py` : `WM_DELETE_WINDOW` → `_on_close`. Sans exécution active, ferme tout de suite. Avec une
+  exécution active : `dialogs.confirm` propose seulement **continuer à suivre** (annuler) ou
+  **interrompre et fermer** — la troisième branche du §9.3 (pause puis fermeture différée) demande
+  d'attendre le fil sans geler Tk, repoussée au lot 5.
+
+**Tests** :
+- `tests/test_facade_creation.py` — sans Tk : chaque refus de `test_cli.py`/`test_effort.py` rejoué
+  directement sur `create_collaboration` (dossier existant, corpus mal apparié, recherche sans/avec
+  corpus vide, adaptateur inconnu, effort refusé), plus l'atomicité (rien ne reste sur un refus, y
+  compris un fichier de corpus introuvable en cours de copie) et la provenance (`fichier` vs
+  `cadrage`, `missing_sections`).
+- `tests/test_gui_creation.py` — racine Tk masquée : la demande reste visible saisie ou importée
+  (AC-06), un import modifié repasse en `cadrage` (AC-07), le bloc corpus n'apparaît qu'en recherche
+  (AC-08), créer seulement produit `READY` à zéro appel (AC-13) ou refuse sans rien laisser (AC-12),
+  créer et démarrer distingue la création locale du lancement (AC-14), annule sans rien créer si la
+  confirmation est refusée, nomme agent/phase/délai/origine dans cette confirmation (AC-11), et
+  n'écrit jamais le délai dans `configuration.json` (AC-10). Boutons trouvés par leur texte et
+  invoqués par `.invoke()`, comme au lot 3.
+- `tests/test_gui_execution.py` — le moteur tourne **dans un vrai fil**, comme `test_control.py`
+  côté CLI (un `FakeAdapter` reste un vrai sous-processus) : un cycle complet atteint
+  `AWAITING_APPROVAL`, un second `start_run` concurrent n'ouvre pas de second fil, un refus de
+  prévol (aucun adaptateur) se rapporte sans toucher `etat.json`, une interruption en cours d'appel
+  passe par `INTERRUPTED`, `has_active_run` suit fidèlement le fil, l'écran de suivi cesse de se
+  reprogrammer une fois le fil terminé. La garde de fermeture (`app._on_close`) testée aux trois cas
+  (rien à fermer, annulation, confirmation) avec des doublures — pas de vraie fenêtre nécessaire.
+- **Vérifié en réel, hors suite de tests** (script jetable, faux agents, jamais de vrai fournisseur) :
+  formulaire rempli → « Créer et démarrer » → confirmation → dossier créé → écran de suivi →
+  2 appels lancés dans le fil secondaire → « Cycle terminé — décision requise » affiché après la fin
+  du fil. La même preuve que le lot 3 avait faite pour l'ouverture, faite ici pour la création.
+
+**Validation** : ruff vert ; mypy strict vert (67 fichiers) ; pytest complet **672 passés, 2
+ignorés** (+35 depuis le lot 3) ; scénario sans fournisseur rc=0. Aucun appel fournisseur. **Non
+commité au moment d'écrire ceci** — voir plus bas.
+
+**Trouvé, non corrigé** : `corpus.build()` avec une liste source vide ne crée jamais le dossier
+`corpus/` avant d'y écrire `manifeste.json` — `FileNotFoundError`, jamais le
+`ValueError("corpus vide pour une mission de recherche")` qui semblait accessible juste après.
+Branche morte préexistante au lot 4 (le refus reste correct : rien n'est créé, code 1) ; repéré en
+écrivant une contre-épreuve qui vérifiait le message exact plutôt que le seul résultat. Signalé dans
+`task_plan.md` (Errors Encountered) pour décision séparée — corriger `corpus.py` est hors du
+périmètre de ce lot.
+
+**Mesure de taille et décision du PO** : compteur cohérent (hors commentaires/docstrings) rejoué à
+chaque frontière de lot depuis `ba5c0a4` (juste avant la phase 5, 3 274 lignes) jusqu'à l'état
+courant (4 320 lignes) : lot 1 +83, lot 2 +14, lot 3 +480, lot 4 +469 — total +1 046, contre le
+plafond de +900 fixé par `conception/GUI_V1.md` §11. Signalé au PO avant toute autre action (« un
+dépassement n'est pas accepté silencieusement »). **Décision du PO (2026-09-23)** : le plafond de
+croissance nette dans `src/` est porté à **2 500 lignes** — le chiffre initial était trop bas, pas le
+lot 4 trop large. Amendement daté écrit dans `conception/GUI_V1.md` §11 et `project/RULES.md`
+(texte d'origine conservé, note ajoutée). Le plafond de 1 200 lignes logiques (façade + `gui/`) reste
+inchangé, non approché (~1 000 lignes).
+
+**Non fait, volontairement** : toute intervention qui mute un cycle en cours — répondre, relancer,
+retraiter, corriger, accepter, arrêter (lot 5) ; la branche « pause puis fermeture » du §9.3 (lot 5).
