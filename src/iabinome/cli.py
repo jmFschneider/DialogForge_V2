@@ -1,4 +1,5 @@
-"""Surface CLI — huit commandes (CONCEPTION_FINALE.md §7, étendue en V2 par 1.4 et 2.3).
+"""Surface CLI — neuf commandes (CONCEPTION_FINALE.md §7, étendue en V2 par 1.4, 2.3 et
+la GUI V1, lot 3).
 
 `new` fait tous ses prévols dans un répertoire temporaire frère puis publie
 par renommage ; `run` est l'unique moteur synchrone ; `resume` n'en contient
@@ -443,6 +444,15 @@ def cmd_plan(args: argparse.Namespace) -> int:
         return _fail(_describe(exc))
 
 
+def cmd_gui(args: argparse.Namespace) -> int:
+    """Ouvre la fenêtre Tkinter/ttk locale (`conception/GUI_V1.md`). Importée ici
+    seulement : la CLI ne dépend pas de `tkinter` pour le reste de ses commandes."""
+    from .gui.app import run
+
+    run()
+    return 0
+
+
 def cmd_list(args: argparse.Namespace) -> int:
     """Les collaborations d'un dossier, **calculées** depuis les dossiers : pas de
     base, pas d'index, rien à garder à jour."""
@@ -665,6 +675,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_list = sub.add_parser("list", help="énumérer les collaborations d'un dossier")
     p_list.add_argument("root", help="dossier qui contient des collaborations")
     p_list.set_defaults(func=cmd_list)
+
+    p_gui = sub.add_parser("gui", help="ouvrir la fenêtre locale (Tkinter)")
+    p_gui.set_defaults(func=cmd_gui)
 
     return parser
 

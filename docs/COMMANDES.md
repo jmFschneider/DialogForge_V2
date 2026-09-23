@@ -1,6 +1,6 @@
 # Commandes
 
-Référence des huit commandes, des statuts et des codes de sortie. Pour un premier parcours,
+Référence des neuf commandes, des statuts et des codes de sortie. Pour un premier parcours,
 commencez par [`PRISE_EN_MAIN.md`](PRISE_EN_MAIN.md). `dialogforge <commande> --help` donne la
 même information en ligne.
 
@@ -14,6 +14,7 @@ même information en ligne.
 | [`decide`](#decide) | Consigner votre décision | seulement `--correct` |
 | [`plan`](#plan) | Résumé pour un plan PWF, liaison facultative | non |
 | [`list`](#list) | Énumérer les collaborations d'un dossier | non, lecture seule |
+| [`gui`](#gui) | Ouvrir la fenêtre locale (Tkinter) | comme la CLI, selon l'écran ouvert |
 
 `<dossier>` désigne le dossier d'une collaboration, celui que `new` a créé.
 
@@ -142,6 +143,19 @@ fonctionne comme avant.
 
 Énumère les collaborations d'un dossier, **calculées** depuis les dossiers : pas d'index, rien à garder
 à jour. Un dossier illisible est nommé plutôt que caché.
+
+## gui
+
+`dialogforge gui`
+
+Ouvre la fenêtre locale (Tkinter/ttk) : accueil, création, suivi et décision d'une collaboration à
+la fois — jamais de worker ni de processus détaché ([`conception/GUI_V1.md`](../conception/GUI_V1.md)).
+CLI et GUI partagent les mêmes dossiers, la même façade et les mêmes actions permises : ce que l'une
+fait, l'autre le voit au prochain rafraîchissement.
+
+Au lot 3, l'écran de suivi est **strictement en lecture seule** : accueil, collaborations récentes,
+ouverture et lecture des documents. Répondre, relancer, retraiter, corriger et décider arrivent au
+lot 5.
 
 ## Statuts
 
