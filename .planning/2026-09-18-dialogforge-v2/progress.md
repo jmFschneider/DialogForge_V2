@@ -1320,3 +1320,90 @@ inchangé, non approché (~1 000 lignes).
 
 **Non fait, volontairement** : toute intervention qui mute un cycle en cours — répondre, relancer,
 retraiter, corriger, accepter, arrêter (lot 5) ; la branche « pause puis fermeture » du §9.3 (lot 5).
+
+**Commité dans la même session, sur demande du PO (« fais le commit, puis continues avec les
+suivants »)** : `78399c0` (code, tests) et `414bc95` (plan, conception amendée, `RULES.md`).
+
+## 2026-09-23 (suite) — Lots 5 et 6 GUI : interventions, décisions, recette
+
+Enchaînement demandé par le PO après le commit du lot 4 (« continues avec les suivants »). Les deux
+derniers lots de la phase 5 sont faits dans la même session : le lot 5 (interventions et décisions,
+5.5) puis le lot 6 (recette, 5.6), sans repasser par le PO entre les deux — la demande couvrait
+explicitement « les suivants ».
+
+### Lot 5 — interventions et décisions (§8)
+
+**Fait** :
+- `iabinome/gui/dialogs.py` : `prompt_text(parent, title, label) -> str | None` (invite
+  **multiligne**, `ScrolledText` — une réponse ou un motif ne tiennent pas sur une ligne, contre
+  `tkinter.simpledialog.askstring`) ; `choose(parent, title, body, options) -> str | None` (plus de
+  deux issues, pour la fermeture à trois branches).
+- `iabinome/gui/views/intervention.py` (nouveau) : `run(parent, controller, path, action)` — invite
+  le texte requis par `action.inputs` s'il y en a un, confirme (§3.5) si `action.may_call`, sinon une
+  confirmation simple pour `STOP` seul (décision définitive) ; puis applique. `ACCEPT`/
+  `ACCEPT_WITH_RESERVES`/`STOP` appellent `workflow.decide` **directement** (local, sous verrou,
+  synchrone — jamais de fil, `may_call=False` le dit déjà) ; `ANSWER_AND_RESUME`/`RETRY_CALL`/
+  `REPROCESS_AND_RESUME`/`CORRECT` écrivent le texte dans un fichier jetable (`tempfile.mkstemp`,
+  jamais dans la collaboration) puis appellent `Controller.start_run(path, intervention=…)`.
+- `iabinome.gui.controller.Controller.start_run` étendu d'un paramètre `intervention` optionnel —
+  le même fil que « créer et démarrer » (lot 4), sans reconstruction ; `workflow.Stopped` n'est plus
+  confondu avec un échec (`except workflow.Stopped: pass` avant le `except Exception` générique).
+- `views/suivi.py` : une rangée de boutons, un par `AllowedAction` de
+  `snapshot.presentation.allowed_actions`, étiqueté par `intervention.label(action.id)` — aucune
+  seconde table, la même que la façade rend déjà.
+- `app.py` : troisième branche de fermeture (§9.3) — « terminer l'appel courant, mettre en pause,
+  puis fermer » pose `pause_active_run()` puis attend `has_active_run()` via une boucle `after()`
+  (`_wait_then_close`), jamais un `join()` qui gèlerait `mainloop()`. `dialogs.choose` remplace
+  `dialogs.confirm` pour ce dialogue à trois options.
+
+**Tests** :
+- `tests/test_gui_intervention.py` (nouveau) : chaque `ActionId` de `decisions.allowed_actions`,
+  construit avec les situations de `tests/test_actions.py` (question, timed_out, contract_error,
+  awaiting, accepted, running) — annuler à l'invite ou à la confirmation ne fait rien ; `ACCEPT` ne
+  montre ni invite ni confirmation ; `ACCEPT_WITH_RESERVES` refuse un texte vide ; `RETRY_CALL`/
+  `REPROCESS_AND_RESUME` nomment le bon `call_id` ; `RESUME` sur un `RUNNING` ne transmet aucune
+  intervention (la récupération elle-même reste celle de `workflow.run`, déjà éprouvée par
+  `tests/test_recovery.py` — ce test-ci ne prouve que la route GUI).
+- `tests/test_gui_execution.py` : `TestCloseGuard` réécrit pour les trois branches (`dialogs.choose`
+  moqué), y compris l'attente simulée du fil via un `side_effect` sur `has_active_run`.
+- **Vérifié en réel, hors suite** (script jetable, faux agents) : bouton « Répondre et reprendre »
+  sur un `WAITING_HUMAN` amené là par un vrai cycle → reprise en fil secondaire →
+  `AWAITING_APPROVAL` → bouton « Accepter cette version » sur l'écran de suivi → « Version
+  acceptée » affichée. Les deux interventions les plus fréquentes, de bout en bout, pas seulement
+  en test unitaire.
+
+### Lot 6 — recette (§15.4-§15.6)
+
+Les huit scénarios de faux agents du §15.3 étaient déjà couverts, un par un, aux lots où chaque
+mécanisme est apparu — les rejouer ici aurait dupliqué sans rien prouver de plus. `tests/
+test_gui_recette.py` (nouveau) couvre ce qui restait :
+- **Compatibilité croisée (§15.4)** : une collaboration créée par `facade.create_collaboration`
+  (chemin GUI) menée à terme et acceptée par `cli.main` (chemin CLI) ; l'inverse, créée par
+  `cli.main("new", …)`, menée à terme par `Controller.start_run` et acceptée par
+  `views.intervention.run` (chemin GUI). Les deux sens, dans un seul dossier réel à chaque fois.
+- **Verrou déjà tenu** : un `verrou.json` construit à la main avec le PID du processus de test
+  (donc « vivant ») fait échouer `Controller.start_run` sans toucher `etat.json` ; l'échec se lit
+  dans `run_error`.
+- **Parité des actions** : chaque valeur de `ActionId` a une étiquette dans
+  `intervention._LABELS` — une addition future à l'énumération sans étiquette GUI se verrait à ce
+  test, pas en usage.
+- **Périmètre (§13)** : `src/iabinome/gui/` balayé pour les mécanismes exclus (base de données,
+  serveur HTTP, worker/planificateur, lancement détaché, budget/réservation/bail/worktree) — rien
+  trouvé.
+
+**Validation (lots 5 et 6 ensemble)** : ruff vert ; mypy strict vert (70 fichiers) ; pytest complet
+**692 passés, 2 ignorés** (+20 depuis le lot 4) ; scénario sans fournisseur rc=0. Aucun appel
+fournisseur. **Non commité au moment d'écrire ceci.**
+
+**Mesure de taille** : +191 lignes effectives pour le lot 5 (dialogs.py étendu, intervention.py
+nouveau, controller.py et suivi.py étendus ; le lot 6 n'ajoute que des tests, hors du compte). Le
+plafond GUI-spécifique de 1 200 lignes logiques (façade + `gui/`, inchangé par la décision du PO sur
+le lot 4) est désormais à **1 195** — non dépassé, mais signalé pour la prochaine session : peu de
+marge reste pour un ajout futur à cette surface. Croissance nette totale de `src/` depuis le début de
+la phase 5 (`ba5c0a4`, 3 274 lignes) : **4 511** lignes, soit +1 237 — sous le plafond de +2 500 porté
+par le PO après le lot 4.
+
+**Non fait, volontairement** : tout ce qui reste hors du plan — le lot « Développement assisté »
+(§ Extension identifiée de `task_plan.md`) et la recherche externe, tous deux conditionnés à une
+décision explicite du PO, non engagée ici. L'acceptation formelle de la conception GUI V1 elle-même
+(`decide … --accept`) reste due au PO.

@@ -6,36 +6,61 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Phase 5 (GUI V1) : lots 1 à 4 faits. Lot 4 fait le 2026-09-23, non commité — voir**
-**`progress.md`. Prochaine étape : ouvrir le lot 5 (5.5) — interventions et décisions :**
-**réponse humaine, reprise, retraitement, relance, correction, acceptation et arrêt.**
+**Phase 5 (GUI V1) : lots 1 à 6 faits — la phase est complète.** Lots 5 et 6 faits le 2026-09-23,
+non commités — voir `progress.md`. **Il n'y a pas de lot 7 inscrit.** Reste hors de ce plan, non
+engagé : le lot « Développement assisté » (§ Extension identifiée), conditionné à une décision
+explicite du PO, et une éventuelle recherche externe, même condition. Avant toute nouvelle session
+sur ce plan : demander au PO ce qu'il veut faire de la GUI V1 terminée (essai réel plus large,
+extension, ou clôture de la phase).
 
-**Reprise du lot 5 — à lire avant de coder** :
-- Références : `conception/GUI_V1.md` §8 (actions par statut, §8.1-8.8 en détail — WAITING_HUMAN,
-  INTERRUPTED, ERROR, AWAITING_APPROVAL avec/sans acceptation applicable), §9.2-9.3 (fermeture
-  pendant une exécution, la partie non faite au lot 4 : la pause différée avant fermeture) ;
-  critères AC-15 à AC-29 (ceux non déjà couverts par le lot 3 : AC-18, AC-19, AC-22 à AC-29).
-- Déjà disponible et à réutiliser tel quel : `iabinome.gui.controller.Controller.start_run`/
-  `is_running`/`run_error`/`has_active_run`/`interrupt_active_run` (lot 4 : le fil moteur unique,
-  construit pour « créer et démarrer », sert identiquement à toute reprise) ; `iabinome.gui.dialogs.
-  confirm` (§3.5, déjà utilisé par l'écran de création) ; `decisions.allowed_actions` donne déjà,
-  pour chaque statut, les `ActionId` à câbler (`ANSWER_AND_RESUME`, `RETRY_CALL`,
-  `REPROCESS_AND_RESUME`, `CORRECT`, `ACCEPT`, `ACCEPT_WITH_RESERVES`, `STOP`) — aucune nouvelle
-  table à écrire côté GUI.
-- À construire : les widgets d'intervention sur `views/suivi.py` (zone multiligne pour répondre,
-  motif obligatoire pour relancer/retraiter/corriger, boutons d'acceptation) — `workflow.Answer`/
-  `Correct`/`Reprocess`/`RetryCall` et `workflow.decide` sont déjà la même façade que `resume`/
-  `decide` en CLI, rien à ajouter côté moteur. La correction ciblée (`CORRECT`) et la reprise après
-  incident repassent par `Controller.start_run`, comme la création.
-- **Fermeture pendant une exécution (§9.3), branche restée non faite au lot 4** : la pause
-  « terminer l'appel courant, puis fermer » — `app._on_close` ne gère aujourd'hui que « continuer à
-  suivre » et « interrompre maintenant ». Ajouter la troisième branche exige d'attendre la fin du
-  fil sans geler Tk (poll par `after()`, pas un `join()` bloquant sur le fil principal).
-- **Budget de taille** : plafond de croissance nette dans `src/` porté à **2 500 lignes** par le PO
-  le 2026-09-23 (`conception/GUI_V1.md` §11, amendement ; `RULES.md`) — mesuré à 4 320 lignes
-  effectives après le lot 4 (contre 3 274 avant la phase 5). Le plafond de 1 200 lignes logiques
-  (façade + `gui/`) n'a pas bougé et n'est pas approché (~1 000 lignes) : à surveiller au lot 5, qui
-  ajoute le plus gros du reste de l'interaction.
+**Repère laissé pour la prochaine session** :
+- L'acceptation formelle de la conception GUI V1 elle-même (`decide … --accept` sur la collaboration
+  `C:\Projets\essais-3-1\gui-v1\collab`) reste au PO — rappelée depuis le lot 1, jamais faite.
+- Deux trouvailles non corrigées, à décision séparée du PO : `corpus.build()` avec une liste source
+  vide ne crée pas son dossier avant d'y écrire le manifeste (lot 4, voir Errors Encountered) ; le
+  plafond de 1 200 lignes logiques (façade + `gui/`) est à **1 195** après le lot 5 — non dépassé,
+  mais tout ajout futur à cette surface (au-delà d'un correctif) le dépassera presque certainement.
+- `iabinome/gui/views/creation.py` reste à 320 lignes effectives, sous le plafond de vue à 400,
+  sans marge confortable si un futur lot y ajoute un champ.
+
+- **Lot 6** (2026-09-23, non commité) : recette. `tests/test_gui_recette.py` — une collaboration
+  créée par `facade.create_collaboration` (chemin GUI) menée à terme et acceptée par `cli.main`
+  (chemin CLI), et l'inverse (créée par `cli.main("new", …)`, menée à terme par
+  `Controller.start_run`, acceptée par `views.intervention.run`) : les deux sens du §15.4 prouvés en
+  un seul dossier de collaboration, pas seulement en théorie parce que le code est partagé. Un
+  verrou déjà tenu (PID vivant, fichier `verrou.json` construit à la main) fait échouer le fil sans
+  toucher `etat.json` — `Controller.run_error` le rapporte. Un test parcourt tous les `ActionId` et
+  vérifie que `views.intervention.label` en a un pour chacun (une addition future à l'énumération
+  sans étiquette GUI se verrait tout de suite). Un balayage de `src/iabinome/gui/` recherche les
+  mécanismes exclus du §13 (base de données, serveur HTTP, worker/planificateur, lancement détaché,
+  budget/réservation/bail/worktree) — rien trouvé. Les huit scénarios du §15.3 restent couverts,
+  chacun là où il a été écrit (création lot 4, exécution et fermeture lot 4/5, interventions lot 5) :
+  ce lot ne les rejoue pas une seconde fois, il comble ce qui manquait spécifiquement à la recette
+  (croisement CLI/GUI, verrou, parité des actions, périmètre).
+  Validation : ruff, mypy strict, **692 passés / 2 ignorés**, scénario rc=0.
+
+- **Lot 5** (2026-09-23, non commité) : interventions et décisions (§8). `iabinome/gui/views/
+  intervention.py` (nouveau) : `run(parent, controller, path, action)` — une invite multiligne
+  (`dialogs.prompt_text`, nouveau) si l'action en a besoin (`action.inputs`), une confirmation
+  (§3.5) si elle peut appeler, puis l'application : `ACCEPT`/`ACCEPT_WITH_RESERVES`/`STOP` passent
+  par `workflow.decide` en direct (local, synchrone, sous verrou — jamais un fil) ;
+  `ANSWER_AND_RESUME`/`RETRY_CALL`/`REPROCESS_AND_RESUME`/`CORRECT` écrivent le texte saisi dans un
+  fichier jetable puis appellent `Controller.start_run(path, intervention=…)` — le même fil que
+  « créer et démarrer », étendu au lot 4 pour accepter une intervention, sans reconstruction. Aucune
+  seconde table d'actions : `views/suivi.py` rend un bouton par élément de
+  `snapshot.presentation.allowed_actions`, étiqueté par `intervention.label(action.id)`.
+  `app._on_close`/`dialogs.choose` (nouveau, plus de deux issues) complètent le §9.3 : la troisième
+  branche (« terminer l'appel courant, mettre en pause, puis fermer ») attend `has_active_run()`
+  via `after()`, jamais un `join()` qui gèlerait Tk.
+  Vérifié en réel (script hors suite) : bouton « Répondre et reprendre » sur un `WAITING_HUMAN`
+  amené là par un vrai cycle de faux agents → reprise en fil secondaire → `AWAITING_APPROVAL` →
+  bouton « Accepter cette version » depuis l'écran de suivi → « Version acceptée » affichée.
+  Validation : ruff, mypy strict, **692 passés / 2 ignorés** (comptés avec le lot 6, fait dans la
+  même session), scénario rc=0. Taille : +191 lignes effectives (dialogs.py étendu, intervention.py
+  nouveau, controller.py et suivi.py étendus) ; le plafond GUI-spécifique de 1 200 lignes logiques
+  est désormais à 1 195 — voir le repère ci-dessus.
+  **Non fait, volontairement** : rien de nouveau — les huit scénarios de faux agents (§15.3) et la
+  recette (§15.4-§15.6) sont le lot 6, fait dans la même session (voir plus haut).
 
 - **Lot 4** (2026-09-23, non commité) : `facade.create_collaboration(request, *, adapters) ->
   CreationResult` — la création **partagée** (§6.1, §6.5) : `cli.cmd_new` délègue désormais à cette
@@ -228,8 +253,9 @@ Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la se
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 5 (GUI V1) — ouverte le 2026-09-23, lots 1 à 4 faits (lots 3 et 4 non commités), lot 5 à
-ouvrir. Phase 4 complète (J3, `v0.1.0`).
+Phase 5 (GUI V1) — ouverte et complète le 2026-09-23 (lots 1 à 6 ; lots 3 à 6 non commités au
+moment d'écrire ceci). Phase 4 complète (J3, `v0.1.0`). Aucune phase 6 inscrite : la suite dépend
+d'une décision du PO (voir Next Step).
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -315,14 +341,20 @@ référence de mesure : 3 274 lignes de code effectif juste avant l'ouverture de
 - [x] 5.2 Lot 2 — `ExecutionControl` : transport, workflow, Ctrl+C de la CLI (la pause existe déjà,
       voir `B-pause-010`) *(2026-09-23, `6c77953`)*
 - [x] 5.3 Lot 3 — accueil, récents non métier, ouverture, suivi en lecture seule, sous-état accepté
-      *(2026-09-23, non commité : `iabinome/facade.py`, `iabinome/gui/`, sous-commande `dialogforge
-      gui` — voir Next Step et Decisions Made)*
+      *(2026-09-23, commité `223c04a`/`89ba64b` : `iabinome/facade.py`, `iabinome/gui/`, sous-commande
+      `dialogforge gui` — voir Decisions Made)*
 - [x] 5.4 Lot 4 — création : formulaire, provenance compatible, configuration/lancement séparés
-      *(2026-09-23, non commité : `facade.create_collaboration`, `views/creation.py`, premier fil
-      moteur du contrôleur — voir Next Step et Decisions Made)*
-- [ ] 5.5 Lot 5 — interventions et décisions
-- [ ] 5.6 Lot 6 — recette : faux agents, compatibilité CLI/GUI, atomicité, périmètre, taille
-- **Status:** in_progress — 5.1 à 5.4 faits (5.3 et 5.4 non commités), 5.5 à ouvrir
+      *(2026-09-23, commité `78399c0`/`414bc95` : `facade.create_collaboration`, `views/creation.py`,
+      premier fil moteur du contrôleur — voir Decisions Made)*
+- [x] 5.5 Lot 5 — interventions et décisions *(2026-09-23, non commité : `views/intervention.py`,
+      `dialogs.prompt_text`/`choose`, troisième branche de fermeture — voir Next Step)*
+- [x] 5.6 Lot 6 — recette : faux agents, compatibilité CLI/GUI, atomicité, périmètre, taille
+      *(2026-09-23, non commité : `tests/test_gui_recette.py` — voir Next Step)*
+- **Status:** complete — lots 1 à 6 faits ; 5.5 et 5.6 non commités au moment d'écrire ceci
+- **Jalon :** **Les six lots de la GUI V1 sont faits le 2026-09-23.** L'acceptation formelle de la
+  conception elle-même (`decide … --accept` sur `C:\Projets\essais-3-1\gui-v1\collab`) reste due au
+  PO, rappelée depuis le lot 1 — « fait » ne veut pas dire « accepté » (`decisions.py`, la même
+  règle que le moteur applique à tout livrable). Pas de phase 6 inscrite après celle-ci.
 
 ## Extension identifiée (hors phases)
 
@@ -372,6 +404,10 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 | Le contrôleur GUI porte le premier fil moteur au lot 4, pas au lot 5 (2026-09-23) | « Créer et démarrer » (§6.7) est la première commande GUI qui peut appeler `workflow.run` ; le fil, l'`ExecutionControl` et le polling de `views/suivi.py` construits ici pour ce seul cas sont directement réutilisables par les interventions du lot 5, sans reconstruction |
 | Fermeture de fenêtre pendant une exécution (§9.2-9.3) : seulement 2 branches sur 3 au lot 4 (2026-09-23) | « Continuer à suivre » et « interrompre maintenant » sont couvertes (`app._on_close`) ; la troisième (« terminer l'appel courant, mettre en pause, puis fermer ») demande d'attendre la fin du fil sans geler Tk — repoussée au lot 5, qui touche de toute façon à la pause coopérative pour les interventions |
 | **Plafond de croissance nette dans `src/` porté de +900 à +2 500 lignes** (PO, 2026-09-23, après le lot 4) | Mesuré avec un compteur cohérent d'un lot à l'autre (hors commentaires/docstrings) : +1 046 lignes depuis le début de la phase 5, 146 au-delà du plafond initial de `conception/GUI_V1.md` §11. Le PO a tranché que le plafond était trop bas plutôt que de réduire le lot 4 déjà livré et testé — même logique que l'amendement du plafond global à J3 (`POURQUOI.md` règle 1). Le plafond de 1 200 lignes logiques (façade + `gui/`) n'a pas bougé : ~1 000 lignes, non approché. Détail dans `conception/GUI_V1.md` §11 et `project/RULES.md` |
+| `ACCEPT`/`ACCEPT_WITH_RESERVES`/`STOP` appellent `workflow.decide` en direct, jamais `Controller.start_run` (lot 5) | Ces trois actions ont `may_call=False` dans `decisions.allowed_actions` : ce sont des écritures locales sous verrou, synchrones, comme `decide --accept` en CLI. Les faire passer par un fil aurait ajouté une latence et une fenêtre d'incohérence (statut affiché vs statut réel) sans aucun bénéfice — la règle du tableau (`may_call`) dit déjà lequel des deux chemins prendre, sans qu'`intervention.py` ait à la deviner |
+| Une invite de texte dédiée (`dialogs.prompt_text`), pas `tkinter.simpledialog.askstring` (lot 5) | Une réponse humaine ou un motif de correction tiennent rarement sur une ligne ; `askstring` ne rend qu'un champ simple. Cohérent avec `dialogs.confirm`/`choose` : une seule famille de modales pour toute la GUI, jamais les boîtes de dialogue natives de `tkinter.messagebox`/`simpledialog` mélangées aux siennes |
+| `dialogs.choose` (plus de deux issues), pas deux appels successifs de `dialogs.confirm` (lot 5, fermeture §9.3) | Trois branches mutuellement exclusives (continuer, pause puis fermer, interrompre) ne se prêtent pas à un enchaînement de oui/non — un « non » au premier `confirm` ne dit pas s'il faut proposer le second ou annuler tout à fait. Un seul dialogue à trois boutons nommés est sans ambiguïté et se ferme en un geste |
+| Lot 6 : pas de nouveaux scénarios de faux agents, seulement ce qui manquait à la recette (2026-09-23) | Les huit scénarios du §15.3 étaient déjà couverts un par un, au fil des lots où chaque mécanisme est apparu (`test_gui_creation.py`, `test_gui_execution.py`, `test_gui_intervention.py`). Les rejouer identiquement au lot 6 aurait été une duplication sans preuve nouvelle ; `test_gui_recette.py` ajoute ce qui n'existait nulle part ailleurs : le croisement CLI/GUI dans les deux sens, un verrou déjà tenu, la parité `ActionId`/étiquette, le balayage du périmètre exclu |
 
 ## Errors Encountered
 | Error | Resolution |
