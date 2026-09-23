@@ -6,27 +6,56 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Phase 5 (GUI V1) : lots 1 et 2 faits et commités le 2026-09-23 (`38abbca`, `6c77953` ; décision
-`12b4b8e`). Prochaine étape : ouvrir le lot 3 (5.3) — accueil, récents non métier, ouverture,
-suivi en lecture seule, sous-état « version acceptée ».**
+**Phase 5 (GUI V1) : lots 1 à 3 faits. Lot 3 fait le 2026-09-23, non commité — voir**
+**`progress.md`. Prochaine étape : ouvrir le lot 4 (5.4) — formulaire de création,**
+**provenance compatible, configuration/lancement séparés, création seule, création et démarrage.**
 
-**Reprise du lot 3 — à lire avant de coder** :
-- Références : `conception/GUI_V1.md` §3 (principes), §4-5 (navigation, accueil, récents), §7
-  (suivi, activité honnête, rafraîchissement), §8.7 (version acceptée), §10.3-10.4 (instantané,
-  contrôleur), §12, §15.1-15.2 (tests) ; critères AC-01 à AC-05, AC-15 à AC-17, AC-20, AC-21,
-  AC-30, AC-33. Plafonds §11 : vue ≤ 400 lignes, pas de framework de widgets ni de bus d'événements.
-- Déjà disponible : `decisions.allowed_actions` / `accepted` / `describe` / `render`,
-  `incidents.explain`, `settings.resolve_timeout(explicit, override, base)`,
-  `transport.ExecutionControl`, `workflow.run(control=…)`. Le lot 3 est en **lecture seule** :
-  aucun appel de `workflow.run` avant le lot 4/5.
-- À construire avec son appelant : `inspect_collaboration(path) -> CollaborationSnapshot` (§10.3,
-  relit le disque, jamais de cache du statut) — testable sans Tk.
-- Mesuré le 2026-09-23 : Tkinter 8.6 disponible dans le `.venv`, racine `Tk()` masquée
-  (`withdraw`) utilisable sous Windows pour les tests de vues.
-- **Questions à poser au PO au début du lot 3** (non tranchées par la conception) : point d'entrée
-  (sous-commande `dialogforge gui` ou script séparé `dialogforge-gui` dans `[project.scripts]`) ;
-  emplacement du fichier des récents (proposition : `~/.dialogforge/recents.json`, à côté de
-  `reglages.toml`, jamais lu par une commande métier).
+**Reprise du lot 4 — à lire avant de coder** :
+- Références : `conception/GUI_V1.md` §6 (écran de création), §6.1-6.5 (champs, provenance,
+  réglages avancés/de lancement, validation), §6.6-6.7 (créer seul / créer et démarrer) ; critères
+  AC-06 à AC-14. Plafonds §11 inchangés : vue ≤ 400 lignes.
+- Déjà disponible : `iabinome.facade.inspect_collaboration` (lot 3) rend un `CollaborationSnapshot`
+  prêt à afficher après création ; `iabinome.gui.controller.Controller.show_suivi(path)` navigue
+  vers le suivi ; `demande.complete`/`demande.record`, `corpus.build`, la construction de
+  `Configuration`/`State` dans `cli._build_new` (à réutiliser depuis la façade, pas dupliquer).
+  `settings.resolve_timeout(explicit, override, base)` résout le délai — le lot 4 doit l'appeler
+  avec `base = <dossier parent de la collaboration>` (§6.4), jamais le répertoire courant du
+  processus GUI.
+- À construire : `create_collaboration(command) -> CreationResult` (façade §10.1), consommée par
+  l'écran de création — pas de table de validation propre à Tkinter, la même que `new` (§6.5).
+  `StubView` (`iabinome/gui/views/stub.py`) est le point d'entrée actuel du bouton « Nouvelle
+  collaboration » : il se retire quand ce lot le remplace.
+- **Le lot 4 reste en lecture seule côté exécution du cycle** sauf pour « créer et démarrer » (§6.7),
+  qui est la première fois que la GUI appelle `workflow.run` — sous confirmation explicite (§3.5),
+  avec l'`ExecutionControl` du lot 2 (aucun fil moteur n'existe encore côté GUI : à construire ici,
+  un fil au plus, comme `tests/test_control.py::_Threaded` le fait déjà côté tests).
+
+- **Lot 3** (2026-09-23, non commité) : `iabinome/facade.py` — `inspect_collaboration(path,
+  *, owned_by_this_gui=False, runner_alive=None) -> CollaborationSnapshot` (§10.3 : décision
+  courante, incident, délai résolu, observation d'exécution, présentation — labels de statut/phase/
+  activité, `allowed_actions` repris tel quel de `decisions.allowed_actions`, documents lisibles
+  existants, `phase_steps` pour la barre de progression §7.1, `next_action_text`). Relit
+  intégralement le dossier à chaque appel, jamais de cache (§3.3) ; `InspectionError` nomme un
+  dossier illisible sans le réparer (§5.1).
+  `iabinome/gui/` : `recents.py` (préférences non métier, `~/.dialogforge/recents.json` — **décidé
+  par le PO** : sous-commande `dialogforge gui`, pas de script séparé ; ce chemin, pas un autre),
+  `controller.py` (navigation dans une seule fenêtre, pas de fil moteur ni d'`ExecutionControl` :
+  rien ne les consomme avant le lot 5), `app.py` (point d'entrée `run()`), `views/accueil.py`
+  (créer/ouvrir/récents, AC-01 à AC-05), `views/suivi.py` (lecture seule : statut, phase,
+  progression, activité honnête, décision, documents lisibles, `Actualiser` — AC-15 à AC-17, AC-20,
+  AC-21, AC-30, AC-33), `views/stub.py` (écran de création nommé « lot 4 », pas un bouton sans
+  effet). `cli.py` : sous-commande `gui` (`cmd_gui`, import de `tkinter` différé dans la fonction —
+  la CLI n'en dépend pas autrement) ; `docs/COMMANDES.md` à jour (neuf commandes).
+  Testé sans Tk (`tests/test_facade.py`, `tests/test_gui_recents.py`) et avec une racine Tk masquée
+  (`tests/test_gui_views.py`, boutons invoqués par `.invoke()`, dialogue de choix de dossier
+  moqué). Vérifié en réel : la collaboration produite et acceptée par `reference/cycle_sans_
+  fournisseur.py` s'ouvre dans la GUI et affiche bien « Version acceptée » (§15.4, compatibilité
+  CLI→GUI). Taille : 474 lignes effectives ajoutées (façade + `gui/`), 3 379 → 3 851 dans `src/`
+  (plafond +900 pour l'ensemble de la GUI). Validation : ruff, mypy strict, **637 passés / 2
+  ignorés**, scénario rc=0.
+  **Non fait, volontairement** : rien n'appelle `workflow.run` depuis la GUI (répondre, relancer,
+  retraiter, corriger, décider, créer restent lots 4-5) ; pas de suppression des récents (seule
+  « Afficher dans le dossier » et « Ouvrir » existent, §5.1 n'en demande pas d'autre).
 
 - **Lot 1** : `decisions.allowed_actions` = la table d'actions ; phrases CLI inchangées
   (`tests/test_actions.py`) ; `settings.resolve_timeout` rend valeur et origine. Détail :
@@ -166,7 +195,8 @@ Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la se
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 5 (GUI V1) — ouverte le 2026-09-23, lots 1 et 2 faits, lot 3 à ouvrir. Phase 4 complète (J3, `v0.1.0`).
+Phase 5 (GUI V1) — ouverte le 2026-09-23, lots 1 à 3 faits (lot 3 non commité), lot 4 à ouvrir.
+Phase 4 complète (J3, `v0.1.0`).
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -250,11 +280,13 @@ lui appartient. Plafonds (§11) : **1 200 lignes logiques de production, +900 li
       façade reportés aux lots qui les consomment — voir Decisions Made)*
 - [x] 5.2 Lot 2 — `ExecutionControl` : transport, workflow, Ctrl+C de la CLI (la pause existe déjà,
       voir `B-pause-010`) *(2026-09-23, `6c77953`)*
-- [ ] 5.3 Lot 3 — accueil, récents non métier, ouverture, suivi en lecture seule, sous-état accepté
+- [x] 5.3 Lot 3 — accueil, récents non métier, ouverture, suivi en lecture seule, sous-état accepté
+      *(2026-09-23, non commité : `iabinome/facade.py`, `iabinome/gui/`, sous-commande `dialogforge
+      gui` — voir Next Step et Decisions Made)*
 - [ ] 5.4 Lot 4 — création : formulaire, provenance compatible, configuration/lancement séparés
 - [ ] 5.5 Lot 5 — interventions et décisions
 - [ ] 5.6 Lot 6 — recette : faux agents, compatibilité CLI/GUI, atomicité, périmètre, taille
-- **Status:** in_progress — 5.1 et 5.2 commités, 5.3 à ouvrir
+- **Status:** in_progress — 5.1 à 5.3 faits (5.3 non commité), 5.4 à ouvrir
 
 ## Extension identifiée (hors phases)
 
@@ -295,6 +327,10 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 | Dispositions des trois `NOTE` ouvertes de B sur la conception GUI (2026-09-23) | `B-pause-010` **acceptée, vérifiée dans le code** : `workflow.run(pause=…)` et `cli._PauseSwitch` existent ; le lot 2 remplace ce mécanisme par `ExecutionControl` au lieu d'en créer un, et ses tests couvrent code 6 et `READY`. `B-origine-011` **acceptée** : l'origine affichée du délai est le chemin effectivement retenu par `settings` (anciens noms compris), jamais une liste fermée. `B-reprocess-012` **acceptée** : `docs/COMMANDES.md` disait « `--reprocess` : non » (n'appelle pas les agents) alors que `resume` reprend ensuite le cycle — corrigé au lot 1 |
 | Lot 1 GUI : la façade se construit avec son consommateur | Le lot 1 livre les actions structurées et la résolution du délai, dont la CLI se sert déjà. `create_collaboration`, `inspect_collaboration` et le reste de la façade §10.1 viennent aux lots 3 à 5, quand la GUI les appelle — une façade sans appelant serait une API spéculative (`POURQUOI.md` règle 2) |
 | `ruff format` hors de la porte de validation | Le projet ne l'a jamais utilisé ; reformater 26 fichiers brouillerait les diffs du lot 1 sans rien prouver |
+| Point d'entrée de la GUI : sous-commande `dialogforge gui`, pas de script séparé (PO, 2026-09-23, lot 3) | Question ouverte par la conception, tranchée au début du lot 3 : une seule surface CLI à documenter et à parer (`tests/test_docs.py`), cohérente avec la table d'actions déjà partagée entre CLI et GUI |
+| Fichier des récents : `~/.dialogforge/recents.json` (PO, 2026-09-23, lot 3) | À côté de `reglages.toml`, jamais lu par une commande métier (§5.2). Confirme la proposition de la conception, sans variante |
+| `Presentation.phase_steps` calculé dans la façade, pas dans la vue Tkinter (lot 3) | §15.1 exige que « les quatre phases » se testent sans Tk ; la barre de progression (✓ ● ○ ! —) ne dépend que de `State`, donc `facade._phase_steps` la rend testable et réutilisable par une future sortie CLI sans dupliquer la règle dans `views/suivi.py` |
+| Une fois `Phase.CLOSED` atteinte, la dernière phase se lit « faite » (`✓`), jamais « courante » (`●`) (lot 3) | Rien n'est plus « en cours » une fois le cycle terminé (§8.6, §8.7) ; réserver `●` aux trois phases qui précèdent une exécution encore possible garde la légende du §7.1 lisible sans ambiguïté |
 
 ## Errors Encountered
 | Error | Resolution |

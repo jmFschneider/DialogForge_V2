@@ -1145,3 +1145,78 @@ depuis le debut de la phase 5). Aucun appel fournisseur. **Non commite.**
 references du lot 3, briques deja disponibles, deux questions a poser au PO (point d'entree de la
 GUI, emplacement des recents). Mesure : Tkinter 8.6 present dans le `.venv`, `Tk()` masquee
 utilisable sous Windows.
+
+## 2026-09-23 — Lot 3 GUI : accueil, récents, ouverture, suivi en lecture seule
+
+**Scope de session déclaré** : ouvrir le lot 3 (5.3), tel que préparé dans `task_plan.md` § Next
+Step. Les deux questions laissées ouvertes par la conception ont été posées et tranchées par le PO
+avant tout code : point d'entrée = sous-commande `dialogforge gui` (pas de script séparé) ;
+fichier des récents = `~/.dialogforge/recents.json` (la proposition de la conception).
+
+**Fait** :
+- `src/iabinome/facade.py` (nouveau) — façade commune CLI/GUI (§10.1) : `inspect_collaboration(path,
+  *, owned_by_this_gui=False, runner_alive=None) -> CollaborationSnapshot`. Relit intégralement
+  `configuration.json`/`etat.json` à chaque appel (§3.3, jamais de cache) ; `InspectionError` nomme
+  un dossier illisible sans le réparer (§5.1). L'instantané (§10.3) porte : la décision courante et
+  si elle s'applique encore à la version sur disque (réutilise `decisions.applies_to_current`), le
+  texte d'incident (`incidents.explain`), le délai résolu contre le **parent** du dossier de
+  collaboration (§6.4), l'observation d'exécution (jamais d'activité animée sans preuve qu'*une*
+  fenêtre possède l'exécution — §7.2, paramètres fournis par l'appelant, absents en lot 3), et une
+  présentation : labels de statut/phase/activité, `allowed_actions` repris tel quel de
+  `decisions.allowed_actions` (aucune règle dupliquée), documents lisibles qui existent réellement
+  sur disque, `phase_steps` (barre de progression §7.1 : ✓ current ● à venir ○ arrêté ! sans objet
+  —, calculée en dehors de Tkinter pour rester testable sans Tk — §15.1), et `next_action_text`
+  (`decisions.next_action`, la même phrase que la CLI).
+- `src/iabinome/gui/` (nouveau paquet, ~470 lignes effectives) :
+  - `recents.py` — préférences non métier : chemins absolus et date d'ouverture seulement, jamais
+    de statut ni de phase en cache (§5.2) ; écriture atomique ; une lecture corrompue rend une
+    liste vide plutôt que lever (AC-05 : le fichier se supprime sans effet sur les collaborations).
+  - `controller.py` — navigation dans une seule fenêtre (§4) ; pas de fil moteur ni
+    d'`ExecutionControl` : rien ne les consomme avant le lot 5 (façade construite avec son
+    consommateur, comme au lot 1). `open_collaboration` est strictement en lecture (AC-02) :
+    inspecte avant de naviguer, montre un message d'erreur et reste sur l'accueil si le dossier est
+    invalide, sans jamais l'écrire.
+  - `views/accueil.py`, `views/suivi.py`, `views/stub.py` — l'écran de suivi est **en lecture
+    seule** : aucune des actions de `allowed_actions` n'est câblée à `workflow.run` ; seul le texte
+    de la prochaine action est affiché (§8.6-8.8 restent au lot 5). Le bouton « Nouvelle
+    collaboration » ouvre `StubView`, qui se nomme honnêtement plutôt que de ne rien faire — le
+    formulaire réel est le lot 4.
+  - `app.py` — point d'entrée `run()` (fenêtre, taille minimale, `mainloop`).
+- `cli.py` — sous-commande `gui` (`cmd_gui`), `tkinter` importé seulement dans la fonction : la CLI
+  n'en dépend pas pour ses huit autres commandes. Docstring de module mis à jour (neuf commandes).
+- `docs/COMMANDES.md` — section `## gui`, ligne de tableau, compte de commandes mis à jour.
+
+**Tests** :
+- `tests/test_facade.py` — sans Tk (§15.1), en réutilisant les situations de `tests/test_actions.py`
+  (READY neuf/en pause, RUNNING, question, incidents, accepté, accepté-puis-modifié, arrêté) :
+  `allowed_actions` de l'instantané est **identique** à `decisions.allowed_actions` pour chaque
+  situation ; l'activité d'un `RUNNING` non possédé par cette fenêtre reste honnête ; le sous-état
+  « Version acceptée » apparaît seulement si la décision porte sur la version courante ; les
+  documents lisibles n'incluent que ce qui existe réellement ; un dossier absent lève
+  `InspectionError`. `phase_steps` testé séparément : une acceptation immédiate marque « Révision A »
+  `—` (jamais eu lieu), une révision qui a tourné se marque `✓` une fois close, la phase courante se
+  marque `●` (ou `!` sous `WAITING_HUMAN`).
+- `tests/test_gui_recents.py` — sans Tk : enregistrement, remontée en tête sans doublon, liste
+  bornée, suppression du fichier sans effet sur une collaboration réelle, lecture tolérante à un
+  fichier corrompu ou de forme inattendue.
+- `tests/test_gui_views.py` — racine `Tk()` masquée, partagée par le module (mesuré fonctionnel
+  sous Windows). Boutons trouvés par leur texte et invoqués par `.invoke()` (un vrai événement Tk,
+  pas un appel direct de méthode) : ouverture d'un récent, ouverture par sélecteur de dossier
+  (`filedialog.askdirectory` moqué — jamais de vraie boîte de dialogue dans la suite), dossier
+  invalide nommé sans navigation, bouton « Nouvelle collaboration » vers le repère du lot 4, lecture
+  d'un document dans le visualiseur (`state="disabled"`), `Actualiser` sans écriture, retour à
+  l'accueil.
+- **Vérifié en réel, hors suite de tests** : la collaboration produite par `reference/cycle_sans_
+  fournisseur.py` (faux agents, `decide --accept`) s'ouvre dans le contrôleur GUI et affiche bien
+  « Version acceptée », avec les bons documents listés — la compatibilité CLI→GUI du §15.4 tenue en
+  pratique, pas seulement en test unitaire.
+
+**Validation** : ruff vert ; mypy strict vert (62 fichiers, y compris `tests/`) ; pytest complet
+**637 passés, 2 ignorés** (+35 depuis le lot 2) ; scénario sans fournisseur rc=0 ; `dialogforge
+--help` liste `gui`. **Taille** : 474 lignes effectives ajoutées (`facade.py` + `gui/`), 3 379 →
+3 851 dans `src/` (plafond §11 : +900 pour l'ensemble de la GUI, lots 3 à 6 compris — large marge
+restante). Aucun appel fournisseur. **Non commité** : aucune demande de commit reçue cette session.
+
+**Non fait, volontairement** : `create_collaboration` (lot 4) ; toute intervention qui mute le
+cycle — répondre, relancer, retraiter, corriger, décider, démarrer (lot 5) ; suppression d'un
+récent (§5.1 ne demande que « Ouvrir » et « Afficher dans le dossier »).
