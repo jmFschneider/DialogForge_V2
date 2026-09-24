@@ -37,6 +37,13 @@
   `Get-Content -LiteralPath corpus/fichiers/… -Raw` dans le dossier jetable du produit, « succeeded in 917ms »,
   contenu exact retourné (`appels/0001-A-…/stderr.txt`, lignes 79-87). Second scénario indépendant du témoin du 21 ;
   ne teste toujours pas la lecture d'un chemin hors du corpus.
+- **Sessions reprenables, lues dans `--help` le 2026-09-24 (aucun appel)** : Claude 2.1.281 —
+  `--session-id <uuid>`, `-r/--resume <id>`, `--fork-session`, `--no-session-persistence` (à retirer
+  pour F), et `--input-format stream-json` (processus maintenu ouvert). Codex 0.155.0 — `exec` (sans
+  `--ephemeral`) puis `exec resume [SESSION_ID] [PROMPT|-]` ; `resume` accepte `-m`, `-c`,
+  `--ignore-user-config`, `--ignore-rules`, `--json`, **mais pas `--sandbox`** ; l'identifiant ne se
+  fixe pas d'avance. Processus persistant côté Codex : `app-server`, expérimental. Base de la
+  décision A3 (reprise par identifiant) ; la lecture seule en reprise n'est **pas** mesurée.
 
 ## Technical Decisions
 | Decision | Rationale |

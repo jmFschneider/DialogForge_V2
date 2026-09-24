@@ -1407,3 +1407,58 @@ par le PO après le lot 4.
 (§ Extension identifiée de `task_plan.md`) et la recherche externe, tous deux conditionnés à une
 décision explicite du PO, non engagée ici. L'acceptation formelle de la conception GUI V1 elle-même
 (`decide … --accept`) reste due au PO.
+
+## 2026-09-24 — Phase 6 ouverte (cadrage avec agent F), lot 1 fait
+
+**Demande du PO** : mettre en place `C:\Projets\essais-3-1\Creation-prompt-2\livrables\version_finale.md`
+(conception du cadrage avec agent F, acceptée par le PO le 2026-09-24, `decisions.json` séquence 2,
+deux constats de B restés ouverts).
+
+**Avant tout code** (lu, aucun appel fournisseur ; `--help` seulement) :
+- Session persistante : Claude 2.1.281 offre `--session-id`, `--resume`, et `--input-format
+  stream-json` (processus maintenu ouvert) ; Codex 0.155.0 offre `exec` puis `exec resume <id>`,
+  et un `app-server` marqué expérimental. **`codex exec resume` n'accepte pas `--sandbox`**, et
+  l'identifiant ne se fixe pas d'avance (à lire dans la sortie).
+- Taille remesurée (compteur tokenize sans commentaires ni docstrings, rejoué sur `ba5c0a4` : 3 282
+  avec ce compteur, 3 274 relevé à l'époque) : HEAD `581cbb3` = 4 519, soit +1 237 depuis le début de
+  la phase 5 ; marge ≈ 1 263, pas les 1 454 du §13 de la conception (antérieurs au lot 5). Façade +
+  `gui/` = 1 190 sur 2 000.
+
+**Décisions du PO** (questions posées, réponses recommandées retenues) : A1 `B-convergence-003`
+(l'apport de « Continuer » compte), A2 `B-cout-004` (`/clore` avant le 1er échange = premier envoi +
+rédaction en un échange), A3 reprise par identifiant ; procéder « plan puis lot 1 ».
+
+**Écrit** : `conception/CADRAGE_AGENT.md` (copie octet pour octet, sha256 vérifié `03711c71…`, puis
+amendements A1-A3 datés et un choix d'implémentation signalé comme tel : `invoke_agent` non extrait) ;
+phase 6 et ses six lots dans `task_plan.md` ; exception de session persistante pour F dans
+`CLAUDE.md` §6 et `project/RULES.md`.
+
+### Lot 1 — contrat de session
+- `models.AgentPurpose` (A, B, FRAMING) : `default_model(purpose)` chez tous les adaptateurs ;
+  `workflow`/`facade` passent `AgentPurpose(role.value)` / `AgentPurpose.A|B`. `FRAMING` n'entre
+  jamais dans `etat.json`.
+- `adapters/base.py` : `Capabilities.supports_persistent_framing_session` (faux par défaut),
+  `FramingSessionSpec` (modèle, délai, racine, effort — pas d'accès web), `framing_command(spec,
+  session, prompt)` et `framing_extract(stdout, stderr) -> (texte, identifiant)`.
+- Adaptateurs réels : défaut FRAMING (Claude : celui de A ; Codex : son défaut unique), capacité
+  **fausse**, méthodes `framing_*` qui lèvent `AdapterError` — câblage au lot 4.
+- `framing.py` (nouveau) : `check_adapter` (prévol : inconnu, lecture seule, session persistante,
+  modèle non remplaçable, effort, CLI absente — avant tout appel), `open_session` (aucun appel à
+  l'ouverture), `FramingSession.send` (argv résolu avant toute écriture ; `prompt.txt`,
+  `intention.json` avec `argv[0]` retiré et identifiant masqué `<session>`, transport commun,
+  `reponse_brute.txt`) et `close` (oublie l'identifiant, refuse tout envoi). Incidents rendus, jamais
+  relancés : `LAUNCH_FAILED`, issues du transport, `CLI_FAILED`, `DECODE_FAILED`, et `SESSION_LOST`
+  si l'outil répond hors de la session ouverte (la session se ferme).
+- `tests/fakes.py` : `FakeAdapter` à session en mémoire (historique par identifiant, réponses texte
+  ou fonction de l'historique, `framing_drift`).
+- `tests/test_framing_session.py` : 16 tests (tests §14 n° 1-5, 8, 9, 18 côté session, 47, 48 côté
+  session, 50, 82, incidents, masquage).
+
+### Test Results
+ruff vert ; mypy strict vert (72 fichiers) ; **708 passés / 2 ignorés** (692 + 16) ; scénario
+sans fournisseur rc=0. Taille : **+145** lignes de code effectif (4 519 → 4 664) ; croissance depuis
+`ba5c0a4` : +1 382 / 2 500. Façade + `gui/` : 1 192. **Non commité.**
+
+### Non fait, volontairement
+Le protocole conversationnel, le compteur de groupe, les prompts, le dossier jetable et
+`SOURCES_MODIFIED` (lot 2) ; l'argv réel de reprise (lot 4).

@@ -97,6 +97,8 @@ Ne jamais nommer un fournisseur hors de son adaptateur — ni dans une reprise, 
 **Le cycle ne dépend que des capacités présentes chez les deux outils.** Session persistante, erreur de
 quota typée, schéma natif : un bonus chez l'un, **jamais un prérequis**.
 *Motif : la reprise après quota de DialogForge était bâtie sur l'erreur typée de Claude ; côté Codex, elle n'a jamais marché.*
+**Exception du 2026-09-24 (PO)** : l'agent de cadrage F exige une session persistante (par reprise
+d'identifiant, offerte par les deux outils) — `conception/CADRAGE_AGENT.md`. A et B n'en dépendent pas.
 
 Modèles par défaut, surchargeables : **Opus 5** pour A (gros volume), **Fable 5** pour B (la critique paie).
 Sur les modèles récents, des consignes **trop prescriptives dégradent** la qualité : alléger les gabarits repris, pas les durcir.

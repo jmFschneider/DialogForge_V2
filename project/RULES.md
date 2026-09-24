@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-09-23 (levée de l'interdit GUI pour la GUI V1)
+> Dernière mise à jour : 2026-09-24 (exception de session persistante pour l'agent de cadrage F)
 
 ## Index
 
@@ -99,6 +99,7 @@
 
 **Le cycle ne dépend que des capacités présentes chez les deux outils ; ce qui est propre à l'un est un bonus, jamais un prérequis.**
 *Motif : DialogForge a bâti sa reprise après quota sur l'erreur typée de Claude ; Codex ne la produit pas, et la reprise n'a jamais marché de ce côté.*
+*Exception écrite du 2026-09-24 (PO), pour l'agent de cadrage F seul (`conception/CADRAGE_AGENT.md`) : F exige une session persistante pendant tout un cadrage, et un adaptateur qui ne la déclare pas (`supports_persistent_framing_session`) est refusé avant tout appel. Il ne s'agit pas d'un bonus devenu prérequis en silence : les deux outils offrent la reprise par identifiant, qui est le mécanisme retenu (amendement A3). A et B n'en dépendent pas et gardent `fresh_session`.*
 
 **Modèles par défaut, surchargeables : Opus 5 pour A (produit), Fable 5 pour B (critique).**
 *Motif : la critique est l'endroit où la capacité paie. Sur le Lot 0, quatre revues de plan pour une seule exploitable ont coûté 41 % du budget mesuré.*

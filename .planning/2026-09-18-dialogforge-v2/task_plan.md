@@ -6,12 +6,19 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Phase 5 (GUI V1) : lots 1 à 6 faits — la phase est complète.** Lots 5 et 6 faits le 2026-09-23,
-non commités — voir `progress.md`. **Il n'y a pas de lot 7 inscrit.** Reste hors de ce plan, non
-engagé : le lot « Développement assisté » (§ Extension identifiée), conditionné à une décision
-explicite du PO, et une éventuelle recherche externe, même condition. Avant toute nouvelle session
-sur ce plan : demander au PO ce qu'il veut faire de la GUI V1 terminée (essai réel plus large,
-extension, ou clôture de la phase).
+**Phase 6 (cadrage avec agent F) ouverte le 2026-09-24 par le PO — lot 1 fait, non commité.**
+Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3 du PO en fin de fichier).
+**Prochain : lot 2** — dans `framing.py` (déjà créé au lot 1, section session) : dossier jetable
+`framing-<uuid>/` et copie des sources (réemployer `corpus.build`, voir Errors Encountered pour la
+liste vide), protocole `CADRAGE_QUESTION`/`CADRAGE_PRET`/`DEMANDE`, compteur de groupe (A1 : toute
+réponse humaine compte, limite 3 puis 2), transcription, `SOURCES_MODIFIED` après chaque échange ;
+`prompts.build_framing_start/continue/correction/draft` (A2 : `/clore` avant le 1er échange =
+premier envoi + rédaction) ; `demande.validate_framed`. Marge de taille : ≈ 1 118 lignes (+1 382 /
+2 500 depuis `ba5c0a4`), lot 1 = +145.
+
+**Historique — Phase 5 (GUI V1) : lots 1 à 6 faits et commités (`581cbb3`), la phase est complète.**
+Reste hors de ce plan, non engagé : le lot « Développement assisté » (§ Extension identifiée),
+conditionné à une décision explicite du PO, et une éventuelle recherche externe, même condition.
 
 **Repère laissé pour la prochaine session** :
 - L'acceptation formelle de la conception GUI V1 elle-même (`decide … --accept` sur la collaboration
@@ -253,9 +260,8 @@ Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la se
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 5 (GUI V1) — ouverte et complète le 2026-09-23 (lots 1 à 6 ; lots 3 à 6 non commités au
-moment d'écrire ceci). Phase 4 complète (J3, `v0.1.0`). Aucune phase 6 inscrite : la suite dépend
-d'une décision du PO (voir Next Step).
+Phase 6 (cadrage avec agent F) — ouverte le 2026-09-24. Phase 5 (GUI V1) complète et commitée
+(`581cbb3`). Phase 4 complète (J3, `v0.1.0`).
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -354,7 +360,33 @@ référence de mesure : 3 274 lignes de code effectif juste avant l'ouverture de
 - **Jalon :** **Les six lots de la GUI V1 sont faits le 2026-09-23.** L'acceptation formelle de la
   conception elle-même (`decide … --accept` sur `C:\Projets\essais-3-1\gui-v1\collab`) reste due au
   PO, rappelée depuis le lot 1 — « fait » ne veut pas dire « accepté » (`decisions.py`, la même
-  règle que le moteur applique à tout livrable). Pas de phase 6 inscrite après celle-ci.
+  règle que le moteur applique à tout livrable).
+
+### Phase 6: Cadrage avec agent F — ouverte par le PO le 2026-09-24
+Conception : `conception/CADRAGE_AGENT.md`, copie octet pour octet du livrable de la collaboration
+`C:\Projets\essais-3-1\Creation-prompt-2` (sha256 `03711c71…935cdd`), **accepté par le PO le
+2026-09-24** (`decisions.json`, séquence 2), suivie des amendements A1-A3 du même jour (voir
+Decisions Made). Plafonds (§13, remesurés au départ comme il l'exige) : croissance nette de `src/`
+≤ +2 500 depuis `ba5c0a4` — **+1 237 consommées au départ de la phase (4 519 lignes de code
+effectif, compteur tokenize sans commentaires ni docstrings), marge ≈ 1 263** (et non les 1 454 du
+§13, antérieurs au lot 5) ; façade + `gui/` ≤ 2 000 lignes logiques — **1 190 au départ**. Estimation
+de la phase : 900 à 1 000 lignes.
+- [x] 6.1 Lot 1 — contrat de session : `AgentPurpose`, `FramingSessionSpec`, capacité
+      `supports_persistent_framing_session`, session par reprise d'identifiant sur le transport
+      commun, prévol de F, faux adaptateur à session en mémoire (tests §14.1 et §14.5 qui s'y
+      rattachent) *(2026-09-24, non commité : `framing.py`, `tests/test_framing_session.py` ;
+      708 passés / 2 ignorés ; +145 lignes)*
+- [ ] 6.2 Lot 2 — `framing.py` : dossier jetable, protocole `CADRAGE_QUESTION`/`CADRAGE_PRET`/
+      `DEMANDE`, compteur de groupe (A1), transcription, `SOURCES_MODIFIED` ; `prompts.build_framing_*`
+      (A2) ; `demande.validate_framed` (§14.2 à §14.4)
+- [ ] 6.3 Lot 3 — création : `CreationRequest.framing`/`prepared_corpus`, artefacts `cadrage/`,
+      provenances, `configuration.framing_agent` ; CLI `new --cadrer-avec-agent` et aides (§14.6,
+      §14.8). Rencontre `corpus.build()` sur liste vide (Errors Encountered) : à trancher alors
+- [ ] 6.4 Lot 4 — adaptateurs réels (reprise par identifiant) + protocole de caractérisation de la
+      lecture seule en reprise, **exécuté par le PO** (aucun appel réel de Claude)
+- [ ] 6.5 Lot 5 — GUI : mode « Cadrer avec un agent », modale, unique fil moteur (§4, §14.7)
+- [ ] 6.6 Lot 6 — recette : critères §15, taille remesurée
+- **Status:** in_progress — lot 1 fait, lot 2 à faire
 
 ## Extension identifiée (hors phases)
 
@@ -408,6 +440,10 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 | Une invite de texte dédiée (`dialogs.prompt_text`), pas `tkinter.simpledialog.askstring` (lot 5) | Une réponse humaine ou un motif de correction tiennent rarement sur une ligne ; `askstring` ne rend qu'un champ simple. Cohérent avec `dialogs.confirm`/`choose` : une seule famille de modales pour toute la GUI, jamais les boîtes de dialogue natives de `tkinter.messagebox`/`simpledialog` mélangées aux siennes |
 | `dialogs.choose` (plus de deux issues), pas deux appels successifs de `dialogs.confirm` (lot 5, fermeture §9.3) | Trois branches mutuellement exclusives (continuer, pause puis fermer, interrompre) ne se prêtent pas à un enchaînement de oui/non — un « non » au premier `confirm` ne dit pas s'il faut proposer le second ou annuler tout à fait. Un seul dialogue à trois boutons nommés est sans ambiguïté et se ferme en un geste |
 | Lot 6 : pas de nouveaux scénarios de faux agents, seulement ce qui manquait à la recette (2026-09-23) | Les huit scénarios du §15.3 étaient déjà couverts un par un, au fil des lots où chaque mécanisme est apparu (`test_gui_creation.py`, `test_gui_execution.py`, `test_gui_intervention.py`). Les rejouer identiquement au lot 6 aurait été une duplication sans preuve nouvelle ; `test_gui_recette.py` ajoute ce qui n'existait nulle part ailleurs : le croisement CLI/GUI dans les deux sens, un verrou déjà tenu, la parité `ActionId`/étiquette, le balayage du périmètre exclu |
+| **Phase 6 ouverte : cadrage avec agent F** (PO, 2026-09-24) | Le PO a accepté la conception (`decide`, séquence 2) et demandé sa mise en place. Lève pour F seul la règle « le cycle ne dépend que des capacités communes aux deux outils » (précision n°2 de la demande) : écrit dans `CLAUDE.md` §6 et `project/RULES.md`. Le noyau A/B garde `fresh_session` |
+| A1 — `B-convergence-003` : l'apport de « Continuer » compte comme 1re réponse du groupe (PO, 2026-09-24) | Un seul compteur (réponses humaines), deux actions au comportement identique : une question au plus avant la proposition suivante. Recommandé et retenu |
+| A2 — `B-cout-004` : `/clore` avant le 1er échange = un échange « premier envoi + rédaction » (PO, 2026-09-24) | F ne rédige jamais sans l'idée ; retenu plutôt que d'interdire `/clore` avant le premier tour |
+| A3 — Session de F par **reprise d'identifiant** (PO, 2026-09-24) | Les deux outils l'offrent (`--session-id`/`--resume` ; `exec` puis `exec resume`), lu dans `--help`. Un processus maintenu ouvert n'existe en pratique que chez un seul outil (l'autre : `app-server`, expérimental). Le transport existant sert tel quel. Coût : le modèle relit le contexte à chaque tour dans les deux mécanismes — le gain vient de ce que F ne relit plus le projet ni l'idée. **Non mesuré** : `codex exec resume` n'accepte pas `--sandbox` ; la lecture seule en reprise est à caractériser au lot 4 |
 
 ## Errors Encountered
 | Error | Resolution |
