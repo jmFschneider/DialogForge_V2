@@ -35,7 +35,8 @@ ambigu.
 **Hors périmètre à ce stade :** recherche externe **conduite par l'outil** — un profil distinct, à
 qualifier ; les agents, eux, gardent la recherche web de leur propre CLI, fermée par défaut et réglée
 par `web_access` (exercée en réel au lot 3.2). Également hors périmètre : développement assisté
-(lot 4), interface graphique (extension conditionnelle après J3), service permanent ou reprise
+(lot 4), interface graphique (extension conditionnelle après J3, livrée depuis :
+`dialogforge gui`), service permanent ou reprise
 autonome après fermeture du programme.
 
 ## Nom du package

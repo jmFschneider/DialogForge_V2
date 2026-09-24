@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-09-24 (boîte modale remplacée dans les tests GUI ; session persistante de F)
+> Dernière mise à jour : 2026-09-25 (ramasse-miettes Tk des tests ; lecture concurrente d'un fichier remplacé)
 
 ## Index
 
@@ -236,6 +236,12 @@
 
 **Un test GUI qui déclenche une action pouvant ouvrir une boîte modale la remplace, même quand le chemin attendu ne l'ouvre pas.** Sinon, une régression bloque la suite au lieu de la faire échouer.
 *Motif mesuré le 2026-09-24 (phase 6, lot 5, contre-épreuves) : le test « un brouillon invalide est refusé avant création » n'attendait aucune boîte. Mais une mutation qui neutralisait la relecture laissait créer la collaboration, puis `messagebox.showinfo` ouvrait une vraie fenêtre, jamais fermée. Le lanceur de mutations a dû être tué à la main. Avec la boîte remplacée, la même mutation échoue en 2 s.*
+
+**Un test qui lance un fil moteur à côté d'une racine Tk sans `mainloop()` vide d'abord le ramasse-miettes dans le fil principal** (`collect_tk_garbage()`).
+*Motif mesuré le 2026-09-25 : des `tkinter.Variable` laissées en cycles par les tests précédents étaient finalisées dans le fil moteur. Chaque `__del__` appelait Tk hors du fil principal (« main thread is not in main loop »), et le cycle finissait `INTERRUPTED`, 6 fois sur 6 sur un sous-ensemble de la suite, jamais sur la suite complète. L'échec dépendait de l'ordre des tests, pas du code essayé.*
+
+**Sous Windows, un fichier remplacé atomiquement est un instant illisible pour un lecteur concurrent : un sondage qui tombe dessus retente au tour suivant, il ne s'arrête pas.**
+*Motif mesuré le 2026-09-25 : l'écran de suivi lisait `etat.json` pendant que le moteur le remplaçait (« Permission denied »). Il affichait « Dossier illisible » et cessait de se rafraîchir, alors que le cycle continuait. Un test intermittent l'a montré, et une instrumentation l'a prouvé.*
 
 **Un scénario de référence qui n'échoue jamais ne prouve rien : son code de sortie doit dire si le cycle est allé à son terme.**
 *Motif mesuré le 2026-09-19 : `reference/cycle_sans_fournisseur.py` a affiché `statut : ERROR` et sorti en code `0`. Mes « scénario rc=0 » du jour prouvaient donc seulement qu'il s'exécutait. Il rend désormais `1` hors de `AWAITING_APPROVAL` sans objection ouverte, et la contre-épreuve (A qui ne répond pas) le fait échouer.*

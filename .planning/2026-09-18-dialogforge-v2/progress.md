@@ -1611,3 +1611,42 @@ ruff vert ; mypy strict vert (77 fichiers) ; **751 passés / 2 ignorés** ; scé
 ### Non fait, volontairement
 - Aucun code d'adaptateur réel (lot 4) avant les mesures du PO.
 - Rien n'est commité.
+
+### Commits du lot 5
+Sur demande du PO (« commites puis corriges ces deux points ») : `c718055` (feat : code, tests,
+`COMMANDES.md`) et `ee25935` (docs : plan, journal, règle, protocole du lot 4).
+
+## Session 2026-09-25 — les deux trouvailles du lot 5
+
+### 1. L'échec de `pytest tests -k "gui or framing"` : deux défauts distincts
+- **Reproduit 6 fois sur 6** avec `-k "(gui or framing) and not cadrage"` (le sous-ensemble de
+  `abdf09f`) : `test_a_run_reaches_awaiting_approval` finit `INTERRUPTED`. Trace : `Exception
+  ignored in: Variable.__del__ … RuntimeError: main thread is not in main loop`, levée dans le
+  fil moteur. Le ramasse-miettes s'y déclenche et finalise des `tkinter.Variable` laissées en
+  cycles par les vues des tests précédents ; chaque finaliseur appelle Tk hors du fil principal,
+  qui ne fait pas tourner `mainloop()` dans les tests. **Défaut des tests seuls** : en production,
+  `mainloop()` tourne et Tk route ces appels. Corrigé par `collect_tk_garbage()`
+  (`tests/test_gui_views.py`, un `gc.collect()` documenté), appelé en tête du `setUp` des cinq
+  fichiers GUI qui lancent un fil moteur.
+- **Second défaut, intermittent (environ 1 fois sur 3), réel dans le produit** :
+  `test_the_view_stops_polling_once_the_run_finishes`. Diagnostic instrumenté : fil vivant, statut
+  `RUNNING`, mais le sous-titre de la vue disait « Dossier illisible : … [Errno 13] Permission
+  denied: '…etat.json' ». Sous Windows, le fichier est un instant illisible pendant que le moteur le
+  remplace. `SuiviView._refresh` rendait alors la main **sans reprogrammer le sondage** : l'écran
+  restait figé sur l'erreur pendant que le cycle continuait. Corrigé : tant que la fenêtre possède
+  l'exécution, le refus s'affiche et le sondage continue. Nouveau test déterministe
+  (`test_an_unreadable_folder_during_a_run_keeps_polling`) ; contre-épreuve : sans le correctif,
+  il échoue.
+- Après les deux corrections : **10 passages verts sur 10** (5 sur chaque sous-ensemble).
+- **Non traité, signalé** : `status` en CLI, lancé pendant un `run` d'un autre terminal, peut
+  tomber sur la même fenêtre de remplacement. Il échoue alors une fois, et le relancer suffit ; rien
+  ne reste figé, donc rien n'a été changé.
+
+### 2. Documentation
+`README.md` et `docs/LIMITES.md` : « Pas d'interface graphique » remplacé par « Une fenêtre locale,
+rien de plus » (`dialogforge gui`, une collaboration et une exécution à la fois, sans service, worker
+ni processus détaché). `docs/DEVELOPPEMENT.md` : la GUI, hors périmètre à J3, est dite livrée depuis.
+
+### Test Results
+ruff vert ; mypy strict vert (77 fichiers) ; **752 passés / 2 ignorés** ; scénario rc=0 ;
+`git diff --check` propre. Taille : +2 (`src/` = 5 520 ; façade + `gui/` 1 537).

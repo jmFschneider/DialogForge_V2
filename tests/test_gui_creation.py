@@ -17,13 +17,14 @@ from iabinome.gui.controller import Controller
 from iabinome.gui.views.creation import CreationView
 from iabinome.gui.views.suivi import SuiviView
 from tests import fakes
-from tests.test_gui_views import _ROOT, _find_button
+from tests.test_gui_views import _ROOT, _find_button, collect_tk_garbage
 
 _ADAPTERS = {"fake-a": fakes.FakeAdapter("fake-a", ()), "fake-b": fakes.FakeAdapter("fake-b", ())}
 
 
 class CreationCase(unittest.TestCase):
     def setUp(self) -> None:
+        collect_tk_garbage()
         self._tmp = TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.root_dir = Path(self._tmp.name)

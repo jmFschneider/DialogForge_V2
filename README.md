@@ -59,7 +59,9 @@ Ce n'est pas une liste de limitations : c'est le périmètre, tenu volontairemen
 - **Il n'exécute rien.** Le livrable est un document, que vous appliquez ensuite à la main.
 - **Aucune base de données**, aucun service, aucune tâche planifiée. Des fichiers, et c'est tout.
 - **Aucun budget ni quota interne.** Les plafonds de votre fournisseur suffisent.
-- **Pas d'interface graphique.**
+- **Une fenêtre locale, rien de plus.** `dialogforge gui` ouvre une fenêtre Tkinter sur les mêmes
+  dossiers que la CLI : une collaboration et une exécution à la fois, sans service, worker ni
+  processus détaché.
 
 **Il ne prétend pas savoir ce qu'il ignore.** Certaines protections ont été mesurées sur de vrais
 appels, d'autres sont seulement demandées à la CLI de chaque outil : rien n'est promis sans preuve, et

@@ -16,11 +16,12 @@ from iabinome.gui import dialogs
 from iabinome.gui.controller import Controller
 from iabinome.gui.views import intervention
 from tests.test_actions import ActionsCase
-from tests.test_gui_views import _ROOT
+from tests.test_gui_views import _ROOT, collect_tk_garbage
 
 
 class InterventionCase(ActionsCase):
     def setUp(self) -> None:
+        collect_tk_garbage()
         super().setUp()
         self.controller = Controller(_ROOT)
         self.addCleanup(lambda: [c.destroy() for c in list(_ROOT.winfo_children())])

@@ -129,7 +129,9 @@ Ce ne sont pas des défauts : c'est le périmètre, et il est tenu volontairemen
   par une commande.
 - **Aucun budget ni quota interne.** Les plafonds de votre fournisseur suffisent ; l'outil ne compte pas
   vos jetons, et un incident ne dit jamais combien un appel a coûté.
-- **Pas d'interface graphique.**
+- **Une fenêtre locale, rien de plus.** `dialogforge gui` ouvre une fenêtre Tkinter sur les mêmes
+  dossiers que la CLI : une collaboration et une exécution à la fois, sans service, worker ni
+  processus détaché.
 - **Pas de recherche externe conduite par l'outil.** *Le programme* n'en fait aucune ; *les agents*
   gardent les capacités de leur propre outil (voir `web_access` et `--reviewer-access`).
 - **Une seule exécution à la fois par collaboration**, sous verrou : un second `run` sur la même

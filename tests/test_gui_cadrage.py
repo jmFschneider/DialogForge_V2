@@ -24,13 +24,14 @@ from iabinome.gui.views.creation import CreationView
 from tests import fakes
 from tests.test_framing import DRAFT_OUT, QUESTION_OUT, READY_OUT
 from tests.test_gui_execution import _wait_for
-from tests.test_gui_views import _ROOT, _find_button
+from tests.test_gui_views import _ROOT, _find_button, collect_tk_garbage
 
 _ADDED = "\nUne ligne ajoutée à la relecture."
 
 
 class GuiFramingCase(unittest.TestCase):
     def setUp(self) -> None:
+        collect_tk_garbage()
         self._tmp = TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.root_dir = Path(self._tmp.name)

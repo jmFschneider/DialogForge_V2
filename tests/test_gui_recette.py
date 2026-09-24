@@ -26,7 +26,7 @@ from iabinome.gui.controller import Controller
 from iabinome.gui.views import intervention
 from iabinome.models import MissionKind, ReviewerAccess
 from tests import fakes
-from tests.test_gui_views import _ROOT
+from tests.test_gui_views import _ROOT, collect_tk_garbage
 
 _ROOT_DIR = Path(__file__).resolve().parent.parent
 _GUI_SRC = _ROOT_DIR / "src" / "iabinome" / "gui"
@@ -34,6 +34,7 @@ _GUI_SRC = _ROOT_DIR / "src" / "iabinome" / "gui"
 
 class CompatibilityCase(unittest.TestCase):
     def setUp(self) -> None:
+        collect_tk_garbage()
         self._tmp = TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.root_dir = Path(self._tmp.name)

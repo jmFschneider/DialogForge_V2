@@ -98,6 +98,11 @@ class SuiviView(ttk.Frame):
         except facade.InspectionError as exc:
             self._title.configure(text=self._path.name)
             self._subtitle.configure(text=f"Dossier illisible : {exc}")
+            # Sous Windows, `etat.json` est un instant illisible pendant que le moteur le
+            # remplace (mesuré le 2026-09-25 : « Permission denied ») : l'exécution continue,
+            # le suivi aussi. Le refus reste affiché jusqu'à la lecture suivante.
+            if running:
+                self._after_id = self.after(_POLL_MS, self._refresh)
             return
         self._title.configure(text=f"{snapshot.name} — {snapshot.presentation.status_label}")
         self._subtitle.configure(

@@ -8,6 +8,7 @@ collaborations de départ, comme `tests/fakes.py` le fait déjà ailleurs.
 
 from __future__ import annotations
 
+import gc
 import tkinter as tk
 import unittest
 from pathlib import Path
@@ -29,6 +30,17 @@ from tests import fakes
 # la suite, qui ne masque pas les dépendances de plateforme.
 _ROOT = tk.Tk()
 _ROOT.withdraw()
+
+
+def collect_tk_garbage() -> None:
+    """À appeler avant tout test qui lance un fil moteur. Les vues des tests précédents
+    laissent des `tkinter.Variable` en cycles de références ; si le ramasse-miettes les
+    finalise dans le fil moteur, chaque `Variable.__del__` appelle Tk hors du fil
+    principal, qui ne tourne pas `mainloop()` ici : « main thread is not in main loop »,
+    un appel retardé, et le cycle finit `INTERRUPTED` (mesuré le 2026-09-25, 6 fois sur 6
+    sur `pytest tests -k "(gui or framing) and not cadrage"`). En production,
+    `mainloop()` tourne et Tk route ces appels : le défaut n'existe que dans les tests."""
+    gc.collect()
 
 
 def _find_button(widget: tk.Misc, text: str) -> ttk.Button:

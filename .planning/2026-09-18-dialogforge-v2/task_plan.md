@@ -6,8 +6,7 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Phase 6 (cadrage avec agent F) — lots 1 à 3 commités ; lot 5 (GUI) fait, NON commité ; lot 4
-attend le PO.** Session du 2026-09-24 (soir), portée déclarée par le PO : lots 4 et 5.
+**Phase 6 (cadrage avec agent F) — lots 1 à 3 et 5 commités ; lot 4 attend le PO.** Session du 2026-09-24 (soir), portée déclarée par le PO : lots 4 et 5.
 Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3).
 - **Lot 4, en attente du PO** : protocole écrit, `reference/PROTOCOLE_CADRAGE_LOT4.md` (4 appels
   courts, deux par outil : ouverture puis reprise ; identifiant, même session, contexte repris,
@@ -15,16 +14,15 @@ Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3).
   `C:\Projets\essais-3-1\cadrage-lot4\`. Ensuite seulement : `framing_command`/`framing_extract`
   des deux adaptateurs, puis la capacité passe à vrai pour un outil conforme, puis la partie 2 du
   protocole (un cadrage court par le produit, par outil), à rédiger avec le code.
-- **Lot 5, fait** : voir la phase 6 ci-dessous et `progress.md`. **Non commité** — attendre la
-  demande du PO.
-- **Marge de taille : ≈ 264 lignes** (+2 236 / 2 500, `src/` = 5 518) ; façade + `gui/` 1 535 /
+- **Lot 5, fait et commité** (`c718055`, `ee25935`), puis deux corrections commitées le
+  2026-09-25 (voir `progress.md`) : suivi GUI qui s'arrêtait sur un `etat.json` momentanément
+  illisible pendant une exécution (défaut réel du produit) ; ramasse-miettes des variables Tk dans
+  le fil moteur des tests (défaut des tests seuls). Documentation : « Pas d'interface graphique »
+  retiré de `README.md` et `docs/LIMITES.md`.
+- **Marge de taille : ≈ 262 lignes** (+2 238 / 2 500, `src/` = 5 520) ; façade + `gui/` 1 537 /
   2 000 ; `views/creation.py` 370 (plafond de vue 400).
-- Trouvé, non corrigé : `pytest tests -k "gui or framing"` échoue sur
-  `test_gui_execution.py::TestStartRun::test_a_run_reaches_awaiting_approval` (« main thread is not in
-  main loop », puis délai dépassé) — **déjà sur HEAD `abdf09f`**, sous-ensemble seulement ; la suite
-  complète et le fichier seul passent. Dépend de l'ordre des tests. À décision séparée.
-- Trouvé, non corrigé : `README.md` et `docs/LIMITES.md` disent encore « Pas d'interface graphique »,
-  faux depuis la phase 5.
+- **Prochain** : le PO lance `reference/PROTOCOLE_CADRAGE_LOT4.md` ; je lis les sorties, puis
+  j'écris les adaptateurs du lot 4.
 
 **Historique — Phase 5 (GUI V1) : lots 1 à 6 faits et commités (`581cbb3`), la phase est complète.**
 Reste hors de ce plan, non engagé : le lot « Développement assisté » (§ Extension identifiée),
@@ -400,11 +398,10 @@ de la phase : 900 à 1 000 lignes.
       *(2026-09-24 : protocole écrit, `reference/PROTOCOLE_CADRAGE_LOT4.md`, part sans quota éprouvée ;
       non lancé ; aucun code d'adaptateur)*
 - [x] 6.5 Lot 5 — GUI : mode « Cadrer avec un agent », modale, unique fil moteur (§4, §14.7)
-      *(2026-09-24, non commité : `gui/views/cadrage.py`, contrôleur, écran de création ;
+      *(2026-09-24, `c718055` : `gui/views/cadrage.py`, contrôleur, écran de création ;
       751 passés / 2 ignorés ; +310 lignes)*
 - [ ] 6.6 Lot 6 — recette : critères §15, taille remesurée
-- **Status:** in_progress — lots 1 à 3 commités, lot 5 fait (non commité) ; lot 4 attend la
-  caractérisation par le PO
+- **Status:** in_progress — lots 1 à 3 et 5 commités ; lot 4 attend la caractérisation par le PO
 
 ## Extension identifiée (hors phases)
 

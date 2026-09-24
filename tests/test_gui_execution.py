@@ -18,7 +18,7 @@ from iabinome.gui import app
 from iabinome.gui.controller import Controller
 from iabinome.gui.views.suivi import SuiviView
 from tests import fakes
-from tests.test_gui_views import _ROOT
+from tests.test_gui_views import _ROOT, collect_tk_garbage
 
 _WAIT_SECONDS = 20.0
 
@@ -33,6 +33,7 @@ def _wait_for(predicate: Callable[[], bool], what: str) -> None:
 
 class ExecutionCase(unittest.TestCase):
     def setUp(self) -> None:
+        collect_tk_garbage()
         self._tmp = TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.root_dir = Path(self._tmp.name)
@@ -104,6 +105,17 @@ class TestSuiviPolling(ExecutionCase):
         # nous-mêmes, sans faire tourner `mainloop()`.
         view._refresh()
         self.assertIsNone(view._after_id)
+
+    def test_an_unreadable_folder_during_a_run_keeps_polling(self) -> None:
+        """`etat.json` est un instant illisible pendant que le moteur le remplace : le
+        refus s'affiche, mais le suivi d'une exécution en cours ne s'arrête pas."""
+        unreadable = facade.InspectionError("[Errno 13] Permission denied: 'etat.json'")
+        with mock.patch.object(self.controller, "is_running", return_value=True), \
+                mock.patch.object(self.controller, "inspect", side_effect=unreadable):
+            view = SuiviView(_ROOT, self.controller, self.collab)
+        self.addCleanup(view.destroy)
+        self.assertIn("Permission denied", view._subtitle.cget("text"))
+        self.assertIsNotNone(view._after_id)
 
 
 class TestCloseGuard(unittest.TestCase):
