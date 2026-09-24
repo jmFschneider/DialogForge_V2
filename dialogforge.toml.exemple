@@ -35,6 +35,12 @@ agent_b = "claude"
 # effort_a = "medium"
 # effort_b = "high"
 
+# --- Agent de cadrage (seulement avec `new --cadrer-avec-agent`) -----
+# L'outil doit savoir tenir une session persistante ; sinon, refus avant tout appel.
+# agent_cadrage = "claude"
+# model_cadrage = "opus"
+# effort_cadrage = "medium"
+
 # --- Acces web (facultatif, FERME par defaut) ------------------------
 # Meme politique pour A et B, figee a `new`. Absent ou false : Claude n'a que Read, Grep, Glob
 # et Codex recoit explicitement web_search=disabled. true : Claude recoit WebSearch et

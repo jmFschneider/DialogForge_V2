@@ -20,15 +20,18 @@ même information en ligne.
 
 ## new
 
-`dialogforge new <dossier> (--demande <fichier> | --cadrer) [options]`
+`dialogforge new <dossier> (--demande <fichier> | --cadrer | --cadrer-avec-agent) [options]`
 
 Crée le dossier (qui ne doit pas exister) et fige les réglages dans `configuration.json`. Tout est
 vérifié avant toute écriture : un refus ne laisse rien derrière lui, un cadrage interrompu non plus.
 
 | Option | Sens |
 |---|---|
-| `--demande <fichier>` | Le fichier texte de votre demande. |
-| `--cadrer` | Écrire la demande par un questionnaire de terminal, sans appel de modèle. Exclusif avec `--demande` ; l'un des deux est exigé. |
+| `--demande <fichier>` | Le fichier texte de votre demande. Aucun appel. |
+| `--cadrer` | Écrire la demande par un questionnaire de terminal, sans appel de modèle. |
+| `--cadrer-avec-agent` | Construire la demande en conversation avec un agent de cadrage, **qui effectue des appels avant la création** ([détail](#cadrage-avec-agent)). Les trois voies s'excluent ; l'une est exigée. |
+| `--agent-cadrage` | L'outil qui mène le cadrage ; exigé avec `--cadrer-avec-agent`, refusé sans lui. |
+| `--model-cadrage`, `--effort-cadrage` | Modèle et effort de l'agent de cadrage ; mêmes règles que pour A et B. |
 | `--kind` | `conception` ou `recherche`. |
 | `--reviewer-access` | `consult` (B garde les outils de sa CLI) ou `context-only` (B n'en a aucun). |
 | `--agent-a`, `--agent-b` | Qui produit, qui critique : `claude` ou `codex`. |
@@ -44,6 +47,22 @@ vérifié avant toute écriture : un refus ne laisse rien derrière lui, un cadr
 `--kind`, `--reviewer-access`, `--agent-a` et `--agent-b` sont indispensables : sur la ligne de
 commande ou dans le fichier de réglages, sinon `new` refuse. Une mission de **recherche** exige un
 corpus, et un corpus vide est refusé.
+
+### Cadrage avec agent
+
+Avec `--cadrer-avec-agent`, un agent (F) lit une **copie** des sources données par `--source-root` /
+`--source-list` (facultatives en conception), puis vous pose ses questions une par une. Votre idée se
+saisit sur plusieurs lignes, close par une ligne ne contenant qu'un point ; vos réponses aussi. À
+tout moment : `/clore` (rédiger maintenant) ou `/annuler`. F propose la clôture au plus tard après
+trois réponses, puis toutes les deux ; vous choisissez de continuer, corriger un point, rédiger ou
+annuler. Le brouillon s'affiche ensuite : `v` le valide et crée la collaboration, `m` le remplace
+par votre texte, `c` reprend le cadrage, `a` abandonne. **Rien n'est créé avant `v`** : `demande.md`
+est le texte que vous avez relu. La conversation, ses traces et sa provenance sont rangées dans
+`cadrage/`, pour mémoire — A et B ne les voient jamais.
+
+Toute la conversation tient dans **une seule session** de l'outil, reprise à chaque tour : l'idée et
+les sources ne sont lues qu'une fois. Un adaptateur qui ne sait pas tenir une telle session est
+refusé avant tout appel. Le délai par échange est celui de `timeout` dans le fichier de réglages.
 
 ## run
 

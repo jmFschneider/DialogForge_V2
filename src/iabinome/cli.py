@@ -26,6 +26,7 @@ from . import (
     decisions,
     demande,
     facade,
+    framing_cli,
     lock,
     planlink,
     settings,
@@ -65,6 +66,9 @@ _EXIT_CODE = {
 # commandes qui lancent le cycle se résout à part (`settings.resolve_timeout`).
 _SETTABLE_NEW = ("agent_a", "agent_b", "model_a", "model_b", "effort_a", "effort_b",
                  "web_access", "kind", "reviewer_access", "max_revisions")
+# Réglages de l'agent de cadrage F : lus seulement avec `--cadrer-avec-agent`, et
+# refusés sur la ligne de commande sans lui (`conception/CADRAGE_AGENT.md` §3.1).
+_FRAMING_NEW = ("agent_cadrage", "model_cadrage", "effort_cadrage")
 _LAUNCHING = ("run", "resume", "decide")
 
 # Défauts du programme, dernier maillon : drapeau CLI > fichier > ceci >
@@ -102,7 +106,7 @@ def _merge_settings(args: argparse.Namespace) -> str | None:
             applied.append("timeout")
     elif args.command == "new":
         found = settings.load(args.config)
-        for key in _SETTABLE_NEW:
+        for key in _SETTABLE_NEW + (_FRAMING_NEW if args.cadrer_avec_agent else ()):
             if getattr(args, key) is not None:
                 continue
             if key in found.values:
@@ -123,7 +127,7 @@ def _merge_settings(args: argparse.Namespace) -> str | None:
 
 def _from_settings(path: Path | None, key: str, value: Any) -> Any:
     """Le domaine d'une valeur venue du fichier, que `argparse` n'a pas vue."""
-    if key in ("agent_a", "agent_b") and value not in ADAPTERS:
+    if key in ("agent_a", "agent_b", "agent_cadrage") and value not in ADAPTERS:
         raise settings.SettingsError(
             f"{path} : {key} = {value!r} — attendu : {sorted(ADAPTERS)}"
         )
@@ -138,13 +142,19 @@ def _from_settings(path: Path | None, key: str, value: Any) -> Any:
 
 
 def cmd_new(args: argparse.Namespace) -> int:
-    dest = Path(args.collab)
     missing = [f"--{key.replace('_', '-')}" for key in _REQUIRED_NEW if getattr(args, key) is None]
     if missing:
         return _fail(
             f"valeur(s) absente(s) : {' '.join(missing)} — sur la ligne de commande"
             " ou dans le fichier de configuration"
         )
+    given = [f"--{key.replace('_', '-')}" for key in _FRAMING_NEW if getattr(args, key)]
+    if args.cadrer_avec_agent:
+        if args.agent_cadrage is None:
+            return _fail("--agent-cadrage absent — sur la ligne de commande ou dans le fichier")
+        return framing_cli.run(args, _request(args, facade.DemandeSource("", "cadrage")), ADAPTERS)
+    if given:
+        return _fail(f"{' '.join(given)} : réservé(s) à --cadrer-avec-agent")
     # La demande est obtenue **avant** la création : un cadrage interrompu ne
     # laisse rien derrière lui.
     try:
@@ -153,19 +163,9 @@ def cmd_new(args: argparse.Namespace) -> int:
         return _fail("cadrage interrompu : rien n'a été créé")
     except (OSError, ValueError) as exc:
         return _fail(str(exc))
-    request = facade.CreationRequest(
-        collab=dest,
-        demande=facade.DemandeSource(demande_text, str(origin["source"]), origin["path"]),
-        kind=_KIND[args.kind], reviewer_access=_ACCESS[args.reviewer_access],
-        agent_a=args.agent_a, agent_b=args.agent_b, max_revisions=args.max_revisions,
-        model_a=args.model_a, model_b=args.model_b,
-        effort_a=args.effort_a, effort_b=args.effort_b, web_access=bool(args.web_access),
-        source_root=Path(args.source_root) if args.source_root else None,
-        source_list=Path(args.source_list) if args.source_list else None,
-        source_label=args.source_label,
-    )
+    source = facade.DemandeSource(demande_text, str(origin["source"]), origin["path"])
     try:
-        result = facade.create_collaboration(request, adapters=ADAPTERS)
+        result = facade.create_collaboration(_request(args, source), adapters=ADAPTERS)
     except facade.CreationError as exc:
         return _fail(str(exc))
     print(f"collaboration creee : {result.path}")
@@ -176,6 +176,19 @@ def cmd_new(args: argparse.Namespace) -> int:
             " La production démarre quand même.", file=sys.stderr,
         )
     return 0
+
+
+def _request(args: argparse.Namespace, source: facade.DemandeSource) -> facade.CreationRequest:
+    return facade.CreationRequest(
+        collab=Path(args.collab), demande=source,
+        kind=_KIND[args.kind], reviewer_access=_ACCESS[args.reviewer_access],
+        agent_a=args.agent_a, agent_b=args.agent_b, max_revisions=args.max_revisions,
+        model_a=args.model_a, model_b=args.model_b,
+        effort_a=args.effort_a, effort_b=args.effort_b, web_access=bool(args.web_access),
+        source_root=Path(args.source_root) if args.source_root else None,
+        source_list=Path(args.source_list) if args.source_list else None,
+        source_label=args.source_label,
+    )
 
 
 def _obtain_demande(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
@@ -497,15 +510,31 @@ def build_parser() -> argparse.ArgumentParser:
     # valeur doit rester `None` pour que `_merge_settings` sache que l'humain
     # n'a rien tranché. Le manque est constaté dans `cmd_new`, donc en code 1 —
     # un refus avant mutation, pas une erreur d'usage.
-    p_new = sub.add_parser("new", help="créer une collaboration (aucun appel d'agent)")
+    p_new = sub.add_parser(
+        "new", help="créer une collaboration ; le cadrage avec agent peut effectuer des appels"
+        " avant la création",
+    )
     p_new.add_argument("collab", help="dossier de la collaboration, qui ne doit pas exister")
     # Un fichier de demande, ou le cadrage guidé : jamais les deux, jamais aucun.
     source = p_new.add_mutually_exclusive_group(required=True)
-    source.add_argument("--demande", help="fichier texte qui contient votre demande")
+    source.add_argument(
+        "--demande", help="fichier texte qui contient votre demande ; aucun appel"
+    )
     source.add_argument(
         "--cadrer", action="store_true",
         help="écrire la demande par un questionnaire de terminal, sans appel de modèle",
     )
+    source.add_argument(
+        "--cadrer-avec-agent", action="store_true",
+        help="construire la demande en conversation avec un agent (appels avant la création)",
+    )
+    p_new.add_argument(
+        "--agent-cadrage", choices=sorted(ADAPTERS), help="l'outil qui mène le cadrage"
+    )
+    p_new.add_argument(
+        "--model-cadrage", help="modèle de l'agent de cadrage (défaut : celui de l'adaptateur)"
+    )
+    p_new.add_argument("--effort-cadrage", help=_EFFORT_HELP.format("l'agent de cadrage"))
     p_new.add_argument("--config", help=_CONFIG_HELP)
     p_new.add_argument(
         "--kind", choices=sorted(_KIND), help="genre de livrable (une recherche exige un corpus)"

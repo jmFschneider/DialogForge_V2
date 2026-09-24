@@ -90,6 +90,29 @@ def missing(text: str) -> list[str]:
     return [name for name in SECTIONS if name not in found]
 
 
+def validate_framed(text: str) -> list[str]:
+    """Ce qui empêche un brouillon de F d'être proposé à la relecture (§2.6). Plus
+    strict que `missing` : le brouillon est **produit** dans ce format, pas saisi
+    librement — `# Demande` en tête, chaque section une fois, Objectif et Livrable
+    renseignés. Liste vide : le brouillon est recevable."""
+    lines = text.strip().splitlines()
+    head_ok = bool(lines) and lines[0].strip() == "# Demande"
+    problems = [] if head_ok else ["« # Demande » attendu en tête"]
+    counts = dict.fromkeys(SECTIONS, 0)
+    fenced = False
+    for line in lines:
+        if _FENCE.match(line):
+            fenced = not fenced
+        heading = None if fenced else _HEADING.match(line)
+        name = _CANONICAL.get(_key(heading.group(2))) if heading else None
+        if name is not None:
+            counts[name] += 1
+    problems += [f"section « {n} » présente {c} fois" for n, c in counts.items() if c != 1]
+    found = sections(text)
+    problems += [f"section « {n} » vide" for n in _REQUIRED if counts[n] and n not in found]
+    return problems
+
+
 def complete(base: str, answer: str) -> str:
     """La demande complétée par une réponse : **le texte existant en préfixe,
     intact**, puis la réponse telle quelle sous « Précisions n°K ».

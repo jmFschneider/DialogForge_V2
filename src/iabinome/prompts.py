@@ -155,3 +155,125 @@ def _assemble(blocks: list[str], corpus_date: str | None, sections: dict[str, st
         parts.append(_CORPUS.format(date=corpus_date))
     parts.extend(f"{title}\n{body}" for title, body in sections.items())
     return "\n\n".join(parts) + "\n"
+
+
+# -- Cadrage avec agent F (`conception/CADRAGE_AGENT.md` §7) --------------------------------
+
+_F_START = """\
+Tu es l'agent F de cadrage de DialogForge.
+
+Cette conversation utilise une session persistante. Conserve pendant toute la
+session les informations utiles lues et les réponses humaines. Elles ne seront
+pas retransmises intégralement à chaque tour.
+
+Transforme progressivement l'idée en demande autonome. Si corpus/fichiers/
+contient des fichiers, lis maintenant ceux qui sont utiles. Il s'agit d'une
+copie isolée : n'écris et n'exécute rien.
+
+N'invente aucune décision. Une observation du corpus n'est pas un choix humain.
+Pose un seul arbitrage principal, éventuellement avec deux ou trois
+alternatives réelles.
+
+Le premier groupe admet au plus trois réponses humaines. Lorsque sa limite est
+atteinte, rends IABINOME:CADRAGE_PRET. Si l'idée suffit déjà, propose-la
+maintenant."""
+
+_F_CONTINUE = """\
+Continue le même cadrage en utilisant le contexte déjà conservé dans cette
+session.
+
+La réponse humaine peut être partielle, hésitante, hors sujet ou corriger une
+décision antérieure. Mets ton état à jour sans inventer.
+
+Si REPONSES_DANS_LE_GROUPE atteint LIMITE_DU_GROUPE, rends obligatoirement
+IABINOME:CADRAGE_PRET. Sinon, pose le seul arbitrage le plus utile ou propose
+la clôture immédiatement."""
+
+_F_REOPEN = """\
+L'utilisateur refuse pour l'instant la clôture et {what}. Cet apport est la
+première réponse d'un nouveau groupe de limite deux : tu peux poser au plus une
+nouvelle question avant de rendre une nouvelle proposition IABINOME:CADRAGE_PRET.
+Mets à jour le cadrage sans inventer."""
+
+_F_DRAFT = """\
+Rédige maintenant la demande autonome à partir de l'ensemble de cette session.
+
+N'invente aucune décision. Conserve explicitement les inconnues, limites et
+désaccords encore ouverts. Ne mentionne ni la conversation ni les agents.
+
+Commence par IABINOME:DEMANDE et ne rends ensuite que le Markdown.
+
+FORMAT
+# Demande
+## Objectif
+## Livrable
+## Sources
+## Contraintes
+## Non-objectifs
+## Critères de fin"""
+
+_F_CONTRACTS = """\
+Chaque réponse conversationnelle commence par l'une de ces deux lignes.
+
+IABINOME:CADRAGE_QUESTION
+QUESTION
+Un seul arbitrage principal, éventuellement accompagné de choix.
+POURQUOI
+Effet de la réponse sur la future demande.
+ETAT_CADRAGE
+DECISIONS, HESITATIONS, CONTRADICTIONS, FICHIERS_CONSULTES, QUESTIONS_OUVERTES
+(une liste chacune, chemins logiques pour les fichiers)
+
+IABINOME:CADRAGE_PRET
+RESUME
+Le mandat compris.
+SANS_REPONSE
+- Question : ... / Effet possible : ... (chaque inconnue restante)
+APERCU
+Objectif, Livrable, Sources, Contraintes, Non-objectifs, Critères de fin : une ligne chacun.
+ETAT_CADRAGE
+(comme ci-dessus)"""
+
+_F_RETRY = """\
+Ta dernière réponse n'a pas pu être retenue : {motif}. Rends-la de nouveau selon
+le contrat, sans changer de sujet."""
+
+
+def _counters(group: int, answers: int, limit: int) -> dict[str, str]:
+    return {
+        "GROUPE": str(group), "REPONSES_DANS_LE_GROUPE": str(answers),
+        "LIMITE_DU_GROUPE": str(limit),
+    }
+
+
+def build_framing_start(idea: str, *, draft: bool = False) -> str:
+    """Le seul envoi qui porte l'idée et la consultation du corpus (§6.2). `draft` :
+    `/clore` avant tout échange — la rédaction suit dans le même envoi (A2)."""
+    text = _assemble(
+        [_F_START], None, {"IDEE": idea, **_counters(1, 0, 3), "CONTRATS": _F_CONTRACTS},
+    )
+    return text + "\n" + _F_DRAFT + "\n" if draft else text
+
+
+def build_framing_continue(answer: str, group: int, answers: int, limit: int) -> str:
+    return _assemble([_F_CONTINUE], None, {
+        "DERNIERE_REPONSE_OU_INSTRUCTION_HUMAINE": answer, **_counters(group, answers, limit),
+    })
+
+
+def build_framing_reopen(text: str, group: int, *, correction: bool) -> str:
+    """« Continuer » et « Corriger un point » : même groupe, même compteur (A1)."""
+    what = "corrige le point suivant" if correction else "poursuit le cadrage"
+    title = "CORRECTION_HUMAINE" if correction else "REPONSE_HUMAINE"
+    return _assemble(
+        [_F_REOPEN.format(what=what)], None, {title: text, **_counters(group, 1, 2)}
+    )
+
+
+def build_framing_draft() -> str:
+    """Ni l'idée ni la transcription : elles sont dans la session (§6.6, §7.4)."""
+    return _F_DRAFT + "\n"
+
+
+def build_framing_retry(motif: str) -> str:
+    return _F_RETRY.format(motif=motif) + "\n"

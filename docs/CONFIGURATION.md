@@ -51,11 +51,14 @@ Toutes sont facultatives. Une clé inconnue, un mauvais type ou un fichier illis
 | `model_b` | texte | celui de l'adaptateur | `new` | Modèle de B. |
 | `effort_a` | texte | aucun | `new` | Effort de raisonnement de A ([voir plus bas](#effort-de-raisonnement)). |
 | `effort_b` | texte | aucun | `new` | Effort de raisonnement de B. |
+| `agent_cadrage` | texte | — | `new --cadrer-avec-agent` | L'outil de l'agent de cadrage ([voir `new`](COMMANDES.md#cadrage-avec-agent)). |
+| `model_cadrage` | texte | celui de l'adaptateur | `new --cadrer-avec-agent` | Modèle de l'agent de cadrage. |
+| `effort_cadrage` | texte | aucun | `new --cadrer-avec-agent` | Effort de l'agent de cadrage. |
 | `web_access` | booléen | `false` | `new` | Recherche web pour A et B ([voir plus bas](#accès-web)). |
 | `kind` | texte | — | `new` | `conception` ou `recherche`. |
 | `reviewer_access` | texte | — | `new` | `consult` ou `context-only`. |
 | `max_revisions` | entier | `2` | `new` | Nombre maximal de révisions ; `0` : B critique une fois, sans révision. |
-| `timeout` | nombre | `1800` | `run`, `resume`, `decide` | Délai dur par appel, en secondes. |
+| `timeout` | nombre | `1800` | `run`, `resume`, `decide`, `new --cadrer-avec-agent` | Délai dur par appel, en secondes. |
 
 `agent_a`, `agent_b`, `kind` et `reviewer_access` doivent venir de la ligne de commande **ou** du
 fichier : `new` refuse s'il en manque une.

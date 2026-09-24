@@ -27,6 +27,7 @@ from . import contracts, corpus, decisions, incidents, settings, storage
 from . import demande as demande_module
 from .adapters.base import AgentAdapter
 from .decisions import AllowedAction
+from .framing import FramingArtifacts
 from .models import (
     SCHEMA_VERSION,
     AgentPurpose,
@@ -290,6 +291,9 @@ class CreationRequest:
     source_root: Path | None = None
     source_list: Path | None = None
     source_label: str | None = None
+    # Cadrage avec agent F (`conception/CADRAGE_AGENT.md` §10) : le brouillon de F, sa
+    # provenance, et le corpus déjà préparé — jamais relu depuis le projet d'origine.
+    framing: FramingArtifacts | None = None
 
 
 @dataclass(frozen=True)
@@ -311,12 +315,36 @@ def create_collaboration(
     « validation autoritaire » du §6.5. Tout est vérifié avant la première
     écriture ; un refus ne laisse aucun dossier partiel derrière lui (AC-12).
     """
+    check_creation(request, adapters=adapters)
+    dest = request.collab
+    tmp = dest.parent / f".new-{dest.name}-{uuid.uuid4().hex}"
+    tmp.mkdir(parents=True)
+    try:
+        _write_collaboration(tmp, dest, request, adapters)
+    except (corpus.CorpusError, OSError, ValueError) as exc:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise CreationError(str(exc)) from exc
+    tmp.rename(dest)
+    return CreationResult(
+        path=dest, missing_sections=tuple(demande_module.missing(request.demande.text)),
+    )
+
+
+def check_creation(request: CreationRequest, *, adapters: Mapping[str, AgentAdapter]) -> None:
+    """Les refus de `create_collaboration`, sans rien écrire : le cadrage avec agent
+    les passe **avant** d'ouvrir la session de F (§3.2), pour qu'aucun appel ne soit
+    payé au profit d'une création qui serait refusée ensuite."""
     dest = request.collab
     if dest.exists():
         raise CreationError(f"{dest} existe deja")
     if bool(request.source_root) != bool(request.source_list):
         raise CreationError("--source-root et --source-list vont ensemble")
-    if request.kind is MissionKind.RECHERCHE and not request.source_root:
+    if request.framing is not None and request.source_root:
+        raise CreationError("sources déjà copiées par le cadrage : elles ne sont pas relues")
+    framed_corpus = request.framing is not None and (
+        request.framing.root / "corpus" / "manifeste.json"
+    ).is_file()
+    if request.kind is MissionKind.RECHERCHE and not (request.source_root or framed_corpus):
         raise CreationError(
             "mission de recherche sans corpus (--source-root et --source-list requis)"
         )
@@ -332,17 +360,6 @@ def create_collaboration(
                 f"effort {who} : {effort!r} refusé par {adapter_id} — attendu : "
                 f"{', '.join(levels) or 'aucun'}"
             )
-    tmp = dest.parent / f".new-{dest.name}-{uuid.uuid4().hex}"
-    tmp.mkdir(parents=True)
-    try:
-        _write_collaboration(tmp, dest, request, adapters)
-    except (corpus.CorpusError, OSError, ValueError) as exc:
-        shutil.rmtree(tmp, ignore_errors=True)
-        raise CreationError(str(exc)) from exc
-    tmp.rename(dest)
-    return CreationResult(
-        path=dest, missing_sections=tuple(demande_module.missing(request.demande.text)),
-    )
 
 
 def _write_collaboration(
@@ -350,11 +367,14 @@ def _write_collaboration(
 ) -> None:
     normalized = contracts.normalize(request.demande.text)
     storage.write_atomic_text(tmp / "demande.md", normalized.text)
-    demande_module.record(tmp, {
+    entry: dict[str, Any] = {
         "source": request.demande.origin, "path": request.demande.imported_path,
         "sha256": normalized.sha256,
-    })
+    }
     corpus_sha: str | None = None
+    if request.framing is not None:
+        entry, corpus_sha = _write_framing(tmp, request.framing, normalized.sha256)
+    demande_module.record(tmp, entry)
     if request.source_root:
         assert request.source_list is not None
         manifest = corpus.build(
@@ -387,6 +407,32 @@ def _write_collaboration(
     )
     _write_json(tmp / "configuration.json", config.to_dict())
     _write_json(tmp / "etat.json", state.to_dict())
+
+
+def _write_framing(
+    tmp: Path, framing: FramingArtifacts, accepted_sha: str
+) -> tuple[dict[str, Any], str | None]:
+    """`cadrage/` (§9) : traces des échanges, transcription, provenance — des chemins
+    relatifs seulement. Le corpus est celui que F a lu, copié tel quel. Rend l'entrée
+    de `provenance_demande.json` (schéma inchangé, §9.3) et l'empreinte du manifeste."""
+    draft_sha = contracts.normalize(framing.draft).sha256
+    edited = draft_sha != accepted_sha
+    shutil.copytree(framing.root / "appels", tmp / "cadrage" / "appels")
+    shutil.copyfile(framing.root / "transcription.md", tmp / "cadrage" / "transcription.md")
+    _write_json(tmp / "cadrage" / "provenance.json", {
+        **framing.provenance, "agent_draft_sha256": draft_sha,
+        "accepted_demande_sha256": accepted_sha, "human_edited": edited,
+    })
+    corpus_sha = None
+    if (framing.root / "corpus" / "manifeste.json").is_file():
+        shutil.copytree(framing.root / "corpus", tmp / "corpus")
+        text, _ = storage.read_text(tmp / "corpus" / "manifeste.json")
+        corpus_sha = contracts.normalize(text).sha256
+    return {
+        "source": "cadrage", "path": None, "sha256": accepted_sha, "method": "agent",
+        "framing_provenance": "cadrage/provenance.json", "agent_draft_sha256": draft_sha,
+        "human_edited": edited,
+    }, corpus_sha
 
 
 def _now() -> str:
