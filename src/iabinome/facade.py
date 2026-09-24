@@ -29,13 +29,13 @@ from .adapters.base import AgentAdapter
 from .decisions import AllowedAction
 from .models import (
     SCHEMA_VERSION,
+    AgentPurpose,
     AgentSpec,
     CallStatus,
     Configuration,
     MissionKind,
     Phase,
     ReviewerAccess,
-    Role,
     SchemaError,
     State,
     Status,
@@ -370,10 +370,12 @@ def _write_collaboration(
         schema_version=SCHEMA_VERSION, collaboration_id=dest.name, mission_kind=request.kind,
         reviewer_access=request.reviewer_access, max_revisions=request.max_revisions,
         agent_a=AgentSpec(
-            request.agent_a, request.model_a or agent_a.default_model(Role.A), request.effort_a
+            request.agent_a, request.model_a or agent_a.default_model(AgentPurpose.A),
+            request.effort_a,
         ),
         agent_b=AgentSpec(
-            request.agent_b, request.model_b or agent_b.default_model(Role.B), request.effort_b
+            request.agent_b, request.model_b or agent_b.default_model(AgentPurpose.B),
+            request.effort_b,
         ),
         initial_demande_sha256=normalized.sha256, corpus_manifest_sha256=corpus_sha,
         created_at=_now(), web_access=request.web_access,

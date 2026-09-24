@@ -15,7 +15,7 @@ from unittest import mock
 
 from iabinome.adapters import claude, codex
 from iabinome.adapters.base import CallSpec, ObservedCli, probe_version
-from iabinome.models import ReviewerAccess, Role
+from iabinome.models import AgentPurpose, ReviewerAccess
 
 _SPEC = CallSpec(
     prompt="peu importe", model="un-modele", timeout_seconds=30.0,
@@ -28,8 +28,8 @@ class TestClaudeAdapter(unittest.TestCase):
         self.adapter = claude.ClaudeAdapter()
 
     def test_default_model_differs_by_role(self) -> None:
-        self.assertEqual(self.adapter.default_model(Role.A), "opus")
-        self.assertEqual(self.adapter.default_model(Role.B), "fable")
+        self.assertEqual(self.adapter.default_model(AgentPurpose.A), "opus")
+        self.assertEqual(self.adapter.default_model(AgentPurpose.B), "fable")
 
     def test_command_has_no_prompt_in_argv(self) -> None:
         with mock.patch.object(shutil, "which", return_value="C:/bin/claude.EXE"):
@@ -136,7 +136,9 @@ class TestCodexAdapter(unittest.TestCase):
         self.adapter = codex.CodexAdapter()
 
     def test_default_model_is_the_same_for_both_roles(self) -> None:
-        self.assertEqual(self.adapter.default_model(Role.A), self.adapter.default_model(Role.B))
+        self.assertEqual(
+            self.adapter.default_model(AgentPurpose.A), self.adapter.default_model(AgentPurpose.B)
+        )
 
     def test_command_reads_the_prompt_from_stdin(self) -> None:
         with mock.patch.object(shutil, "which", return_value="C:/bin/codex.CMD"):

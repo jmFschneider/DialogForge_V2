@@ -23,7 +23,7 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 
 from iabinome import cli, demande, settings
-from iabinome.models import Role
+from iabinome.models import AgentPurpose
 from tests import fakes
 
 # Saisi **avant** que `setUp` ne vide l'attribut : c'est l'ordre de recherche
@@ -234,7 +234,7 @@ class TestPrecedence(SettingsCase):
         agent_a = self.config()["agent_a"]
         assert isinstance(agent_a, dict)
         self.assertEqual(
-            agent_a["model"], fakes.FakeAdapter("fake-a", ()).default_model(Role.A)
+            agent_a["model"], fakes.FakeAdapter("fake-a", ()).default_model(AgentPurpose.A)
         )
 
 

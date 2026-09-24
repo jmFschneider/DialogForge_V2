@@ -10,18 +10,21 @@ from __future__ import annotations
 
 import shutil
 
-from ..models import ReviewerAccess, Role
+from ..models import AgentPurpose, ReviewerAccess
 from .base import (
     AdapterError,
     CallSpec,
     Capabilities,
     EnvPolicy,
+    FramingSessionSpec,
     ObservedCli,
     probe_version,
 )
 
 _EXECUTABLE = "claude"
-_DEFAULT_MODEL = {Role.A: "opus", Role.B: "fable"}
+_DEFAULT_MODEL = {
+    AgentPurpose.A: "opus", AgentPurpose.B: "fable", AgentPurpose.FRAMING: "opus",
+}
 # Lecture seule par défaut. Le web (recherche et lecture d'une page, **jamais** une écriture ni
 # une exécution) n'entre que si la collaboration le demande : `web_access`, figé à `new`.
 _READ_TOOLS = "Read,Grep,Glob"
@@ -57,10 +60,11 @@ class ClaudeAdapter:
         },
     )
 
-    def default_model(self, role: Role) -> str:
+    def default_model(self, purpose: AgentPurpose) -> str:
         """Opus pour A, Fable pour B (CLAUDE.md §6) — reste surchargeable :
-        mesuré le 2026-09-03, ce compte n'a pas les crédits pour Fable."""
-        return _DEFAULT_MODEL[role]
+        mesuré le 2026-09-03, ce compte n'a pas les crédits pour Fable. F, qui
+        converse et rédige, prend le défaut du producteur."""
+        return _DEFAULT_MODEL[purpose]
 
     def probe(self) -> ObservedCli:
         exe = shutil.which(_EXECUTABLE)
@@ -97,6 +101,16 @@ class ClaudeAdapter:
 
     def extract(self, stdout: bytes, stderr: bytes) -> str:
         return stdout.decode("utf-8")
+
+    # Session de cadrage : pas encore câblée (plan, phase 6, lot 4). La capacité reste
+    # fausse, donc le prévol de F refuse cet adaptateur avant d'arriver ici.
+    def framing_command(
+        self, spec: FramingSessionSpec, session: str | None, prompt: str
+    ) -> list[str]:
+        raise AdapterError(f"{self.adapter_id} : session de cadrage non supportée")
+
+    def framing_extract(self, stdout: bytes, stderr: bytes) -> tuple[str, str | None]:
+        raise AdapterError(f"{self.adapter_id} : session de cadrage non supportée")
 
 
 def _resolve() -> str:

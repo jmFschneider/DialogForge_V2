@@ -49,6 +49,7 @@ from .demande import complete as complete_demande
 from .demande import record as record_provenance
 from .models import (
     SCHEMA_VERSION,
+    AgentPurpose,
     CallState,
     CallStatus,
     Configuration,
@@ -217,7 +218,7 @@ def _preflight(
         seen = adapter.probe()
         if not seen.present:
             raise WorkflowError(f"{agent.adapter_id} : CLI absente")
-        if agent.model != adapter.default_model(role) and (
+        if agent.model != adapter.default_model(AgentPurpose(role.value)) and (
             not adapter.capabilities.supports_model_override
         ):
             raise WorkflowError(f"{agent.adapter_id} : modèle non remplaçable")

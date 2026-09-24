@@ -13,12 +13,13 @@ from __future__ import annotations
 import shutil
 import sys
 
-from ..models import ReviewerAccess, Role
+from ..models import AgentPurpose, ReviewerAccess
 from .base import (
     AdapterError,
     CallSpec,
     Capabilities,
     EnvPolicy,
+    FramingSessionSpec,
     ObservedCli,
     probe_version,
 )
@@ -50,7 +51,7 @@ class CodexAdapter:
         },
     )
 
-    def default_model(self, role: Role) -> str:
+    def default_model(self, purpose: AgentPurpose) -> str:
         """CLAUDE.md §6 ne fixe de rôle que pour Claude : Codex garde son
         propre défaut, mesuré dans `~/.codex/config.toml`, pour les deux rôles."""
         return _DEFAULT_MODEL
@@ -92,6 +93,16 @@ class CodexAdapter:
 
     def extract(self, stdout: bytes, stderr: bytes) -> str:
         return stdout.decode("utf-8")
+
+    # Session de cadrage : pas encore câblée (plan, phase 6, lot 4). La capacité reste
+    # fausse, donc le prévol de F refuse cet adaptateur avant d'arriver ici.
+    def framing_command(
+        self, spec: FramingSessionSpec, session: str | None, prompt: str
+    ) -> list[str]:
+        raise AdapterError(f"{self.adapter_id} : session de cadrage non supportée")
+
+    def framing_extract(self, stdout: bytes, stderr: bytes) -> tuple[str, str | None]:
+        raise AdapterError(f"{self.adapter_id} : session de cadrage non supportée")
 
 
 def _resolve() -> str:

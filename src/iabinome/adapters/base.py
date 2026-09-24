@@ -5,6 +5,11 @@ rôle n'intervient que dans le prompt et le nom logique de l'appel. Ce qui est
 propre à un outil — sortie structurée native, session persistante, erreur de quota
 typée — est un bonus, jamais un prérequis (CONCEPTION_FINALE.md §8).
 
+**Une exception, écrite** : l'agent de cadrage F exige une session persistante
+(`conception/CADRAGE_AGENT.md`, amendement A3 — reprise par identifiant, que les deux
+outils offrent). Elle vit dans `FramingSessionSpec` et les deux méthodes `framing_*`,
+jamais dans `CallSpec` : A et B n'en dépendent pas.
+
 **Aucun nom de fournisseur hors de ce paquet.** Le noyau ne manipule que des
 `adapter_id` opaques.
 """
@@ -17,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
-from ..models import ReviewerAccess, Role
+from ..models import AgentPurpose, ReviewerAccess
 
 _VERSION_TIMEOUT_SECONDS = 5.0
 
@@ -44,6 +49,10 @@ class Capabilities:
     # L'adaptateur **impose** la politique d'accès web dans son argv, dans les deux sens
     # (ouvert comme fermé) : le défaut est « fermé », et il doit être explicite.
     controls_web_access: bool = False
+    # Agent de cadrage F seulement : chaque cadrage ouvre une session neuve, tous ses tours
+    # la reprennent par son identifiant, et rien ne la reprend après lui (A3). Sans elle,
+    # F est refusé avant tout appel — jamais simulé par des sessions éphémères (test 82).
+    supports_persistent_framing_session: bool = False
 
 
 @dataclass(frozen=True)
@@ -85,13 +94,24 @@ class CallSpec:
     web_access: bool = False
 
 
+@dataclass(frozen=True)
+class FramingSessionSpec:
+    """Ce qu'un tour de F demande à l'adaptateur. Pas d'accès web : F lit la copie du
+    corpus et converse, rien d'autre (§5.2)."""
+
+    model: str
+    timeout_seconds: float
+    work_root: Path
+    effort: str | None = None
+
+
 class AgentAdapter(Protocol):
     adapter_id: str
     capabilities: Capabilities
     env: EnvPolicy
 
-    def default_model(self, role: Role) -> str:
-        """Le défaut est une propriété de l'adaptateur pour un rôle, jamais une
+    def default_model(self, purpose: AgentPurpose) -> str:
+        """Le défaut est une propriété de l'adaptateur pour une finalité, jamais une
         constante du noyau : « Opus 5 pour A » n'a aucun sens si A est Codex."""
 
     def probe(self) -> ObservedCli: ...
@@ -99,6 +119,17 @@ class AgentAdapter(Protocol):
     def command(self, call: CallSpec) -> list[str]: ...
 
     def extract(self, stdout: bytes, stderr: bytes) -> str: ...
+
+    def framing_command(
+        self, spec: FramingSessionSpec, session: str | None, prompt: str
+    ) -> list[str]:
+        """L'argv d'un tour de F : `session` vaut `None` au premier tour (session
+        neuve), puis l'identifiant rendu par `framing_extract`, que l'argv reprend. Le
+        prompt passe par stdin ; il n'est donné ici qu'à titre d'information."""
+
+    def framing_extract(self, stdout: bytes, stderr: bytes) -> tuple[str, str | None]:
+        """La réponse de F, et l'identifiant de session que l'outil a déclaré.
+        Opaque pour le noyau, qui ne l'interprète ni ne le persiste (§6.1)."""
 
 
 class AdapterError(RuntimeError):

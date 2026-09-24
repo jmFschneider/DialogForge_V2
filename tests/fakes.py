@@ -15,12 +15,23 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from iabinome import contracts, storage
-from iabinome.adapters.base import CallSpec, Capabilities, EnvPolicy, ObservedCli
-from iabinome.models import SCHEMA_VERSION, Role
+from iabinome.adapters.base import (
+    CallSpec,
+    Capabilities,
+    EnvPolicy,
+    FramingSessionSpec,
+    ObservedCli,
+)
+from iabinome.models import SCHEMA_VERSION, AgentPurpose
+
+# Une réponse de F : un texte, ou une fonction de **tout ce que la session a reçu**
+# jusque-là, ce tour compris — la mémoire de session que le faux agent simule.
+FramingReply = str | Callable[[list[str]], str]
 
 # Une demande aux six sections du format court, pour prouver qu'aucune ne
 # disparaît quand `--answer` la complète.
@@ -142,11 +153,13 @@ class FakeAdapter:
         sleep_seconds: float = 0.0,
         exit_codes: tuple[int, ...] = (),
         status_marker: str | None = None,
+        supports_persistent_framing_session: bool = True,
+        framing_responses: tuple[FramingReply, ...] = (),
     ) -> None:
         self.adapter_id = adapter_id
         self.capabilities = Capabilities(
             supports_context_only, supports_model_override, enforces_read_only, fresh_session,
-            effort_levels, controls_web_access,
+            effort_levels, controls_web_access, supports_persistent_framing_session,
         )
         # Sans politique, le faux adaptateur ne possède aucune variable : `env` se donne aux
         # tests qui éprouvent le filtrage par adaptateur.
@@ -162,9 +175,16 @@ class FakeAdapter:
         self.efforts: list[str | None] = []
         self.web_accesses: list[bool] = []
         self.observed_status: list[str] = []
+        # Session de cadrage : l'historique de chaque session vit ici, en mémoire, comme
+        # chez un outil qui reprend une session par son identifiant.
+        self.framing_responses = list(framing_responses)
+        self.framing_sessions: dict[str, list[str]] = {}
+        self.framing_specs: list[FramingSessionSpec] = []
+        self.framing_drift = False
+        self._declared: str | None = None
 
-    def default_model(self, role: Role) -> str:
-        return f"{self.adapter_id}-modele-{role.value.lower()}"
+    def default_model(self, purpose: AgentPurpose) -> str:
+        return f"{self.adapter_id}-modele-{purpose.value.lower()}"
 
     def probe(self) -> ObservedCli:
         return ObservedCli(present=self.present, version=self.version)
@@ -190,6 +210,32 @@ class FakeAdapter:
 
     def extract(self, stdout: bytes, stderr: bytes) -> str:
         return stdout.decode("utf-8")
+
+    def framing_command(
+        self, spec: FramingSessionSpec, session: str | None, prompt: str
+    ) -> list[str]:
+        """Un tour de F. `session=None` en ouvre une neuve ; sinon l'argv la reprend,
+        comme `--resume <id>` — c'est ce qui permet de vérifier qu'elle y est masquée."""
+        self.framing_specs.append(spec)
+        resumed = session
+        if session is None:
+            session = f"{self.adapter_id}-session-{len(self.framing_sessions) + 1}"
+        history = self.framing_sessions.setdefault(session, [])
+        history.append(prompt)
+        # `framing_drift` : l'outil répond dans une autre session que celle demandée.
+        self._declared = f"{session}-bis" if self.framing_drift else session
+        reply = self.framing_responses.pop(0) if self.framing_responses else (
+            "IABINOME:CADRAGE_PRET\n"
+        )
+        text = reply(list(history)) if callable(reply) else reply
+        exit_code = self.exit_codes.pop(0) if self.exit_codes else 0
+        argv = command(stdout=text, exit_code=exit_code, sleep_seconds=self.sleep_seconds)
+        if resumed is not None:
+            argv[-1] += f"\n# reprise {resumed}"
+        return argv
+
+    def framing_extract(self, stdout: bytes, stderr: bytes) -> tuple[str, str | None]:
+        return stdout.decode("utf-8"), self._declared
 
 
 def collaboration(

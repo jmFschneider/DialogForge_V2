@@ -65,6 +65,16 @@ class Role(Enum):
     B = "B"
 
 
+class AgentPurpose(Enum):
+    """Pour quoi un adaptateur choisit son modèle par défaut. `FRAMING` (l'agent de
+    cadrage F, `conception/CADRAGE_AGENT.md` §8.3) n'existe qu'ici : il n'entre jamais
+    dans `etat.json`, où seul `Role` a cours."""
+
+    A = "A"
+    B = "B"
+    FRAMING = "FRAMING"
+
+
 class CallStatus(Enum):
     CALLING = "CALLING"
     RESPONSE_STORED = "RESPONSE_STORED"
