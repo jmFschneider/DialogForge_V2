@@ -1537,3 +1537,77 @@ Sur demande du PO : un commit `feat` pour les lots 2 et 3 (code, tests, document
 que `tests/test_docs.py` exige), un commit `docs` pour le plan. Puis pause. À la reprise : le PO
 choisit entre le protocole de caractérisation du lot 4 (à rédiger, puis à lancer par lui) et le
 lot 5 (GUI).
+
+## Session 2026-09-24 (soir) — phase 6, lots 4 et 5
+
+Portée déclarée par le PO : « les deux phases suivantes » (lots 4 et 5). Plan résolu avec
+`PLAN_ID=2026-09-18-dialogforge-v2`, `task_plan.md`, `findings.md`, `progress.md`, `POURQUOI.md` et
+`RULES.md` lus.
+
+### Lot 4 — protocole de caractérisation (aucun appel)
+- Relu sans quota : `claude --help` (**2.1.282**, contre 2.1.281 le matin), `codex exec --help` et
+  `codex exec resume --help` (0.155.0). `resume` n'a ni `--sandbox` ni `-C` ; il a `-c`, `--json`,
+  `--skip-git-repo-check`, `--ignore-user-config`, `--ignore-rules`, `--ephemeral`. Claude a
+  `--fork-session` (« create a new session ID instead of reusing the original »), ce qui laisse
+  attendre le même identifiant en reprise, **sans le prouver**.
+- Écrit `reference/PROTOCOLE_CADRAGE_LOT4.md` : 4 appels (Claude puis Codex, ouverture puis
+  reprise), dossier `C:\Projets\essais-3-1\cadrage-lot4\{claude,codex}\corpus\fichiers\temoin.txt`
+  (`SAULE-2291`), code `ORME-4711` présent dans le seul premier prompt. Il mesure l'identifiant de
+  session dans `--output-format json` / `--json`, la stabilité de cet identifiant en reprise, le
+  rappel du code et l'absence de `ecrit-en-reprise.txt`. Pour Codex, la reprise passe
+  `-c sandbox_mode=read-only`, ce que l'adaptateur enverra. Seul rejeu prévu : si Codex n'a rien
+  tenté d'écrire.
+- Éprouvé sans quota dans le scratchpad : préparation (dossiers, témoins, empreintes) et lecture des
+  sorties sur des fichiers synthétiques (`c1.json`, `x1.jsonl` avec une ligne non JSON).
+- **Non lancé.** Aucun code d'adaptateur écrit : il dépend des formes mesurées.
+
+### Lot 5 — GUI « Cadrer avec un agent »
+- `framing.shown(turn)` : ce qu'un écran montre d'un tour (incident + sortie gardée, ou réponse sans
+  `ETAT_CADRAGE`) ; `framing_cli._show` s'en sert.
+- `gui/controller.py` : `open_framing` (session neuve, `ExecutionControl` propre, env des autres
+  adaptateurs retiré), `framing_step` (un tour dans **l'unique** fil moteur ; `False` s'il est
+  occupé), `take_framing_outcome`, `discard_framing` (interrompt un tour en cours, ferme, détruit le
+  dossier jetable). `start_run` refuse désormais dès que le fil est occupé (avant : même dossier
+  seulement — un tour de F n'a pas de dossier). `_swap` ferme le cadrage.
+- `gui/views/cadrage.py` (nouveau) : `FramingPanel` (§4.1 : agent, modèle, effort, idée, Commencer /
+  Reprendre), `begin` (refus du §3.2 avant toute session : fil libre, idée, `check_creation`,
+  `check_adapter`, `prepare`), `reviewed` (le texte relu doit passer `validate_framed`, puis
+  `artifacts()`), `resume` (test 45), `FramingDialog` (§4.2 : transcription, réponse, Envoyer /
+  Continuer, Corriger un point, Clore maintenant / Rédiger le brouillon, Relancer, Annuler ;
+  `grab_set` ; sondage `after()` de `has_active_run()` ; annuler pendant un tour interrompt puis
+  détruit quand le fil s'est arrêté, jamais sous lui).
+- `gui/views/creation.py` : troisième mode de demande, sources montrées aussi en mode agent,
+  création avec `framing=` (sources non relues), confirmation « Créer et démarrer » précédée de la
+  phrase du §4.4. `gui/app.py` : `_destroy` ferme le cadrage à toute fermeture de fenêtre.
+- `docs/COMMANDES.md` § gui : le texte « lecture seule au lot 3 » (périmé depuis la phase 5)
+  remplacé par les actions et le mode agent.
+- `tests/test_gui_cadrage.py` : 13 tests (§14.7 n° 65-72, plus 42, 43, 45, 46, 51, 54 côté GUI).
+- **Contre-épreuves** : 8 mutations (discard à la navigation, garde de `start_run`, attente du fil
+  avant destruction, refus pendant une exécution, désactivation pendant un tour, relecture du
+  brouillon, phrase de confirmation, discard au changement de mode) : **8 détectées**. La 6e
+  (relecture neutralisée) bloquait au lieu d'échouer : une vraie `messagebox` s'ouvrait. Test
+  corrigé (boîte remplacée), la mutation échoue désormais en 2 s.
+- **Vérifié en réel** (script hors suite, vraie fenêtre, `mainloop()`, faux agents lents à 0,4 s) :
+  pendant le tour 1, le fil est actif et aucun bouton n'est actif ; puis question, proposition
+  (« Continuer »), rédaction, modale fermée, brouillon dans l'éditeur, ligne ajoutée, « Créer
+  seulement ». Collaboration créée, `human_edited: true`, 3 échanges, 1 session F, cadrage fermé
+  après création.
+
+### Test Results
+ruff vert ; mypy strict vert (77 fichiers) ; **751 passés / 2 ignorés** ; scénario rc=0 ;
+`git diff --check` propre. Taille, avec un compteur tokenize recalé sur les chiffres consignés
+(`ba5c0a4` = 3 282, `581cbb3` = 4 519 / 1 190, `abdf09f` = 5 208 / 1 226) : **+310** (5 208 →
+5 518) ; croissance depuis `ba5c0a4` **+2 236 / 2 500, marge ≈ 264** ; façade + `gui/` 1 535 / 2 000 ;
+`views/creation.py` 370, `views/cadrage.py` 216 (déplacer `reviewed`/`resume` hors de
+`creation.py` l'a fait passer de 390 à 370).
+
+### Trouvé, non corrigé
+- `pytest tests -k "gui or framing"` échoue sur `test_gui_execution.py::TestStartRun::
+  test_a_run_reaches_awaiting_approval` (« RuntimeError: main thread is not in main loop », puis
+  « jamais observé : fin du cycle »). **Déjà sur `abdf09f`** (vérifié par `git stash`). Seulement
+  dans ce sous-ensemble : suite complète et fichier seul verts.
+- `README.md` et `docs/LIMITES.md` : « Pas d'interface graphique », faux depuis la phase 5.
+
+### Non fait, volontairement
+- Aucun code d'adaptateur réel (lot 4) avant les mesures du PO.
+- Rien n'est commité.

@@ -6,14 +6,25 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Phase 6 (cadrage avec agent F) ouverte le 2026-09-24 par le PO — lots 1 à 3 faits et commités.**
-Pause demandée par le PO après les commits du 2026-09-24. Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3).
-Le cadrage fonctionne de bout en bout **avec le faux agent** ; les adaptateurs réels le refusent
-encore (capacité fausse). **Prochain, au choix du PO** : lot 4 — il exige d'abord une
-caractérisation réelle **lancée par le PO** (formes de sortie qui portent l'identifiant de session :
-`claude -p --output-format json` / `codex exec --json` ; lecture seule de `codex exec resume`, qui
-n'accepte pas `--sandbox`) : rédiger ce protocole avant tout code d'adaptateur ; ou lot 5 (GUI),
-indépendant. **Marge de taille : ≈ 574 lignes** (+1 926 / 2 500) ; façade + `gui/` 1 226 / 2 000.
+**Phase 6 (cadrage avec agent F) — lots 1 à 3 commités ; lot 5 (GUI) fait, NON commité ; lot 4
+attend le PO.** Session du 2026-09-24 (soir), portée déclarée par le PO : lots 4 et 5.
+Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3).
+- **Lot 4, en attente du PO** : protocole écrit, `reference/PROTOCOLE_CADRAGE_LOT4.md` (4 appels
+  courts, deux par outil : ouverture puis reprise ; identifiant, même session, contexte repris,
+  lecture seule en reprise). **À lancer par le PO**, puis je lis moi-même
+  `C:\Projets\essais-3-1\cadrage-lot4\`. Ensuite seulement : `framing_command`/`framing_extract`
+  des deux adaptateurs, puis la capacité passe à vrai pour un outil conforme, puis la partie 2 du
+  protocole (un cadrage court par le produit, par outil), à rédiger avec le code.
+- **Lot 5, fait** : voir la phase 6 ci-dessous et `progress.md`. **Non commité** — attendre la
+  demande du PO.
+- **Marge de taille : ≈ 264 lignes** (+2 236 / 2 500, `src/` = 5 518) ; façade + `gui/` 1 535 /
+  2 000 ; `views/creation.py` 370 (plafond de vue 400).
+- Trouvé, non corrigé : `pytest tests -k "gui or framing"` échoue sur
+  `test_gui_execution.py::TestStartRun::test_a_run_reaches_awaiting_approval` (« main thread is not in
+  main loop », puis délai dépassé) — **déjà sur HEAD `abdf09f`**, sous-ensemble seulement ; la suite
+  complète et le fichier seul passent. Dépend de l'ordre des tests. À décision séparée.
+- Trouvé, non corrigé : `README.md` et `docs/LIMITES.md` disent encore « Pas d'interface graphique »,
+  faux depuis la phase 5.
 
 **Historique — Phase 5 (GUI V1) : lots 1 à 6 faits et commités (`581cbb3`), la phase est complète.**
 Reste hors de ce plan, non engagé : le lot « Développement assisté » (§ Extension identifiée),
@@ -386,9 +397,14 @@ de la phase : 900 à 1 000 lignes.
       §9.4. `corpus.build()` sur liste vide non rencontré : `prepare` crée le dossier avant)*
 - [ ] 6.4 Lot 4 — adaptateurs réels (reprise par identifiant) + protocole de caractérisation de la
       lecture seule en reprise, **exécuté par le PO** (aucun appel réel de Claude)
-- [ ] 6.5 Lot 5 — GUI : mode « Cadrer avec un agent », modale, unique fil moteur (§4, §14.7)
+      *(2026-09-24 : protocole écrit, `reference/PROTOCOLE_CADRAGE_LOT4.md`, part sans quota éprouvée ;
+      non lancé ; aucun code d'adaptateur)*
+- [x] 6.5 Lot 5 — GUI : mode « Cadrer avec un agent », modale, unique fil moteur (§4, §14.7)
+      *(2026-09-24, non commité : `gui/views/cadrage.py`, contrôleur, écran de création ;
+      751 passés / 2 ignorés ; +310 lignes)*
 - [ ] 6.6 Lot 6 — recette : critères §15, taille remesurée
-- **Status:** in_progress — lots 1 à 3 faits ; lot 4 attend une caractérisation par le PO
+- **Status:** in_progress — lots 1 à 3 commités, lot 5 fait (non commité) ; lot 4 attend la
+  caractérisation par le PO
 
 ## Extension identifiée (hors phases)
 
@@ -445,6 +461,10 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 | **Phase 6 ouverte : cadrage avec agent F** (PO, 2026-09-24) | Le PO a accepté la conception (`decide`, séquence 2) et demandé sa mise en place. Lève pour F seul la règle « le cycle ne dépend que des capacités communes aux deux outils » (précision n°2 de la demande) : écrit dans `CLAUDE.md` §6 et `project/RULES.md`. Le noyau A/B garde `fresh_session` |
 | A1 — `B-convergence-003` : l'apport de « Continuer » compte comme 1re réponse du groupe (PO, 2026-09-24) | Un seul compteur (réponses humaines), deux actions au comportement identique : une question au plus avant la proposition suivante. Recommandé et retenu |
 | A2 — `B-cout-004` : `/clore` avant le 1er échange = un échange « premier envoi + rédaction » (PO, 2026-09-24) | F ne rédige jamais sans l'idée ; retenu plutôt que d'interdire `/clore` avant le premier tour |
+| Lot 5 : pas de file d'événements, le sondage `after()` de l'état du fil (2026-09-24) | Le §4.3 parle de « la file existante » ; la GUI n'en a pas — l'écran de suivi sonde déjà `is_running` par `after()`. La modale fait de même sur `has_active_run()`, puis lit le résultat du tour. Même garantie (le fil Tk n'appelle jamais l'adaptateur), sans nouvelle structure |
+| Lot 5 : `start_run` refuse dès que le fil moteur est occupé, plus seulement sur le même dossier | Un tour de F n'a pas de dossier de collaboration : l'ancien test (`is_running(path)`) l'aurait laissé passer, donc A pendant F. Le §3.1 (une exécution au plus) le voulait déjà |
+| Lot 5 : quitter le mode agent, l'écran de création ou la fenêtre ferme le cadrage | La session n'existe que pour cet écran (§6.1 : possédée par un seul contrôleur, fermée avant A). `Controller._swap` et `app._destroy` appellent `discard_framing` : aucun chemin de sortie ne l'oublie. Le brouillon déjà rendu reste dans l'éditeur |
+| Lot 5 : le mode agent vit dans `gui/views/cadrage.py`, pas dans `creation.py` | `creation.py` aurait atteint 390 lignes effectives sur un plafond de vue de 400 ; il est à 370. `framing.shown` sert l'affichage d'un tour en CLI comme en GUI |
 | A3 — Session de F par **reprise d'identifiant** (PO, 2026-09-24) | Les deux outils l'offrent (`--session-id`/`--resume` ; `exec` puis `exec resume`), lu dans `--help`. Un processus maintenu ouvert n'existe en pratique que chez un seul outil (l'autre : `app-server`, expérimental). Le transport existant sert tel quel. Coût : le modèle relit le contexte à chaque tour dans les deux mécanismes — le gain vient de ce que F ne relit plus le projet ni l'idée. **Non mesuré** : `codex exec resume` n'accepte pas `--sandbox` ; la lecture seule en reprise est à caractériser au lot 4 |
 
 ## Errors Encountered

@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-09-24 (exception de session persistante pour l'agent de cadrage F)
+> Dernière mise à jour : 2026-09-24 (boîte modale remplacée dans les tests GUI ; session persistante de F)
 
 ## Index
 
@@ -233,6 +233,9 @@
 
 **Un test qui rapproche la documentation du code cherche chaque élément dans la section de son propriétaire, pas dans tout le fichier.**
 *Motif mesuré le 2026-09-20 (`tests/test_docs.py`) : la première version cherchait chaque option de la CLI n'importe où dans `COMMANDES.md`. Elle passait au vert, et une contre-épreuve — retirer `--timeout` de la seule section `decide` — ne la faisait pas échouer, puisque `run` le décrivait aussi. Une contre-épreuve par élément, pas seulement une par test : neuf mutations détectées du premier coup ne disaient rien de la dixième. Limite assumée : le test prouve qu'un élément est **nommé**, jamais que le texte est **vrai**.*
+
+**Un test GUI qui déclenche une action pouvant ouvrir une boîte modale la remplace, même quand le chemin attendu ne l'ouvre pas.** Sinon, une régression bloque la suite au lieu de la faire échouer.
+*Motif mesuré le 2026-09-24 (phase 6, lot 5, contre-épreuves) : le test « un brouillon invalide est refusé avant création » n'attendait aucune boîte. Mais une mutation qui neutralisait la relecture laissait créer la collaboration, puis `messagebox.showinfo` ouvrait une vraie fenêtre, jamais fermée. Le lanceur de mutations a dû être tué à la main. Avec la boîte remplacée, la même mutation échoue en 2 s.*
 
 **Un scénario de référence qui n'échoue jamais ne prouve rien : son code de sortie doit dire si le cycle est allé à son terme.**
 *Motif mesuré le 2026-09-19 : `reference/cycle_sans_fournisseur.py` a affiché `statut : ERROR` et sorti en code `0`. Mes « scénario rc=0 » du jour prouvaient donc seulement qu'il s'exécutait. Il rend désormais `1` hors de `AWAITING_APPROVAL` sans objection ouverte, et la contre-épreuve (A qui ne répond pas) le fait échouer.*
