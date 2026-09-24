@@ -6,15 +6,14 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Phase 6 (cadrage avec agent F) ouverte le 2026-09-24 par le PO — lot 1 fait, non commité.**
-Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3 du PO en fin de fichier).
-**Prochain : lot 2** — dans `framing.py` (déjà créé au lot 1, section session) : dossier jetable
-`framing-<uuid>/` et copie des sources (réemployer `corpus.build`, voir Errors Encountered pour la
-liste vide), protocole `CADRAGE_QUESTION`/`CADRAGE_PRET`/`DEMANDE`, compteur de groupe (A1 : toute
-réponse humaine compte, limite 3 puis 2), transcription, `SOURCES_MODIFIED` après chaque échange ;
-`prompts.build_framing_start/continue/correction/draft` (A2 : `/clore` avant le 1er échange =
-premier envoi + rédaction) ; `demande.validate_framed`. Marge de taille : ≈ 1 118 lignes (+1 382 /
-2 500 depuis `ba5c0a4`), lot 1 = +145.
+**Phase 6 (cadrage avec agent F) ouverte le 2026-09-24 par le PO — lots 1 à 3 faits et commités.**
+Pause demandée par le PO après les commits du 2026-09-24. Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3).
+Le cadrage fonctionne de bout en bout **avec le faux agent** ; les adaptateurs réels le refusent
+encore (capacité fausse). **Prochain, au choix du PO** : lot 4 — il exige d'abord une
+caractérisation réelle **lancée par le PO** (formes de sortie qui portent l'identifiant de session :
+`claude -p --output-format json` / `codex exec --json` ; lecture seule de `codex exec resume`, qui
+n'accepte pas `--sandbox`) : rédiger ce protocole avant tout code d'adaptateur ; ou lot 5 (GUI),
+indépendant. **Marge de taille : ≈ 574 lignes** (+1 926 / 2 500) ; façade + `gui/` 1 226 / 2 000.
 
 **Historique — Phase 5 (GUI V1) : lots 1 à 6 faits et commités (`581cbb3`), la phase est complète.**
 Reste hors de ce plan, non engagé : le lot « Développement assisté » (§ Extension identifiée),
@@ -374,19 +373,22 @@ de la phase : 900 à 1 000 lignes.
 - [x] 6.1 Lot 1 — contrat de session : `AgentPurpose`, `FramingSessionSpec`, capacité
       `supports_persistent_framing_session`, session par reprise d'identifiant sur le transport
       commun, prévol de F, faux adaptateur à session en mémoire (tests §14.1 et §14.5 qui s'y
-      rattachent) *(2026-09-24, non commité : `framing.py`, `tests/test_framing_session.py` ;
+      rattachent) *(2026-09-24, `feec971` : `framing.py`, `tests/test_framing_session.py` ;
       708 passés / 2 ignorés ; +145 lignes)*
-- [ ] 6.2 Lot 2 — `framing.py` : dossier jetable, protocole `CADRAGE_QUESTION`/`CADRAGE_PRET`/
+- [x] 6.2 Lot 2 — `framing.py` : dossier jetable, protocole `CADRAGE_QUESTION`/`CADRAGE_PRET`/
       `DEMANDE`, compteur de groupe (A1), transcription, `SOURCES_MODIFIED` ; `prompts.build_framing_*`
-      (A2) ; `demande.validate_framed` (§14.2 à §14.4)
-- [ ] 6.3 Lot 3 — création : `CreationRequest.framing`/`prepared_corpus`, artefacts `cadrage/`,
+      (A2) ; `demande.validate_framed` (§14.2 à §14.4) *(2026-09-24, commité avec le lot 3 : 727 passés /
+      2 ignorés ; +289 lignes)*
+- [x] 6.3 Lot 3 — création : `CreationRequest.framing`/`prepared_corpus`, artefacts `cadrage/`,
       provenances, `configuration.framing_agent` ; CLI `new --cadrer-avec-agent` et aides (§14.6,
-      §14.8). Rencontre `corpus.build()` sur liste vide (Errors Encountered) : à trancher alors
+      §14.8). *(2026-09-24, commité : `framing_cli.py`, `facade.check_creation`/`_write_framing` ;
+      738 passés / 2 ignorés ; +255 lignes. `configuration.framing_agent` non écrit — facultatif au
+      §9.4. `corpus.build()` sur liste vide non rencontré : `prepare` crée le dossier avant)*
 - [ ] 6.4 Lot 4 — adaptateurs réels (reprise par identifiant) + protocole de caractérisation de la
       lecture seule en reprise, **exécuté par le PO** (aucun appel réel de Claude)
 - [ ] 6.5 Lot 5 — GUI : mode « Cadrer avec un agent », modale, unique fil moteur (§4, §14.7)
 - [ ] 6.6 Lot 6 — recette : critères §15, taille remesurée
-- **Status:** in_progress — lot 1 fait, lot 2 à faire
+- **Status:** in_progress — lots 1 à 3 faits ; lot 4 attend une caractérisation par le PO
 
 ## Extension identifiée (hors phases)
 

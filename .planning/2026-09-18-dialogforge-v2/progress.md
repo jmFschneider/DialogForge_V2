@@ -1462,3 +1462,78 @@ sans fournisseur rc=0. Taille : **+145** lignes de code effectif (4 519 → 4 66
 ### Non fait, volontairement
 Le protocole conversationnel, le compteur de groupe, les prompts, le dossier jetable et
 `SOURCES_MODIFIED` (lot 2) ; l'argv réel de reprise (lot 4).
+
+### Lot 1 commité
+`feec971` (code, tests) et `42c3c70` (plan, conception, règles), sur demande du PO (« commit puis
+continues »).
+
+### Lot 2 — conversation de cadrage
+- `prompts.py` : `build_framing_start(idee, draft=False)` (le seul envoi qui porte l'idée et la
+  consultation du corpus ; `draft=True` = A2), `build_framing_continue`, `build_framing_reopen`
+  (« Continuer » et « Corriger » : même groupe, compteur à 1 — A1), `build_framing_draft` (ni idée ni
+  transcription), `build_framing_retry` (rappel du contrat après une sortie non conforme). Gabarits
+  du §7 repris, contrats de sortie condensés.
+- `demande.validate_framed` : `# Demande` en tête, chaque section exactement une fois, Objectif et
+  Livrable renseignés.
+- `framing.py` : `parse_reply` (balise sur sa ligne ; une phrase avant une balise conversationnelle
+  est tolérée, jamais avant `IABINOME:DEMANDE` ; sections requises ; aucun compte de `?`) ;
+  `prepare` (dossier jetable `framing-*/` : **F travaille dans `travail/`, qui ne contient que
+  `corpus/fichiers/`** — manifeste, appels, transcription et `session.json` à côté, hors de sa
+  racine ; écart assumé avec le schéma du §8.1, qui mettait tout dans la racine de F, pour tenir le
+  test 6 ; sans source : conception oui, recherche non) ; `Framing` (`start`, `answer`, `reopen`,
+  `write_draft`, `retry`, `note`, `discard`, `check_sources`). Une question rendue quand
+  `answers >= limit` est non conforme ; toute sortie non conforme est gardée et notée, jamais
+  relancée ; `SOURCES_MODIFIED` (instantané de `travail/corpus/fichiers` pris avant le premier envoi,
+  comparé après chaque échange) ferme la session.
+- **Constat en test** : un premier tour en échec n'établit aucune session ; la relance en ouvre une
+  nouvelle (rien de repris d'inconnu). La session abandonnée n'a jamais répondu.
+- `tests/test_framing.py` : 19 tests (§14 n° 5-7, 10-13, 15-17, 19-45 pour ce qui ne dépend pas de la
+  création, A1, A2, parseur, transcription).
+
+### Test Results
+ruff vert ; mypy strict vert (73 fichiers) ; **727 passés / 2 ignorés** ; scénario rc=0. Taille :
+**+289** (4 664 → 4 953) ; croissance depuis `ba5c0a4` : **+1 671 / 2 500, marge ≈ 829**.
+`framing.py` = 286 lignes effectives, `prompts.py` 223 (le texte des gabarits compte). **Non
+commité.**
+
+### Lot 3 — création et CLI `new --cadrer-avec-agent`
+- `framing.py` : `FramingArtifacts` (dossier jetable, brouillon de F, provenance §9.2) et
+  `Framing.artifacts()` — refuse sans brouillon, revérifie la copie des sources (« avant la
+  promotion », §5.3) ; `closure` (`AGENT_PROPOSED` si la rédaction suit une proposition,
+  `USER_CLOSED` sinon), `turn_count` (apports humains), `exchange_count`, `open_questions` (bloc
+  `SANS_REPONSE` de la dernière proposition), `transcription_sha256`.
+- `facade.py` : `check_creation` extrait de `create_collaboration` (mêmes refus, sans écriture) pour
+  les passer **avant** la session de F ; `CreationRequest.framing` ; `_write_framing` copie `appels/`
+  et `transcription.md` sous `cadrage/`, écrit `cadrage/provenance.json` (+ `agent_draft_sha256`,
+  `accepted_demande_sha256`, `human_edited`), reprend le corpus **préparé par le cadrage** (jamais
+  relu depuis le projet) et rend l'entrée `provenance_demande.json` (`source: cadrage`, `path: null`,
+  `method: agent`, `framing_provenance`, `agent_draft_sha256`, `human_edited` ; schéma v1 inchangé).
+  Recherche avec cadrage : le corpus du cadrage suffit.
+- **Non fait, délibérément** : `configuration.framing_agent` (§9.4 dit « peut ajouter ») — il aurait
+  fallu ouvrir le schéma à clés exactes de `configuration.json` pour une information déjà présente
+  dans `cadrage/provenance.json`, que le moteur ignore de toute façon.
+- `framing_cli.py` (nouveau) : ordre du §3.2 (création vérifiée, prévol de F, délai résolu,
+  dossier jetable — puis seulement l'idée et la session) ; saisie multiligne close par `.` pour
+  l'idée, les réponses, les corrections et `m` ; `/clore` (confirmation locale) et `/annuler` ;
+  menus d'incident (relancer / clore / annuler), de proposition (continuer / corriger / rédiger /
+  annuler) et de relecture (`v`/`m`/`c`/`a`, `m` revalidé par `validate_framed`) ; `Ctrl+C`, fin
+  d'entrée, session fermée : `discard`, rien de créé. Échec de création : message, retour au menu
+  de relecture.
+- `cli.py` : `--cadrer-avec-agent` (troisième voie exclusive), `--agent-cadrage`,
+  `--model-cadrage`, `--effort-cadrage` (refusés sans le mode agent ; lus du fichier seulement avec
+  lui), aide de `new` et de `--demande` selon le §2.1 ; `_request` factorisé. `settings.py` : trois
+  clés. Docs : `COMMANDES.md` (§ Cadrage avec agent), `CONFIGURATION.md`, `dialogforge.toml.exemple`.
+- `tests/test_framing_creation.py` : 11 tests de bout en bout par `cli.main` (tests §14 n° 7, 8, 9,
+  12, 13, 35, 41, 43-45, 51-61, 63, 64, 75, 76 ; A et B ne voient jamais le cadrage lors d'un vrai
+  `run` à faux agents ; critère 2 de l'aide).
+
+### Test Results
+ruff vert ; mypy strict vert (75 fichiers) ; **738 passés / 2 ignorés** ; scénario rc=0. Taille :
+**+255** (4 953 → 5 208) ; croissance depuis `ba5c0a4` : **+1 926 / 2 500, marge ≈ 574**. Façade +
+`gui/` : 1 226 / 2 000. **Lots 2 et 3 non commités.**
+
+### Lots 2 et 3 commités — pause
+Sur demande du PO : un commit `feat` pour les lots 2 et 3 (code, tests, documentation utilisateur
+que `tests/test_docs.py` exige), un commit `docs` pour le plan. Puis pause. À la reprise : le PO
+choisit entre le protocole de caractérisation du lot 4 (à rédiger, puis à lancer par lui) et le
+lot 5 (GUI).
