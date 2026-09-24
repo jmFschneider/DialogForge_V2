@@ -172,9 +172,19 @@ la fois — jamais de worker ni de processus détaché ([`conception/GUI_V1.md`]
 CLI et GUI partagent les mêmes dossiers, la même façade et les mêmes actions permises : ce que l'une
 fait, l'autre le voit au prochain rafraîchissement.
 
-Au lot 3, l'écran de suivi est **strictement en lecture seule** : accueil, collaborations récentes,
-ouverture et lecture des documents. Répondre, relancer, retraiter, corriger et décider arrivent au
-lot 5.
+L'écran de suivi offre les mêmes actions que la CLI (répondre, relancer, retraiter, corriger,
+décider), une par bouton, chacune confirmée quand elle peut effectuer un appel.
+
+À la création, **Cadrer avec un agent** est la troisième façon d'écrire la demande, à côté de la
+saisie et de l'import : c'est le [cadrage avec agent](#cadrage-avec-agent) de `new`, dans une fenêtre
+de conversation. Vous choisissez l'agent de cadrage, et au besoin son modèle et son effort. Les sources
+sont facultatives, et vous décrivez votre idée. F répond dans cette fenêtre : envoyez vos réponses,
+corrigez un point ou continuez après une proposition, et **Clore maintenant** demande la rédaction.
+Pendant chaque échange, les boutons sont désactivés : l'appel tourne dans le même fil que les cycles
+A/B, jamais en même temps qu'eux. Le brouillon de F remplace alors le texte de la demande, et vous le
+corrigez comme un texte saisi. **Reprendre le cadrage** repart dans la même session. Rien n'est créé
+avant **Créer seulement** ou **Créer et démarrer**. Annuler, fermer la fenêtre de conversation,
+changer de mode ou quitter l'écran ferme la session et efface ses traces temporaires.
 
 ## Statuts
 

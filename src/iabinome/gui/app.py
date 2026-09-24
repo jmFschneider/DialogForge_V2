@@ -39,7 +39,7 @@ def _on_close(root: tk.Tk, controller: Controller) -> None:
     exécution active, les trois branches du §9.3 sont offertes — la fenêtre
     reste ouverte jusqu'à la frontière sûre pour la seconde."""
     if not controller.has_active_run():
-        root.destroy()
+        _destroy(root, controller)
         return
     choice = dialogs.choose(
         root, "Une exécution est active", _CLOSE_BODY,
@@ -49,7 +49,7 @@ def _on_close(root: tk.Tk, controller: Controller) -> None:
         return
     if choice == _INTERRUPT:
         controller.interrupt_active_run()
-        root.destroy()
+        _destroy(root, controller)
         return
     controller.pause_active_run()
     _wait_then_close(root, controller)
@@ -59,6 +59,13 @@ def _wait_then_close(root: tk.Tk, controller: Controller) -> None:
     """Un fil unique, celui du moteur, décide quand il est sûr de fermer —
     ce fil Tk ne fait qu'attendre, sans jamais bloquer `mainloop()` (§9.3)."""
     if not controller.has_active_run():
-        root.destroy()
+        _destroy(root, controller)
         return
     root.after(_WAIT_MS, lambda: _wait_then_close(root, controller))
+
+
+def _destroy(root: tk.Tk, controller: Controller) -> None:
+    """Un cadrage ouvert ne survit pas à la fenêtre : sa session se ferme et son
+    dossier jetable disparaît (`CADRAGE_AGENT.md` §3.2)."""
+    controller.discard_framing()
+    root.destroy()

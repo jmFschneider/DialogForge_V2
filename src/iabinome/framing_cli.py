@@ -138,13 +138,8 @@ def _review(
 
 
 def _show(turn: Turn) -> None:
-    if turn.problem is not None:
-        print(f"\nIncident : {turn.problem}")
-        if turn.exchange.text:
-            print(turn.exchange.text)
-    elif turn.reply is not None and turn.reply.kind != DRAFT:
-        # L'état de cadrage sert aux contrôles et à la provenance ; l'écran montre le reste.
-        print("\n" + turn.reply.body.split("\nETAT_CADRAGE")[0].rstrip())
+    if turn.problem is not None or (turn.reply is not None and turn.reply.kind != DRAFT):
+        print("\n" + framing.shown(turn))
 
 
 def _block(prompt: str) -> str:

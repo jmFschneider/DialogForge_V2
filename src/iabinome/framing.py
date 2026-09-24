@@ -452,6 +452,16 @@ class Framing:
         storage.write_atomic_text(self.root / "transcription.md", "\n".join(parts))
 
 
+def shown(turn: Turn) -> str:
+    """Ce que l'écran montre d'un tour, en CLI comme en GUI : l'incident et la sortie
+    gardée, ou la réponse de F sans son état de cadrage, qui sert aux contrôles et à la
+    provenance, pas à la lecture."""
+    if turn.problem is not None:
+        return "\n".join(filter(None, (f"Incident : {turn.problem}", turn.exchange.text)))
+    assert turn.reply is not None
+    return turn.reply.body.split("\nETAT_CADRAGE")[0].rstrip()
+
+
 def _unanswered(body: str) -> list[str]:
     """Les questions restées sans réponse d'une proposition (bloc `SANS_REPONSE`)."""
     found, inside = [], False

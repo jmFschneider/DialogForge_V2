@@ -14,10 +14,11 @@ from tkinter import BooleanVar, Misc, StringVar, filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 from typing import TYPE_CHECKING
 
-from ... import facade, settings, storage
+from ... import facade, framing, settings, storage
 from ...models import MissionKind, ReviewerAccess
 from ...registry import ADAPTERS
 from .. import dialogs
+from . import cadrage
 
 if TYPE_CHECKING:
     from ..controller import Controller
@@ -95,12 +96,13 @@ class CreationView(ttk.Frame):
         ttk.Label(parent, text="Demande").pack(anchor="w", pady=(12, 0))
         modes = ttk.Frame(parent)
         modes.pack(fill="x")
-        ttk.Radiobutton(
-            modes, text="Saisir", value="saisir", variable=self._mode, command=self._reset_import,
-        ).pack(side="left")
-        ttk.Radiobutton(
-            modes, text="Importer un fichier", value="importer", variable=self._mode,
-        ).pack(side="left")
+        for text, value in (
+            ("Saisir", "saisir"), ("Importer un fichier", "importer"),
+            ("Cadrer avec un agent", "agent"),
+        ):
+            ttk.Radiobutton(
+                modes, text=text, value=value, variable=self._mode, command=self._on_mode,
+            ).pack(side="left")
         self._demande_text = ScrolledText(parent, height=8, wrap="word")
         self._demande_text.pack(fill="x", pady=(4, 0))
         import_row = ttk.Frame(parent)
@@ -109,6 +111,10 @@ class CreationView(ttk.Frame):
         self._source_label_text = ttk.Label(import_row, text="Source affichée : saisie directe")
         self._source_label_text.pack(side="left", padx=(8, 0))
         self._demande_text.bind("<<Modified>>", self._on_demande_changed)
+        self._import_row = import_row
+        self._framing_panel = cadrage.FramingPanel(
+            parent, on_start=self._start_framing, on_resume=self._resume_framing,
+        )
 
     def _build_type_and_agents(self, parent: ttk.Frame) -> None:
         row = ttk.Frame(parent)
@@ -253,8 +259,20 @@ class CreationView(ttk.Frame):
         levels = () if adapter is None else adapter.capabilities.effort_levels
         return (_NON_SPECIFIE, *levels)
 
+    def _on_mode(self) -> None:
+        """Quitter le mode agent termine le cadrage ; son brouillon reste dans l'éditeur."""
+        if self._mode.get() == "agent":
+            self._framing_panel.pack(fill="x", after=self._import_row)
+        else:
+            self._controller.discard_framing()
+            self._framing_panel.pack_forget()
+        if self._mode.get() == "saisir":
+            self._reset_import()
+        self._toggle_kind()
+
     def _toggle_kind(self) -> None:
-        if self._kind.get() == "Recherche":
+        # Sources obligatoires en recherche, facultatives pour un cadrage (§2.2).
+        if self._kind.get() == "Recherche" or self._mode.get() == "agent":
             self._corpus_frame.pack(fill="x")
         else:
             self._corpus_frame.pack_forget()
@@ -298,20 +316,24 @@ class CreationView(ttk.Frame):
             text=f"Délai effectif : {resolved.seconds:g} s — origine : {resolved.origin}"
         )
 
-    def _local_errors(self) -> str | None:
+    def _local_errors(self, *, framing_start: bool) -> str | None:
         if not self._dossier.get().strip():
             return "Le dossier est requis."
-        if not self._current_text().strip():
+        if not framing_start and not self._current_text().strip():
             return "La demande ne peut pas être vide."
         if not self._revisions.get().strip().lstrip("-").isdigit():
             return "Révisions maximales : un entier attendu."
         return None
 
-    def _build_request(self) -> facade.CreationRequest | None:
-        local_error = self._local_errors()
+    def _build_request(self, *, framing_start: bool = False) -> facade.CreationRequest | None:
+        local_error = self._local_errors(framing_start=framing_start)
+        framed = None
+        if local_error is None and self._mode.get() == "agent" and not framing_start:
+            local_error, framed = cadrage.reviewed(self._controller, self._current_text())
         if local_error is not None:
             self._error.configure(text=local_error)
             return None
+        sources = framed is None
         return facade.CreationRequest(
             collab=Path(self._dossier.get()), demande=self._demande_source(),
             kind=_KIND[self._kind.get()], reviewer_access=_ACCESS[self._reviewer.get()],
@@ -320,9 +342,12 @@ class CreationView(ttk.Frame):
             model_a=self._model_a.get() or None, model_b=self._model_b.get() or None,
             effort_a=self._effort(self._effort_a), effort_b=self._effort(self._effort_b),
             web_access=self._web_access.get(),
-            source_root=Path(self._source_root.get()) if self._source_root.get() else None,
-            source_list=Path(self._source_list.get()) if self._source_list.get() else None,
-            source_label=self._source_label.get() or None,
+            source_root=Path(self._source_root.get()) if sources and self._source_root.get()
+            else None,
+            source_list=Path(self._source_list.get()) if sources and self._source_list.get()
+            else None,
+            source_label=(self._source_label.get() or None) if sources else None,
+            framing=framed,
         )
 
     def _effort(self, var: StringVar) -> str | None:
@@ -349,13 +374,11 @@ class CreationView(ttk.Frame):
         request = self._build_request()
         if request is None:
             return
-        resolved = settings.resolve_timeout(
-            self._config_path.get() or None,
-            float(self._timeout_override.get()) if self._timeout_override.get() else None,
-            base=request.collab.parent,
-        )
+        resolved = self._resolved_timeout(request.collab)
         body = (
-            "La création du dossier est locale et ne consomme aucun quota.\n"
+            ("Vous avez relu le texte qui deviendra demande.md. La création figera son "
+             "empreinte. La poursuite lancera ensuite A.\n\n" if request.framing else "")
+            + "La création du dossier est locale et ne consomme aucun quota.\n"
             "La poursuite lancera ensuite le premier appel fournisseur.\n\n"
             f"Agent : {request.agent_a}, rôle A\n"
             "Phase : proposition initiale\n"
@@ -373,3 +396,40 @@ class CreationView(ttk.Frame):
             return
         self._controller.show_suivi(result.path)
         self._controller.start_run(result.path, timeout_seconds=resolved.seconds)
+
+    # -- Cadrer avec un agent (`CADRAGE_AGENT.md` §4) --
+
+    def _resolved_timeout(self, collab: Path) -> settings.Timeout:
+        return settings.resolve_timeout(
+            self._config_path.get() or None,
+            float(self._timeout_override.get()) if self._timeout_override.get() else None,
+            base=collab.parent,
+        )
+
+    def _start_framing(self) -> None:
+        base = self._build_request(framing_start=True)
+        if base is None:
+            return
+        try:
+            timeout = self._resolved_timeout(base.collab).seconds
+            f = cadrage.begin(self._controller, base, self._framing_panel, timeout)
+        except (facade.CreationError, framing.FramingError, settings.SettingsError,
+                ValueError) as exc:
+            self._error.configure(text=str(exc))
+            return
+        self._error.configure(text="")
+        cadrage.FramingDialog(self, self._controller, ("Idée", f.idea), f.start, self._on_draft)
+
+    def _resume_framing(self) -> None:
+        error = cadrage.resume(self, self._controller, self._on_draft)
+        if error is not None:
+            self._error.configure(text=error)
+
+    def _on_draft(self, draft: str) -> None:
+        """§4.4 : le brouillon remplace le contenu de l'éditeur ; on le corrige normalement."""
+        self._demande_text.delete("1.0", "end")
+        self._demande_text.insert("1.0", draft)
+        self._demande_text.edit_modified(False)
+        self._source_label_text.configure(
+            text="Source affichée : brouillon du cadrage, à relire avant de créer"
+        )
