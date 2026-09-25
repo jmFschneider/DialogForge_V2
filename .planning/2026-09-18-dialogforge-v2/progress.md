@@ -1695,4 +1695,8 @@ Portée déclarée par le PO : « nous reprenons avec le lot 4 ».
 ### Test Results
 ruff vert ; mypy strict vert (77 fichiers) ; **758 passés / 2 ignorés** ; scénario rc=0 ;
 `git diff --check` propre. Taille : `src/` = 5 572 (+52 ; +2 290 / 2 500, marge ≈ 210), compteur
-tokenize recalé sur 3 282 (`ba5c0a4`) et 5 520 (`db37cc8`). Rien n'est commité.
+tokenize recalé sur 3 282 (`ba5c0a4`) et 5 520 (`db37cc8`).
+
+### Commits du lot 4
+Sur demande du PO : `028a1dd` (feat : adaptateurs et tests) et `ec0c7a6` (docs : protocole,
+limites, règle, plan).
