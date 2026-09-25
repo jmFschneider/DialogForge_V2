@@ -23,7 +23,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from . import incidents, objections, storage
+from . import contracts, incidents, objections, storage
 from .models import State, Status
 
 DECISIONS = "decisions.json"
@@ -38,6 +38,18 @@ _ACCEPTANCES = (ACCEPTED, ACCEPTED_WITH_RESERVES)
 
 def _sha(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+
+
+def demande_sha(collab: Path) -> str | None:
+    """L'empreinte de `demande.md` **sur le disque**, normalisée comme le moteur
+    la calcule (`workflow._check_demande`) ; `None` si elle est absente."""
+    path = collab / "demande.md"
+    if not path.is_file():
+        return None
+    try:
+        return contracts.normalize(storage.read_text(path)[0]).sha256
+    except UnicodeDecodeError:
+        return "illisible"
 
 
 def version_of(collab: Path, state: State) -> dict[str, Any]:
@@ -89,9 +101,44 @@ def latest(collab: Path) -> dict[str, Any] | None:
     return entries[-1] if entries else None
 
 
+_ARTIFACTS = (
+    ("livrable_sha256", "le livrable a changé", "livrable absent"),
+    ("revue_sha256", "la revue a changé", "revue absente"),
+)
+
+
+def discrepancies(collab: Path, decision: dict[str, Any], state: State) -> tuple[str, ...]:
+    """Ce qui, sur le disque, ne correspond plus à la version décidée — vide si la
+    décision y porte encore. La demande est relue, pas reprise de l'état. Une
+    acceptation exige en plus un livrable et une revue : une absence n'est pas
+    une version qu'on accepte."""
+    version, current = decision["version"], version_of(collab, state)
+    found = []
+    for key, changed, absent in _ARTIFACTS:
+        if current[key] is None and (is_acceptance(decision) or version.get(key) is not None):
+            found.append(absent)
+        elif version.get(key) != current[key]:
+            found.append(changed)
+    on_disk = demande_sha(collab)
+    if on_disk is None:
+        found.append("demande.md absente")
+    elif on_disk != state.demande_sha256 or on_disk != version.get("demande_sha256"):
+        found.append("la demande a changé")
+    if not found and version != current:
+        found.append("la révision a changé")
+    return tuple(found)
+
+
+def acceptance_gaps(collab: Path, state: State) -> tuple[str, ...]:
+    """Ce qui empêche d'accepter ce qui est sur le disque : la même vérification
+    que celle qui dit si une acceptation passée s'applique encore."""
+    candidate = {"decision": ACCEPTED, "version": version_of(collab, state)}
+    return discrepancies(collab, candidate, state)
+
+
 def applies_to_current(collab: Path, decision: dict[str, Any], state: State) -> bool:
     """La décision porte-t-elle encore sur ce qui est sur le disque ?"""
-    return bool(decision["version"] == version_of(collab, state))
+    return not discrepancies(collab, decision, state)
 
 
 def is_acceptance(decision: dict[str, Any] | None) -> bool:
@@ -117,8 +164,8 @@ def describe(collab: Path, state: State) -> str:
     text = f"{label} le {decision['at']}"
     if decision["decision"] in _ACCEPTANCES + (TARGETED_CORRECTION,):
         text += f" (livrable {str(decision['version']['livrable_sha256'])[:12]})"
-        if not applies_to_current(collab, decision, state):
-            text += " — porte sur une version antérieure : le livrable a changé depuis"
+        if found := discrepancies(collab, decision, state):
+            text += f" — porte sur une version antérieure : {' ; '.join(found)}"
     return text
 
 

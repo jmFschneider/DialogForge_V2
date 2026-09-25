@@ -138,6 +138,15 @@ class TestSuiviView(ViewCase):
         names = [str(child.cget("text")) for child in view._documents_row.winfo_children()]
         self.assertIn(Path(decisions.DELIVERED).name, names)
 
+    def test_an_acceptance_that_no_longer_applies_names_what_changed(self) -> None:
+        collab = self.accepted_collaboration()
+        demande = collab / "demande.md"
+        demande.write_bytes(demande.read_bytes() + b"\nAjout hors cycle.\n")
+        view = SuiviView(_ROOT, self.controller, collab)
+        self.assertNotIn("Version acceptée", str(view._title.cget("text")))
+        self.assertIn("porte sur une version antérieure : la demande a changé",
+                      str(view._result.cget("text")))
+
     def test_clicking_a_document_shows_its_content_read_only(self) -> None:
         collab = self.accepted_collaboration()
         view = SuiviView(_ROOT, self.controller, collab)

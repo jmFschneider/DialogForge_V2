@@ -12,13 +12,15 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import re
+import shutil
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from iabinome import cli, decisions, demande, settings, workflow
-from iabinome.models import State
+from iabinome import cli, decisions, demande, facade, planlink, settings, workflow
+from iabinome.models import State, Status
 from tests import fakes
 from tests.test_objections import finding, reply, review_v2
 from tests.test_promotion import PromotionCase, revision
@@ -164,6 +166,132 @@ class TestADecisionIsAboutOneVersion(DecisionCase):
         self.assertIn("porte sur une version antérieure", described)
         self.assertNotIn("le résultat est accepté", decisions.next_action(collab, state))
         self.assertIn("--accept", decisions.next_action(collab, state))
+
+
+class TestAnAcceptanceNeedsItsArtifactsOnDisk(DecisionCase):
+    """Audit du 2026-09-25, F01 et F02 : une acceptation porte sur un livrable, une
+    revue et une demande **présents sur le disque**, la demande relue et non reprise
+    de l'état. Chaque cas est joué sur une copie du même cycle terminé."""
+
+    # (artefact, altération) → ce que le diagnostic doit nommer
+    _EXPECTED = {
+        ("livrable", "absent"): "livrable absent",
+        ("livrable", "modifié"): "le livrable a changé",
+        ("revue", "absent"): "revue absente",
+        ("revue", "modifié"): "la revue a changé",
+        ("demande", "absent"): "demande.md absente",
+        ("demande", "modifié"): "la demande a changé",
+    }
+
+    def setUp(self) -> None:
+        super().setUp()
+        patcher = mock.patch.object(settings, "SEARCH_PATHS", ())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def copies(self, *, accept: bool) -> list[tuple[str, Path, str, bool]]:
+        """Une copie par altération, avec le diagnostic attendu et si une nouvelle
+        acceptation doit être refusée : un livrable ou une revue modifiés mais
+        présents sont une autre version, qu'on peut accepter ; une absence ou une
+        demande qui ne correspond plus à l'état ne le sont pas."""
+        base = self.clean()
+        if accept:
+            self.decide(base, decisions.ACCEPTED)
+        found = []
+        for (artifact, how), expected in self._EXPECTED.items():
+            copy = Path(shutil.copytree(base, self.root / f"{artifact}-{how}"))
+            self.alter(copy, artifact, how)
+            refused = how == "absent" or artifact == "demande"
+            found.append((f"{artifact} {how}", copy, expected, refused))
+        return found
+
+    def alter(self, collab: Path, artifact: str, how: str) -> None:
+        path = {
+            "livrable": collab / decisions.DELIVERED,
+            "revue": collab / str(self.state(collab).latest_review),
+            "demande": collab / "demande.md",
+        }[artifact]
+        if how == "absent":
+            path.rename(path.with_name(path.name + ".audit-backup"))
+        elif artifact == "revue":  # une revue modifiée qui reste un JSON valide
+            path.write_text(json.dumps(json.loads(path.read_text(encoding="utf-8"))),
+                            encoding="utf-8")
+        else:
+            path.write_bytes(path.read_bytes() + b"\nAjout hors cycle.\n")
+
+    def run_cli(self, *argv: str) -> tuple[int, str]:
+        with redirect_stdout(io.StringIO()) as out, redirect_stderr(io.StringIO()) as err:
+            code = cli.main(list(argv))
+        return code, out.getvalue() + err.getvalue()
+
+    def test_an_absence_or_a_changed_demande_is_refused_and_nothing_recorded(self) -> None:
+        for case, collab, expected, refused in self.copies(accept=False):
+            if not refused:
+                continue
+            with self.subTest(case):
+                self.assertIn(expected, self.refused(collab, decisions.ACCEPTED))
+                self.assertIn(expected, self.refused(
+                    collab, decisions.ACCEPTED_WITH_RESERVES, reserves="Réserve."))
+                code, out = self.run_cli("decide", str(collab), "--accept")
+                self.assertEqual(code, 1)
+                self.assertIn(expected, out)
+                self.assertEqual(decisions.read(collab), [])
+
+    def test_an_earlier_acceptance_no_longer_applies_wherever_it_is_shown(self) -> None:
+        for case, collab, expected, refused in self.copies(accept=True):
+            with self.subTest(case):
+                state = self.state(collab)
+                self.assertFalse(decisions.accepted(collab, state))
+                described = decisions.describe(collab, state)
+                self.assertIn(f"porte sur une version antérieure : {expected}", described)
+                self.assertNotIn("le résultat est accepté", decisions.next_action(collab, state))
+                snapshot = facade.inspect_collaboration(collab)
+                self.assertEqual(snapshot.presentation.status_label,
+                                 "Cycle terminé — décision requise")
+                self.assertIn(expected, snapshot.current_decision.discrepancies)
+                self.assertIn(f"  Décision : {described}.", planlink.summary(collab))
+                for command in ("status", "show"):
+                    code, out = self.run_cli(command, str(collab))
+                    self.assertEqual(code, 0, out)
+                    self.assertIn(expected, out)
+                    self.assertNotIn("le résultat est accepté", out)
+                if refused:
+                    self.assertIn(expected, self.refused(collab, decisions.ACCEPTED))
+                    self.assertEqual(len(decisions.read(collab)), 1, "l'ancienne est gardée")
+                else:  # une autre version, présente : elle s'accepte explicitement
+                    self.decide(collab, decisions.ACCEPTED)
+                    self.assertEqual(len(decisions.read(collab)), 2)
+                    self.assertTrue(decisions.accepted(collab, self.state(collab)))
+
+    def test_an_artifact_put_back_makes_the_acceptance_apply_again(self) -> None:
+        collab = self.clean()
+        self.decide(collab, decisions.ACCEPTED)
+        delivered = collab / decisions.DELIVERED
+        delivered.rename(delivered.with_name("mis-de-cote"))
+        self.assertFalse(decisions.accepted(collab, self.state(collab)))
+        delivered.with_name("mis-de-cote").rename(delivered)
+        self.assertTrue(decisions.accepted(collab, self.state(collab)))
+
+    def test_an_acceptance_recorded_without_a_livrable_is_not_an_acceptance(self) -> None:
+        collab = self.clean()
+        (collab / decisions.DELIVERED).unlink()
+        state = self.state(collab)
+        decisions.record(collab, decisions.ACCEPTED, state)  # ce qu'écrivait `decide` avant
+        self.assertIsNone(decisions.read(collab)[0]["version"]["livrable_sha256"])
+        self.assertFalse(decisions.accepted(collab, state))
+        self.assertIn("livrable absent", decisions.describe(collab, state))
+
+    def test_the_demande_is_read_with_the_engine_normalization(self) -> None:
+        collab = self.clean()
+        path = collab / "demande.md"
+        path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes().replace(b"\n", b"\r\n"))
+        self.decide(collab, decisions.ACCEPTED)
+        self.assertTrue(decisions.accepted(collab, self.state(collab)))
+
+    def test_a_stop_needs_no_livrable(self) -> None:
+        collab = self.clean()
+        (collab / decisions.DELIVERED).unlink()
+        self.assertIs(self.decide(collab, decisions.STOPPED).status, Status.STOPPED)
 
 
 class TestStop(DecisionCase):

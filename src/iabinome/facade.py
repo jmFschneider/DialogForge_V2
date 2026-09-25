@@ -83,6 +83,7 @@ class DecisionSummary:
     at: str | None
     applies_to_current_version: bool
     version_digest: str | None
+    discrepancies: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -165,10 +166,11 @@ def _decision_summary(path: Path, state: State) -> DecisionSummary:
     if latest is None:
         return DecisionSummary(None, None, False, None)
     digest = latest["version"].get("livrable_sha256")
+    found = decisions.discrepancies(path, latest, state)
     return DecisionSummary(
         kind=str(latest["decision"]), at=str(latest["at"]),
-        applies_to_current_version=decisions.applies_to_current(path, latest, state),
-        version_digest=None if digest is None else str(digest)[:12],
+        applies_to_current_version=not found,
+        version_digest=None if digest is None else str(digest)[:12], discrepancies=found,
     )
 
 

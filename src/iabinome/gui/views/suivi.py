@@ -145,7 +145,8 @@ class SuiviView(ttk.Frame):
         text = f"Prochaine action : {snapshot.presentation.next_action_text}"
         if decision.kind is None:
             return text
-        changed = "" if decision.applies_to_current_version else " — le livrable a changé depuis"
+        found = decision.discrepancies
+        changed = f" — porte sur une version antérieure : {' ; '.join(found)}" if found else ""
         return f"Décision : {decision.kind} le {decision.at}{changed}\n{text}"
 
     def _action_handler(self, action: AllowedAction) -> Callable[[], None]:

@@ -1014,6 +1014,11 @@ def decide(
                     f"statut {state.status.value} : il n'y a rien à accepter tant que le cycle"
                     " n'est pas allé à son terme (AWAITING_APPROVAL)"
                 )
+            if gaps := decisions.acceptance_gaps(collab, state):
+                raise WorkflowError(
+                    "acceptation refusée, le dossier ne correspond plus à l'état :"
+                    f" {' ; '.join(gaps)} — rien n'est consigné"
+                )
             if decisions.accepted(collab, state):
                 raise WorkflowError("ce résultat est déjà accepté : la décision ne se répète pas")
             if kind == decisions.ACCEPTED_WITH_RESERVES and not (reserves or "").strip():
