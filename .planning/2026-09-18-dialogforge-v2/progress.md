@@ -1715,3 +1715,57 @@ limites, règle, plan).
 - **Défaut trouvé (lot 2), non corrigé** : `open_questions` garde les `SANS_REPONSE` de la dernière
   proposition après une reprise du cadrage ; reproduit chez les deux outils. Décision demandée au PO.
 - Lot 4 coché dans le plan. Résultats consignés dans `reference/PROTOCOLE_CADRAGE_LOT4.md`, non commités.
+
+## Session 2026-09-25 (soir) — plan de finalisation inscrit, partie 1 engagée
+
+### Actions
+- Lu `reference/astra_finalisation/PLAN_TRAVAIL.md` et les constats F01-F04 de
+  `reference/Astra_AUDIT_BOUT_EN_BOUT/RAPPORT_AUDIT.md`. Causes revérifiées dans le code courant :
+  `decisions._sha` rend `None` pour un fichier absent (l. 39), `version_of` reprend
+  `state.demande_sha256` au lieu de relire `demande.md` (l. 50), « Gratuit et local » (l. 268).
+- Proposition amendée d'après une relecture externe transmise par le PO : n'inscrire que le travail
+  engagé ; F01/F02 d'abord ; `open_questions` tranché sur le sens ; le lot 4 initial (développement
+  assisté) confie le travail à l'agent habituel, sans exécution autonome par le moteur ; mesure
+  d'utilité à partir des traces existantes ; pas de commit global de l'arbre.
+- Vérifié : `CLAUDE.md:78` dit la relecture palier par palier suspendue depuis le 2026-09-03, alors
+  que `project/RULES.md:64` consigne sa réouverture le 2026-09-05 — incohérence documentaire (F04),
+  à corriger d'après cette chronologie quand F04 sera engagé ; aucune décision nouvelle requise.
+- Commit `b2bf4fe` (sur demande du PO) : résultats de la partie 2 du lot 4, limité aux 4 fichiers de
+  cette session. Les dossiers `reference/Astra_AUDIT_BOUT_EN_BOUT/`, `reference/astra_finalisation/`
+  et `reference/PROMPT_AUDIT_BOUT_EN_BOUT*.md` restent non suivis : autre provenance, intouchés.
+- Plan : `Next Step` réécrit (ordre 7.1 → `open_questions` → 6.6), phase 7 ouverte avec 7.1,
+  préalable ajouté à 6.6, Extension précisée, décision consignée.
+
+### 7.1 — F01/F02 corrigés (non commité)
+- `decisions.py` : `demande_sha` relit `demande.md` avec `contracts.normalize` (comme
+  `workflow._check_demande`) ; `discrepancies` nomme ce qui ne correspond plus (livrable/revue
+  absents ou changés, demande absente ou changée, révision) et traite une absence comme un défaut
+  pour une acceptation ; `acceptance_gaps` applique la même vérification à ce qui est sur le disque ;
+  `applies_to_current` et `describe` en dérivent. `version_of` et le format de `decisions.json`
+  inchangés (rejouabilité de `record`, décisions historiques).
+- `workflow.decide` : refus d'une acceptation, sous le verrou, sans nouvelle entrée, si le dossier
+  ne correspond plus à l'état. Arrêt toujours possible sans livrable.
+- Façade : `DecisionSummary.discrepancies` ; la vue de suivi nomme l'artefact au lieu de « le
+  livrable a changé » en dur.
+- Choix : un livrable ou une revue modifiés mais présents sont une autre version, acceptable
+  explicitement (comportement antérieur conservé) ; seules une absence ou une demande divergente
+  sont refusées.
+- Tests : `TestAnAcceptanceNeedsItsArtifactsOnDisk` (6 altérations sur copie, chacune vérifiée
+  dans `decide`, `status`, `show`, façade, `planlink.summary` ; remise en place ; ancienne
+  acceptation sans livrable ; BOM/CRLF ; arrêt sans livrable), plus un test de la vue de suivi.
+  11 échecs sur l'ancien code, verts sur le nouveau.
+- Relecture à froid par un agent Sonnet (lecture seule) : rien de bloquant. Trois constats
+  mineurs : (1) une `CORRECTION_CIBLEE` menée à terme se décrit « porte sur une version
+  antérieure : … la demande a changé » — exact, comportement booléen inchangé ; (2) un arrêt
+  brutal entre `decisions.record` et `publish` d'une correction fait refuser une acceptation avec
+  « la demande a changé » — refus sûr, message identique à une altération externe ; non changé ;
+  (3) la vue de suivi n'était pas testée → test ajouté. Elle affiche aussi les écarts d'un `ARRET`,
+  comme avant ; non changé.
+- Outil de taille : compteur tokenize réécrit dans le scratchpad, recalé exactement sur 3 282
+  (`ba5c0a4`), 5 520 (`db37cc8`), 5 572 (`b2bf4fe`).
+
+### Test Results (7.1)
+ruff (`src tests`) vert ; mypy strict vert (77 fichiers) ; **765 passés / 2 ignorés** ; scénario
+rc=0 ; `git diff --check` propre. `ruff check .` échoue sur les scripts d'audit non suivis de
+`reference/Astra_AUDIT_BOUT_EN_BOUT/` (64 erreurs, hors de ce changement). Taille `src/` = 5 611
+(+39 ; +2 329 / 2 500, marge ≈ 171).

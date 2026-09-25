@@ -82,6 +82,7 @@
 | `reference/cycle_sans_fournisseur.py` rend rc=0 même en `ERROR` | Corrigé le 2026-09-19 : rc=1 hors de `AWAITING_APPROVAL` sans objection ouverte |
 | `ruff format --check` signale 26 fichiers | Laissé ouvert : `ruff format` n'appartient pas à la porte historique du projet. À trancher explicitement, pas à subir |
 | Codex ne lit pas le corpus sous `--ignore-rules` + `approval: never` (3.1, 2026-09-20) | Qualifié sans quota le 2026-09-21 : cause = politique d'exécution ; un profil borné n'est pas constructible (voir Research Findings). **Tranché par le PO** (`astra/07_recentrage_simplicite.md`) : petite correction ciblée (`windows.sandbox=elevated`), pas d'injection du corpus ni de profil de permissions. Qualifiée le 21, premier usage réel en 3.2 le 22 (web ouvert, pas de lecture de corpus local dans ce cas) |
+| Audit de bout en bout (2026-09-25) : F01 — une acceptation peut être enregistrée sans livrable ou sans revue (`livrable_sha256: null`) ; F02 — une demande modifiée ou absente n'invalide pas l'acceptation affichée (`status`, `show`, façade GUI, `plan`) | Reproduits sur copies, causes relues dans le code le 2026-09-25. À corriger ensemble en 7.1. F03 (conseil « gratuit » qui peut appeler B) et F04 (rappels périmés du plan et des règles) : constatés, non engagés |
 
 ## Resources
 - Plan de mise en œuvre : `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`

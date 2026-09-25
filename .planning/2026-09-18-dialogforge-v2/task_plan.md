@@ -6,8 +6,18 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Phase 6 (cadrage avec agent F) — lots 1 à 5 faits ; lot 4 commité (`028a1dd`, `ec0c7a6`), ses résultats de partie 2 non commités.**
-Session du 2026-09-25, portée déclarée par le PO : lot 4.
+**Partie 1 du plan de finalisation, engagée par le PO le 2026-09-25** (voir Decisions Made).
+Proposition de classement : `reference/astra_finalisation/PLAN_TRAVAIL.md` — une proposition, pas un
+second suivi : seul ce qui est inscrit dans les phases ci-dessous est engagé.
+Ordre retenu :
+1. ~~**7.1 — F01/F02**~~ fait le 2026-09-25, non commité (voir la case 7.1).
+2. **6.6 préalable — `open_questions`** : le PO tranche d'abord le **sens** voulu du champ, à partir des
+   deux traces réelles ; la taille du correctif ne décide pas.
+3. **6.6 — recette du lot 6** (critères §15, taille remesurée).
+Puis, sur décision explicite seulement : développement assisté (§ Extension identifiée).
+Marge de taille après 7.1 : **≈ 171 lignes** (`src/` = 5 611, +2 329 / 2 500).
+
+**État de la phase 6 (cadrage avec agent F) — lots 1 à 5 faits et commités (lot 4 : `028a1dd`, `ec0c7a6`, `b2bf4fe`).**
 Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3).
 - **Lot 4 conforme chez les deux outils** (`reference/PROTOCOLE_CADRAGE_LOT4.md`). Partie 1 (4 appels
   hors produit) : même identifiant, contexte rappelé, aucune écriture en reprise. Partie 2 (un cadrage
@@ -17,12 +27,11 @@ Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3).
   confirmée).
 - **Défaut du lot 2, trouvé par la partie 2, non corrigé, à trancher par le PO** : `open_questions`
   (provenance du cadrage) garde les `SANS_REPONSE` de la dernière proposition même après une reprise
-  du cadrage (chez les deux outils, question répondue ensuite toujours citée). Deux options proposées :
-  vider la liste à la reprise (recommandé, ~1 ligne + test) ou prendre les `QUESTIONS_OUVERTES` du
-  dernier tour de F (change le sens du champ).
+  du cadrage (chez les deux outils, question répondue ensuite toujours citée). Deux lectures du champ
+  possibles : les `SANS_REPONSE` de la dernière proposition, vidés à la reprise (~1 ligne + test), ou
+  les `QUESTIONS_OUVERTES` du dernier tour de F. À trancher sur le sens, pas sur la taille.
 - **Marge de taille : ≈ 210 lignes** (+2 290 / 2 500, `src/` = 5 572, compteur tokenize recalé sur
   3 282 à `ba5c0a4` et 5 520 à `db37cc8`) ; façade + `gui/` inchangés (1 537 / 2 000).
-- **Prochain** : décision du PO sur `open_questions`, puis le lot 6 (recette : critères §15, taille).
 
 **Historique — Phase 5 (GUI V1) : lots 1 à 6 faits et commités (`581cbb3`), la phase est complète.**
 Reste hors de ce plan, non engagé : le lot « Développement assisté » (§ Extension identifiée),
@@ -268,7 +277,8 @@ Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la se
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 6 (cadrage avec agent F) — ouverte le 2026-09-24. Phase 5 (GUI V1) complète et commitée
+Phase 7 (finalisation, partie 1) — ouverte le 2026-09-25, 7.1 fait (non commité). Phase 6 (cadrage avec
+agent F) — ouverte le 2026-09-24, reste 6.6. Phase 5 (GUI V1) complète et commitée
 (`581cbb3`). Phase 4 complète (J3, `v0.1.0`).
 
 ## Plan de référence
@@ -402,15 +412,40 @@ de la phase : 900 à 1 000 lignes.
 - [x] 6.5 Lot 5 — GUI : mode « Cadrer avec un agent », modale, unique fil moteur (§4, §14.7)
       *(2026-09-24, `c718055` : `gui/views/cadrage.py`, contrôleur, écran de création ;
       751 passés / 2 ignorés ; +310 lignes)*
-- [ ] 6.6 Lot 6 — recette : critères §15, taille remesurée
-- **Status:** in_progress — lots 1 à 5 faits ; reste le lot 6 (recette)
+- [ ] 6.6 Lot 6 — recette : critères §15, taille remesurée. **Préalable** : sens de `open_questions`
+      tranché par le PO, puis corrigé et testé (défaut trouvé par la partie 2 du lot 4). Le sens
+      retenu est documenté ; la case n'est cochée qu'après le résultat de la recette
+- **Status:** in_progress — lots 1 à 5 faits ; reste le lot 6 (recette), précédé du correctif `open_questions`
+
+### Phase 7: Finalisation, partie 1 — ouverte par le PO le 2026-09-25
+Source : `reference/astra_finalisation/PLAN_TRAVAIL.md` (partie 1), constats de
+`reference/Astra_AUDIT_BOUT_EN_BOUT/RAPPORT_AUDIT.md` §2. Le point 1.2 de ce plan est la case 6.6
+ci-dessus ; le point 1.3 reste conditionnel (§ Extension identifiée). Parties 2 et 3 non engagées.
+- [x] 7.1 F01/F02 — une acceptation porte sur des artefacts présents et sur la demande courante.
+      Au point commun de calcul des versions (`decisions.version_of`/`applies_to_current`) : la
+      demande est relue sur disque avec la normalisation du moteur (`workflow._check_demande`), pas
+      reprise de `etat.json` ; `workflow.decide` refuse une acceptation, sous le verrou existant et
+      sans nouvelle entrée, si livrable ou revue manque ou si la demande diverge. Arrêt avant
+      livraison toujours possible, décisions historiques conservées, diagnostic qui nomme l'artefact.
+      **Sortie** : sur copie, absence ou modification de chacun des trois artefacts → aucune
+      nouvelle acceptation invalide, l'ancienne dite non applicable, dans `decide`, `status`,
+      `show`, façade GUI et `plan` ; cas nominal et normalisation BOM/fins de ligne intacts ; taille
+      mesurée ; aucun appel fournisseur
+      *(2026-09-25, non commité : `decisions.discrepancies`/`acceptance_gaps`/`demande_sha`, refus
+      dans `workflow.decide`, `DecisionSummary.discrepancies`, vue de suivi ; format de
+      `decisions.json` inchangé. Un livrable ou une revue modifiés mais présents restent une autre
+      version, acceptable explicitement. 765 passés / 2 ignorés ; +39 lignes. Relu à froid par un
+      agent : rien de bloquant)*
+- **Status:** in_progress — 7.1 fait ; la partie 1 continue par le préalable de 6.6
 
 ## Extension identifiée (hors phases)
 
 **Lot 4 — Développement assisté.** Spécification acceptée exportée vers l'agent de développement,
 paquet de revue à partir d'une base Git identifiée, boucle de dispositions réemployée, essai sur
 une modification limitée et réversible. **Ne s'ouvre qu'après J3** et n'introduit ni worker, ni
-commit, ni déploiement automatique dans le moteur documentaire.
+commit, ni déploiement automatique dans le moteur documentaire. Le travail est confié à l'agent de
+développement habituel : ce n'est pas une exécution autonome par le moteur (`astra/06` §8). Point 1.3
+du plan de finalisation, critère de sortie compris ; **son ouverture reste une décision explicite du PO**.
 
 Également conditionnelle après J3, et non engagée : recherche externe. (L'interface graphique
 légère est engagée depuis le 2026-09-23 : phase 5.)
@@ -465,6 +500,7 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 | Lot 5 : quitter le mode agent, l'écran de création ou la fenêtre ferme le cadrage | La session n'existe que pour cet écran (§6.1 : possédée par un seul contrôleur, fermée avant A). `Controller._swap` et `app._destroy` appellent `discard_framing` : aucun chemin de sortie ne l'oublie. Le brouillon déjà rendu reste dans l'éditeur |
 | Lot 5 : le mode agent vit dans `gui/views/cadrage.py`, pas dans `creation.py` | `creation.py` aurait atteint 390 lignes effectives sur un plafond de vue de 400 ; il est à 370. `framing.shown` sert l'affichage d'un tour en CLI comme en GUI |
 | A3 — Session de F par **reprise d'identifiant** (PO, 2026-09-24) | Les deux outils l'offrent (`--session-id`/`--resume` ; `exec` puis `exec resume`), lu dans `--help`. Un processus maintenu ouvert n'existe en pratique que chez un seul outil (l'autre : `app-server`, expérimental). Le transport existant sert tel quel. Coût : le modèle relit le contexte à chaque tour dans les deux mécanismes — le gain vient de ce que F ne relit plus le projet ni l'idée. **Non mesuré** : `codex exec resume` n'accepte pas `--sandbox` ; la lecture seule en reprise est à caractériser au lot 4 |
+| **Plan de finalisation : partie 1 engagée, le reste en proposition** (PO, 2026-09-25) | `reference/astra_finalisation/PLAN_TRAVAIL.md` classe le travail restant en trois parties, d'après l'audit de bout en bout. Seuls les travaux engagés entrent dans les phases (7.1, préalable de 6.6), sans recopier la liste. Ordre : F01/F02 d'abord parce qu'ils touchent la validité de l'acceptation humaine ; `open_questions` se tranche sur le sens du champ, pas sur la taille du correctif. Parties 2 (F03, F04, `corpus.build()` vide, mesure d'utilité) et 3 : non engagées. La mesure d'utilité partira des traces existantes, avec de nouveaux appels seulement pour ce qu'elles ne permettent pas de reconstituer. Commits : un changement délimité par commit, sans préalable global sur l'arbre |
 
 ## Errors Encountered
 | Error | Resolution |
