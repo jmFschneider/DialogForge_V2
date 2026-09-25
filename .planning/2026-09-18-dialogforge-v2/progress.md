@@ -1650,3 +1650,49 @@ ni processus détaché). `docs/DEVELOPPEMENT.md` : la GUI, hors périmètre à J
 ### Test Results
 ruff vert ; mypy strict vert (77 fichiers) ; **752 passés / 2 ignorés** ; scénario rc=0 ;
 `git diff --check` propre. Taille : +2 (`src/` = 5 520 ; façade + `gui/` 1 537).
+
+## Session 2026-09-25 (suite) — phase 6, lot 4 : adaptateurs de F
+
+Portée déclarée par le PO : « nous reprenons avec le lot 4 ».
+
+### Partie 1 du protocole : lancée par le PO, lue sans quota
+- `C:\Projets\essais-3-1\cadrage-lot4\` absent en début de session, donc protocole non lancé.
+  Le PO l'a lancé (« pas de problème de réalisation »), 4 appels.
+- **Conforme chez les deux outils, sur les quatre lignes du tableau.** Claude : un objet JSON,
+  `session_id` identique en reprise, `ORME-4711` rappelé, aucun fichier écrit ; le modèle dit n'avoir
+  que `Read`, `Glob`, `Grep`, donc `--tools` vaut en reprise. Codex : `thread.started`/`thread_id`
+  identique en reprise, `ORME-4711` rappelé ; `-c sandbox_mode=read-only` accepté par `resume` ;
+  **tentative d'écriture réelle**, refusée et journalisée par l'outil (`x2.err` : `patch rejected:
+  writing is blocked by read-only sandbox`). Le seul rejeu prévu n'a donc pas servi. Empreintes du
+  témoin identiques, aucun fichier inattendu.
+- Surprise, qui change le code : le tour d'ouverture de Codex porte **deux** `agent_message`,
+  une annonce puis la réponse. Règle ajoutée à `RULES.md`.
+
+### Code
+- `adapters/claude.py` : `framing_command` = argv de A/B sans `--no-session-persistence`, avec
+  `--output-format json`, puis `--resume <id>` et `--effort` ; `framing_extract` lit `result` et
+  `session_id`, refuse (`ValueError`, donc `DECODE_FAILED`) une sortie sans `result` ou avec
+  `is_error`.
+- `adapters/codex.py` : ouverture `exec -m … --sandbox read-only`, reprise `exec resume -m … -c
+  sandbox_mode=read-only`, puis options communes, `--json`, backend `elevated` sous Windows, web
+  fermé, effort, identifiant, `-` : l'ordre du protocole. `framing_extract` : l'identifiant de
+  `thread.started`, le dernier `agent_message` d'un `item.completed`, et `turn.completed` exigé.
+- Capacité `supports_persistent_framing_session=True` pour les deux.
+- Les quatre sorties réelles, relues par les nouveaux `framing_extract`, rendent la bonne réponse et
+  le même identifiant d'un tour à l'autre (vérifié à la main, hors suite : fichiers hors dépôt).
+- Tests : 5 nouveaux dans `tests/test_adapters.py` (argv exact, extraction, refus), bâtis sur les
+  formes mesurées, identifiants remplacés. `test_real_adapters_are_refused_until_wired` devient
+  `test_real_adapters_pass_the_preflight_once_characterized`.
+
+### Documentation
+- `reference/PROTOCOLE_CADRAGE_LOT4.md` : résultats de la partie 1, et **partie 2 rédigée**
+  (un cadrage court par le produit et par outil, 6 appels, collaboration créée jamais lancée).
+- `docs/LIMITES.md` §2 : une ligne pour la session de F.
+- Identifiant de session présent dans `stdout.txt` brut (rangé sous `cadrage/appels/`) : conforme
+  au §9.2 de la conception (même règle que les autres données techniques), masqué dans
+  `intention.json`, absent des provenances. Signalé, non changé.
+
+### Test Results
+ruff vert ; mypy strict vert (77 fichiers) ; **758 passés / 2 ignorés** ; scénario rc=0 ;
+`git diff --check` propre. Taille : `src/` = 5 572 (+52 ; +2 290 / 2 500, marge ≈ 210), compteur
+tokenize recalé sur 3 282 (`ba5c0a4`) et 5 520 (`db37cc8`). Rien n'est commité.

@@ -152,9 +152,88 @@ Rien à recopier. Dites-moi que c'est fait, avec ce qui vous a surpris : je lis 
 sortie mesurées fixeront `framing_command` et `framing_extract`. La capacité `supports_persistent_framing_session`
 ne passe à vrai que pour un outil dont les quatre lignes du tableau sont conformes.
 
-**Partie 2, après le code** : un cadrage court par le produit lui-même (`dialogforge new … --cadrer-avec-agent`),
-un par outil, d'au moins deux échanges pour qu'une reprise ait lieu. Elle sera rédigée avec les adaptateurs.
+**Partie 2, après le code** : voir plus bas, rédigée avec les adaptateurs.
 
-## Résultats (à remplir après lancement)
+## Résultats de la partie 1 : lancée par le PO le 2026-09-25, lue le même jour
 
-*Non lancé.*
+Lancée sans incident (« pas de problème de réalisation »), 4 appels. Sorties lues dans
+`C:\Projets\essais-3-1\cadrage-lot4\`. **Les quatre lignes du tableau sont conformes chez les deux outils.**
+
+| Étape | Claude | Codex |
+|---|---|---|
+| 1, 3 : ouverture | `rc` propre, `c1.err` vide. Un seul objet JSON : `session_id` = UUID, `result` = `OK, SAULE-2291`, `num_turns` 2 (lecture faite) | `x1.err` vide. JSONL : `thread.started` porte `thread_id`. Deux `agent_message` : une annonce (« Je vérifie le fichier… »), **puis** la réponse `OK, SAULE-2291`. Lecture par `Get-Content`, `exit_code` 0 |
+| 2, 4 : même session | ✅ `session_id` identique | ✅ `thread_id` identique, réémis par `thread.started` en reprise |
+| 2, 4 : contexte repris | ✅ `ORME-4711` | ✅ `ORME-4711` |
+| 2, 4 : lecture seule | ✅ aucun fichier écrit. Le modèle dit n'avoir que `Read`, `Glob` et `Grep` : **`--tools` s'applique aussi en reprise** | ✅ aucun fichier écrit, **et une tentative a eu lieu** : `x2.err` porte `ERROR codex_core::tools::router: error=patch rejected: writing is blocked by read-only sandbox`. Journalisé par l'outil, pas seulement affirmé par le modèle. `-c sandbox_mode=read-only` est accepté par `resume` |
+| Fin | `temoin.txt` : même empreinte dans les deux dossiers (`3a9e3a9f…`, 12 octets), aucun fichier inattendu | |
+
+Ce que cela fixe dans le code :
+
+- **Claude** : les arguments de A et B, sans `--no-session-persistence`, avec `--output-format json`, puis
+  `--resume <id>`. La réponse est dans `result`, l'identifiant dans `session_id`.
+- **Codex** : les arguments de A et B, sans `--ephemeral`, avec `--json`. La reprise se fait par
+  `exec resume -m … -c sandbox_mode=read-only … <id> -`, dans l'ordre mesuré. L'identifiant vient de
+  `thread.started`. La réponse est le **dernier** `agent_message` d'un tour qui a émis `turn.completed`, et non la
+  concaténation des messages : la première ligne annonce ce que l'agent va faire, et `IABINOME:DEMANDE` ne tolère
+  aucun texte avant sa balise.
+- La capacité `supports_persistent_framing_session` passe à vrai pour les deux outils.
+
+Ce qui reste **non mesuré** : `--effort` / `model_reasoning_effort` en reprise (déjà acceptés hors reprise, 3.1), la
+reprise sous l'environnement filtré du produit, et un cadrage complet. La partie 2 couvre les deux derniers.
+
+L'identifiant de session figure dans la sortie brute de l'outil (`stdout.txt` de chaque appel, rangé avec la
+collaboration sous `cadrage/appels/`). Il y suit la règle des autres données techniques de l'appel (§9.2 de la
+conception). Il est masqué dans `intention.json` et absent de toute provenance.
+
+## Partie 2 : un cadrage court par le produit, un par outil
+
+*Rédigée le 2026-09-25 avec les adaptateurs, non lancée.* **Coût : 6 appels courts**, trois par outil :
+ouverture, une reprise pour la réponse, puis une reprise pour la rédaction. Pas de cycle A/B : la collaboration
+est créée, jamais lancée.
+
+Même PowerShell jetable que la partie 1 (`pwsh -NoProfile`, `$cm`, `$xm`, `$env:CLAUDE_CONFIG_DIR`).
+
+```powershell
+$d = "C:\Projets\essais-3-1\cadrage-lot4"
+New-Item -ItemType Directory -Force "$d\sources" | Out-Null
+"Le club de lecture se réunit le premier jeudi du mois. Les membres votent pour le livre suivant." |
+    Set-Content -Encoding utf8 "$d\sources\note.txt"
+"note.txt" | Set-Content -Encoding utf8 "$d\liste.txt"
+Get-FileHash "$d\sources\note.txt" | Format-Table Hash    # à comparer à la fin
+
+cd C:\Projets\DialogForge_2
+# Une fois avec Claude, une fois avec Codex : seules les deux premières lignes changent.
+$agent = "claude" ; $model = $cm        # puis : $agent = "codex" ; $model = $xm
+.\.venv\Scripts\python.exe -m iabinome new "$d\produit-$agent" --cadrer-avec-agent `
+    --agent-cadrage $agent --model-cadrage $model `
+    --kind conception --reviewer-access consult --agent-a codex --agent-b claude `
+    --source-root "$d\sources" --source-list "$d\liste.txt"
+```
+
+Dans la conversation, chaque texte se termine par une ligne ne contenant qu'un point :
+
+1. **Idée** : `Concevoir une fiche simple pour organiser le vote du livre du mois dans mon club de lecture.`
+2. **Première question de F** : répondez en une phrase, comme bon vous semble. C'est le tour qui reprend la
+   session.
+3. **Question suivante** : tapez `/clore`, puis `o`. Si F propose d'elle-même la clôture, choisissez `r`.
+4. **Brouillon** : `v`. La collaboration est créée. **Ne pas la lancer.**
+
+Tout incident (`SESSION_LOST`, `DECODE_FAILED`, `CLI_FAILED`, sortie hors protocole) : **ne pas relancer**, choisir
+`a`, puis me le dire. La trace est effacée avec le cadrage abandonné, donc copiez le message affiché.
+
+Fin :
+
+```powershell
+Get-FileHash "$d\sources\note.txt" | Format-Table Hash    # attendu : l'empreinte du début
+Get-ChildItem -Recurse -File "$d\sources"                  # attendu : note.txt seul
+```
+
+Je lis ensuite moi-même `produit-claude\` et `produit-codex\`. Pour chaque outil, j'y vérifie les points suivants :
+- `cadrage/appels/*/intention.json` : `neuve`, puis `reprise`, l'identifiant masqué ;
+- le filtrage de l'environnement (`env_removed`) ;
+- `provenance_demande.json` : trois échanges, aucun identifiant ;
+- `demande.md` : le brouillon relu.
+
+## Résultats de la partie 2
+
+*Non lancée.*

@@ -44,6 +44,11 @@
   `--ignore-user-config`, `--ignore-rules`, `--json`, **mais pas `--sandbox`** ; l'identifiant ne se
   fixe pas d'avance. Processus persistant côté Codex : `app-server`, expérimental. Base de la
   décision A3 (reprise par identifiant) ; la lecture seule en reprise n'est **pas** mesurée.
+- **Reprise mesurée le 2026-09-25** (protocole du lot 4, partie 1, lancé par le PO) : chez les deux
+  outils, même identifiant en reprise, contexte rappelé, aucune écriture. Claude : `session_id` et
+  `result` dans un objet JSON ; `--tools` vaut en reprise. Codex : `thread.started`/`thread_id`, et
+  `-c sandbox_mode=read-only` accepté par `resume`, écriture tentée et refusée par le bac à sable
+  (journal de l'outil). Le tour Codex porte plusieurs `agent_message` : seul le dernier répond.
 
 ## Technical Decisions
 | Decision | Rationale |

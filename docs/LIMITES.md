@@ -51,6 +51,7 @@ l'outil a fait. Le protocole du 2026-09-20 a mesuré l'effet de plusieurs d'entr
 | Lire le corpus | `--restricted`, `--tools "Read,Grep,Glob"` | `--sandbox read-only`, backend Windows `elevated` explicite | ✅ Claude lit le corpus. ✅ Codex : fichier témoin le 2026-09-21, puis **un vrai corpus dans un cycle A/B complet le 22** — `Get-Content` réussi en 917 ms sur `corpus/fichiers/…`, dans le dossier jetable du produit, contenu exact retourné |
 | Refuser un chemin hors du dossier | `--restricted` | `--sandbox read-only` | ✅ Claude refuse : « `--restricted` confines the file tools to the working directory ». Codex : **aucune garantie de confinement en lecture** |
 | Session fraîche, réglages ignorés | `--no-session-persistence`, `--restricted` | `--ephemeral`, `--ignore-user-config`, `--ignore-rules` | Acceptées par les deux outils en réel (2026-09-19). **Effet non mesuré** |
+| Session de l'agent de cadrage F, reprise à chaque tour | `--output-format json`, puis `--resume <id>` | `--json`, puis `exec resume … -c sandbox_mode=read-only <id>` | ✅ 2026-09-25, hors du produit : même identifiant, contexte rappelé, aucune écriture en reprise. Chez Codex, une tentative d'écriture a été refusée par le bac à sable, et l'outil l'a journalisée. **Pas encore de cadrage complet par le produit** |
 
 **Sous Windows, Codex exige le backend natif `elevated`** : l'adaptateur le sélectionne explicitement,
 sans retirer les options d'isolation, et **ce backend doit être déjà installé et utilisable — le produit

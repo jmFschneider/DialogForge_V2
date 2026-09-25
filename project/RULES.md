@@ -113,6 +113,9 @@
 **Le préambule de format n'est pas un aléa : il naît d'une collision entre le rôle demandé et un outil du harnais de l'agent.** Quand le format demandé ressemble à une capacité que l'agent possède déjà, il explique laquelle il n'utilise pas.
 *Motif mesuré deux fois, le 2026-09-04 et le 2026-09-05 : les deux préambules de B nomment `ReportFindings` — un outil de son propre harnais dont le nom évoque « rendre des constats » — et s'expliquent de ne pas s'en servir. **Deux fois sur quatre appels de B côté outil 1.** Le second serait tombé sur l'appel le plus cher d'une mission montée pour prouver la boucle de révision. Conséquence : la tolérance au bloc entouré de prose n'est pas un confort, c'est ce qui empêche de perdre une mission sur deux ; et durcir le prompt aurait visé la mauvaise cause, puisque B croyait déjà obéir.*
 
+**Dans une sortie en flux d'événements, la réponse est le dernier message de l'agent d'un tour terminé, jamais la concaténation de ses messages.**
+*Motif mesuré le 2026-09-25 (protocole du lot 4, phase 6, sortie `--json` d'un des deux outils) : le tour d'ouverture portait deux messages de l'agent. Le premier annonçait ce qu'il allait faire (« Je vérifie le fichier demandé… »), le second répondait. Concaténés, ils auraient placé du texte devant `IABINOME:DEMANDE`, qui n'en tolère aucun : un brouillon conforme serait devenu non conforme par l'extraction, et non par F. Sans l'événement de fin de tour, rien n'est rendu.*
+
 **Ne jamais prescrire une commande qu'on n'a pas lancée, ni affirmer une impossibilité sans avoir cherché tous les chemins.**
 
 ---
