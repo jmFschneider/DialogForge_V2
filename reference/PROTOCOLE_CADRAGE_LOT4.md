@@ -236,4 +236,56 @@ Je lis ensuite moi-même `produit-claude\` et `produit-codex\`. Pour chaque outi
 
 ## Résultats de la partie 2
 
-*Non lancée.*
+### Claude : lancée par le PO le 2026-09-25, lue le même jour
+
+Le PO a mené un cadrage réel (choisir une vis pour un plancher OSB) au lieu de l'idée écrite ci-dessus, ce qui
+donne un parcours plus riche que prévu : **6 échanges**, dont trois questions, une proposition de clôture, un
+« continuer » (second groupe, A1), une question, puis `/clore` et `v`. Aucun incident. La collaboration est créée
+(`READY`, `PROPOSAL_A`), jamais lancée.
+
+- **Session** : l'appel 1 est `neuve`, les appels 2 à 6 sont `reprise`. Le `session_id` est identique dans les six
+  `stdout.txt`, et `rc` vaut 0 partout, avec `stderr` vide, `permission_denials` vide et `is_error` faux.
+- **Contexte** : F reprend à chaque tour les décisions des tours précédents dans `ETAT_CADRAGE` sans les relire. Il
+  lit la note une seule fois (`num_turns` 3 au premier appel, 1 ensuite) et la juge hors sujet, à raison.
+- **Masquage** : l'identifiant n'apparaît que dans les `stdout.txt` bruts. `intention.json` porte `<session>`, et
+  aucune provenance ne le contient.
+- **Provenance** : `exchange_count` 6, `turn_count` 4, `closure` `USER_CLOSED`, `human_edited` faux. `demande.md`
+  est le brouillon relu, et `note.txt` est inchangé (même empreinte au manifeste et à la source).
+- `env_removed` est vide : le PowerShell `-NoProfile` ne portait aucune variable de session d'hôte. Le filtre n'a
+  donc rien eu à retirer, et cet essai ne l'éprouve pas.
+
+**Défaut trouvé, non corrigé** : `open_questions` garde les questions `SANS_REPONSE` de la **dernière proposition**,
+même quand le cadrage a été repris après elle. Ici, la provenance cite l'entraxe des poutres, auquel le PO a répondu
+juste après (« 70 cm »). Elle ne cite pas l'humidité, que le brouillon, lui, donne comme inconnue restante. Le
+défaut est dans `framing.Framing` (lot 2), pas dans l'adaptateur.
+
+### Codex : lancée par le PO le 2026-09-25 (second essai), lue le même jour
+
+Premier essai sans trace : aucun dossier `produit-codex\`. Le PO l'a relancé sur le même cadrage que Claude
+(même idée, mêmes faits). On obtient **6 échanges**, dont trois questions, une proposition, « continuer », une
+question, puis `/clore` et `v`. Aucun incident. La collaboration est créée (`READY`), jamais lancée.
+
+- **Session** : l'appel 1 est `exec … --sandbox read-only`, les appels 2 à 6 sont `exec resume … -c
+  sandbox_mode=read-only <session>`. Le `thread_id` est identique dans les six `stdout.txt`, avec `rc` 0, `stderr`
+  vide et `turn.completed` à chaque tour.
+- **Dernier message** : au premier tour, Codex annonce d'abord « Je consulte le corpus disponible… », lit, puis
+  répond. L'extraction prend la réponse balisée, ce qui confirme dans le produit la règle tirée de la partie 1. Les
+  tours suivants n'ont qu'un message.
+- **Lecture** : `Get-ChildItem` puis `Get-Content` sur `corpus\fichiers\note.txt`, `exit_code` 0, dans le dossier
+  jetable. Un `rg` absent échoue sans conséquence. Aucune lecture n'a eu lieu après le premier tour.
+- **Environnement** : `env_removed` = `CLAUDE_CONFIG_DIR`. Cette fois, **le filtre agit** : la configuration de
+  l'autre outil est retirée à Codex.
+- **Masquage** : l'identifiant n'apparaît que dans les `stdout.txt` bruts, jamais dans `intention.json` ni dans
+  une provenance. `exchange_count` 6, `turn_count` 4, `USER_CLOSED`, et la source est inchangée.
+- La sortie brute du premier tour contient le chemin absolu du dossier jetable (`…\Temp\framing-…\travail\…`),
+  rendu par `Get-ChildItem`. C'est une trace de l'outil, pas un chemin du projet source.
+
+**Le même défaut `open_questions` apparaît** : la provenance cite « usage et charges », auquel le PO a répondu juste
+après (« étage, zone d'habitation, passage »). Il est donc indépendant de l'outil, ce qui confirme qu'il se trouve dans
+`framing.Framing`.
+
+### Conclusion
+
+**Lot 4 conforme chez les deux outils**, hors du produit (partie 1) comme dans le produit (partie 2) : même
+session du premier au dernier tour, contexte repris, lecture seule, identifiant masqué. Il reste un défaut du
+lot 2 (`open_questions` périmé après une reprise du cadrage), à trancher par le PO.

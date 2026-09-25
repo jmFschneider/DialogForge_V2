@@ -6,22 +6,23 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Phase 6 (cadrage avec agent F) — lots 1 à 3 et 5 commités ; lot 4 codé et commité (`028a1dd`, `ec0c7a6`), partie 2 du protocole à lancer par le PO.**
+**Phase 6 (cadrage avec agent F) — lots 1 à 5 faits ; lot 4 commité (`028a1dd`, `ec0c7a6`), ses résultats de partie 2 non commités.**
 Session du 2026-09-25, portée déclarée par le PO : lot 4.
 Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3).
-- **Lot 4, partie 1 lancée par le PO le 2026-09-25** (4 appels) et lue : les quatre lignes sont conformes
-  chez les deux outils (même identifiant, contexte rappelé, aucune écriture en reprise ; tentative
-  d'écriture de Codex refusée par le bac à sable et journalisée dans `x2.err`). Résultats dans
-  `reference/PROTOCOLE_CADRAGE_LOT4.md`.
-- **Lot 4, code fait et commité** (`028a1dd`) : `framing_command`/`framing_extract` des deux adaptateurs, argv
-  identique à celui mesuré ; capacité `supports_persistent_framing_session` à vrai pour les deux.
-  Codex : réponse = **dernier** `agent_message` d'un tour terminé par `turn.completed`.
-- **Partie 2 du protocole rédigée, non lancée** : un cadrage court par le produit, par outil
-  (6 appels), collaboration créée mais jamais lancée.
+- **Lot 4 conforme chez les deux outils** (`reference/PROTOCOLE_CADRAGE_LOT4.md`). Partie 1 (4 appels
+  hors produit) : même identifiant, contexte rappelé, aucune écriture en reprise. Partie 2 (un cadrage
+  réel par le produit et par outil, 6 échanges chacun, avec un « continuer ») : même session du premier
+  au dernier tour, identifiant masqué, lecture seule. Côté Codex, le filtre d'environnement a retiré
+  `CLAUDE_CONFIG_DIR`, et le premier tour portait l'annonce puis la réponse (règle du dernier message
+  confirmée).
+- **Défaut du lot 2, trouvé par la partie 2, non corrigé, à trancher par le PO** : `open_questions`
+  (provenance du cadrage) garde les `SANS_REPONSE` de la dernière proposition même après une reprise
+  du cadrage (chez les deux outils, question répondue ensuite toujours citée). Deux options proposées :
+  vider la liste à la reprise (recommandé, ~1 ligne + test) ou prendre les `QUESTIONS_OUVERTES` du
+  dernier tour de F (change le sens du champ).
 - **Marge de taille : ≈ 210 lignes** (+2 290 / 2 500, `src/` = 5 572, compteur tokenize recalé sur
   3 282 à `ba5c0a4` et 5 520 à `db37cc8`) ; façade + `gui/` inchangés (1 537 / 2 000).
-- **Prochain** : le PO lance la partie 2 ; je
-  lis `produit-claude\` et `produit-codex\`, puis le lot 6 (recette).
+- **Prochain** : décision du PO sur `open_questions`, puis le lot 6 (recette : critères §15, taille).
 
 **Historique — Phase 5 (GUI V1) : lots 1 à 6 faits et commités (`581cbb3`), la phase est complète.**
 Reste hors de ce plan, non engagé : le lot « Développement assisté » (§ Extension identifiée),
@@ -392,16 +393,17 @@ de la phase : 900 à 1 000 lignes.
       §14.8). *(2026-09-24, commité : `framing_cli.py`, `facade.check_creation`/`_write_framing` ;
       738 passés / 2 ignorés ; +255 lignes. `configuration.framing_agent` non écrit — facultatif au
       §9.4. `corpus.build()` sur liste vide non rencontré : `prepare` crée le dossier avant)*
-- [ ] 6.4 Lot 4 — adaptateurs réels (reprise par identifiant) + protocole de caractérisation de la
+- [x] 6.4 Lot 4 — adaptateurs réels (reprise par identifiant) + protocole de caractérisation de la
       lecture seule en reprise, **exécuté par le PO** (aucun appel réel de Claude)
       *(2026-09-24 : protocole écrit. 2026-09-25 : partie 1 lancée par le PO, conforme chez les deux
       outils ; adaptateurs écrits, capacité à vrai ; 758 passés / 2 ignorés ; +52 lignes ; commité `028a1dd`, `ec0c7a6`.
-      Reste : partie 2, un cadrage par le produit et par outil)*
+      2026-09-25 : partie 2 lancée par le PO, un cadrage réel par outil, conforme ; défaut `open_questions`
+      du lot 2 trouvé, non corrigé)*
 - [x] 6.5 Lot 5 — GUI : mode « Cadrer avec un agent », modale, unique fil moteur (§4, §14.7)
       *(2026-09-24, `c718055` : `gui/views/cadrage.py`, contrôleur, écran de création ;
       751 passés / 2 ignorés ; +310 lignes)*
 - [ ] 6.6 Lot 6 — recette : critères §15, taille remesurée
-- **Status:** in_progress — lots 1 à 3 et 5 commités ; lot 4 codé et commité, partie 2 à lancer
+- **Status:** in_progress — lots 1 à 5 faits ; reste le lot 6 (recette)
 
 ## Extension identifiée (hors phases)
 

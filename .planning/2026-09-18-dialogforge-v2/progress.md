@@ -1700,3 +1700,18 @@ tokenize recalé sur 3 282 (`ba5c0a4`) et 5 520 (`db37cc8`).
 ### Commits du lot 4
 Sur demande du PO : `028a1dd` (feat : adaptateurs et tests) et `ec0c7a6` (docs : protocole,
 limites, règle, plan).
+
+### Partie 2 du protocole : un cadrage réel par le produit et par outil
+- **Claude** : le PO a mené un vrai cadrage (vis pour plancher OSB) au lieu de l'idée écrite. 6 échanges
+  (3 questions, proposition, « continuer », question, `/clore`, `v`), `neuve` puis 5 `reprise`, même
+  `session_id` partout, rc 0, stderr vide. Note lue une fois, jugée hors sujet. `env_removed` vide
+  (rien à retirer dans un `pwsh -NoProfile`).
+- **Codex** : premier essai sans trace (pas de dossier) ; relancé par le PO sur le même cadrage. 6
+  échanges, `exec` puis 5 `exec resume … -c sandbox_mode=read-only`, même `thread_id`, rc 0. Premier tour :
+  annonce, lecture (`Get-ChildItem`, `Get-Content`), puis réponse balisée — la règle du dernier message
+  a servi dans le produit. `env_removed` = `CLAUDE_CONFIG_DIR` : le filtre a agi.
+- Chez les deux : identifiant présent seulement dans `stdout.txt` brut, `demande.md` = brouillon relu,
+  source inchangée, collaboration `READY` jamais lancée.
+- **Défaut trouvé (lot 2), non corrigé** : `open_questions` garde les `SANS_REPONSE` de la dernière
+  proposition après une reprise du cadrage ; reproduit chez les deux outils. Décision demandée au PO.
+- Lot 4 coché dans le plan. Résultats consignés dans `reference/PROTOCOLE_CADRAGE_LOT4.md`, non commités.
