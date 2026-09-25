@@ -13,7 +13,7 @@ from typing import Any
 from unittest import mock
 
 from iabinome import framing, transport
-from iabinome.adapters.base import FramingSessionSpec
+from iabinome.adapters.base import FramingSessionSpec, ObservedCli
 from iabinome.adapters.claude import ClaudeAdapter
 from iabinome.adapters.codex import CodexAdapter
 from iabinome.framing import FramingError
@@ -210,15 +210,17 @@ class TestPreflight(SessionCase):
         with self.assertRaises(FramingError):
             self.open(fake)
 
-    def test_real_adapters_are_refused_until_wired(self) -> None:
-        """Lot 1 : la capacité des adaptateurs réels reste fausse (lot 4). Ils ont
-        déjà un défaut pour F, sans que le noyau nomme un fournisseur."""
+    def test_real_adapters_pass_the_preflight_once_characterized(self) -> None:
+        """Lot 4 : la capacité passe à vrai après le protocole du PO (2026-09-25), les
+        quatre lignes conformes chez les deux outils. Le noyau ne nomme toujours aucun
+        fournisseur : il lit la capacité et le défaut de l'adaptateur."""
         for adapter in (ClaudeAdapter(), CodexAdapter()):
             with self.subTest(adapter.adapter_id):
-                self.assertTrue(adapter.default_model(AgentPurpose.FRAMING))
-                with self.assertRaisesRegex(FramingError, "session persistante"):
-                    framing.check_adapter(adapter.adapter_id, {adapter.adapter_id: adapter},
-                                          None, None)
+                with mock.patch.object(adapter, "probe", return_value=ObservedCli(True, "x")):
+                    model, _ = framing.check_adapter(
+                        adapter.adapter_id, {adapter.adapter_id: adapter}, None, None
+                    )
+                self.assertEqual(model, adapter.default_model(AgentPurpose.FRAMING))
 
 
 if __name__ == "__main__":

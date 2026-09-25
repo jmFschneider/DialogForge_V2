@@ -8,6 +8,7 @@ dans `--help` — et sert le profil `CONTEXT_ONLY` de B (point 2 du relevé).
 
 from __future__ import annotations
 
+import json
 import shutil
 
 from ..models import AgentPurpose, ReviewerAccess
@@ -40,6 +41,7 @@ class ClaudeAdapter:
         fresh_session=True,
         effort_levels=("low", "medium", "high", "xhigh", "max"),
         controls_web_access=True,
+        supports_persistent_framing_session=True,
     )
     env = EnvPolicy(
         owned_prefixes=("CLAUDE", "ANTHROPIC_"),
@@ -102,15 +104,33 @@ class ClaudeAdapter:
     def extract(self, stdout: bytes, stderr: bytes) -> str:
         return stdout.decode("utf-8")
 
-    # Session de cadrage : pas encore câblée (plan, phase 6, lot 4). La capacité reste
-    # fausse, donc le prévol de F refuse cet adaptateur avant d'arriver ici.
     def framing_command(
         self, spec: FramingSessionSpec, session: str | None, prompt: str
     ) -> list[str]:
-        raise AdapterError(f"{self.adapter_id} : session de cadrage non supportée")
+        """Les arguments de A et B, sauf trois : la session persiste, la sortie JSON porte
+        son identifiant, et les tours suivants la reprennent (`--resume`). Mesuré par le PO
+        le 2026-09-25 (`reference/PROTOCOLE_CADRAGE_LOT4.md`, 2.1.282) : même identifiant
+        en reprise, contexte rappelé, et `--tools` y vaut encore — aucune écriture."""
+        cmd = [
+            _resolve(), "-p", "--model", spec.model,
+            "--restricted", "--strict-mcp-config", "--disable-slash-commands",
+            "--tools", _READ_TOOLS, "--output-format", "json",
+        ]
+        if session is not None:
+            cmd += ["--resume", session]
+        if spec.effort is not None:
+            cmd += ["--effort", spec.effort]
+        return cmd
 
     def framing_extract(self, stdout: bytes, stderr: bytes) -> tuple[str, str | None]:
-        raise AdapterError(f"{self.adapter_id} : session de cadrage non supportée")
+        """Un seul objet JSON : la réponse dans `result`, l'identifiant dans `session_id`."""
+        data = json.loads(stdout.decode("utf-8"))
+        if not isinstance(data, dict) or not isinstance(data.get("result"), str):
+            raise ValueError("sortie JSON sans champ result")
+        if data.get("is_error"):
+            raise ValueError(f"l'outil signale une erreur : {data.get('subtype')}")
+        session = data.get("session_id")
+        return data["result"], session if isinstance(session, str) and session else None
 
 
 def _resolve() -> str:

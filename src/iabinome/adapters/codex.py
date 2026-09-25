@@ -10,6 +10,7 @@ le profil `CONTEXT_ONLY` de B — équivalent mesuré à `--disable shell_tool`
 
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 
@@ -37,6 +38,7 @@ class CodexAdapter:
         fresh_session=True,
         effort_levels=("minimal", "low", "medium", "high", "xhigh"),
         controls_web_access=True,
+        supports_persistent_framing_session=True,
     )
     env = EnvPolicy(
         owned_prefixes=("CODEX_", "OPENAI_"),
@@ -94,15 +96,54 @@ class CodexAdapter:
     def extract(self, stdout: bytes, stderr: bytes) -> str:
         return stdout.decode("utf-8")
 
-    # Session de cadrage : pas encore câblée (plan, phase 6, lot 4). La capacité reste
-    # fausse, donc le prévol de F refuse cet adaptateur avant d'arriver ici.
     def framing_command(
         self, spec: FramingSessionSpec, session: str | None, prompt: str
     ) -> list[str]:
-        raise AdapterError(f"{self.adapter_id} : session de cadrage non supportée")
+        """Les arguments de A et B, sans `--ephemeral` pour que la session survive au tour,
+        avec `--json` qui porte son identifiant, puis `exec resume <id>`. `resume` n'accepte
+        pas `--sandbox` : la lecture seule y passe par `-c sandbox_mode=read-only`. Mesuré
+        par le PO le 2026-09-25 (`reference/PROTOCOLE_CADRAGE_LOT4.md`, 0.155.0) : même
+        identifiant, contexte rappelé, écriture tentée et refusée par le bac à sable."""
+        cmd = [_resolve(), "exec"]
+        if session is None:
+            cmd += ["-m", spec.model, "--sandbox", "read-only"]
+        else:
+            cmd += ["resume", "-m", spec.model, "-c", "sandbox_mode=read-only"]
+        cmd += ["--skip-git-repo-check", "--ignore-user-config", "--ignore-rules", "--json"]
+        if sys.platform == "win32":
+            cmd += ["-c", "windows.sandbox=elevated"]
+        cmd += ["-c", "web_search=disabled"]  # F lit la copie du corpus, rien d'autre (§5.2)
+        if spec.effort is not None:
+            cmd += ["-c", f"model_reasoning_effort={spec.effort}"]
+        if session is not None:
+            cmd.append(session)
+        cmd.append("-")
+        return cmd
 
     def framing_extract(self, stdout: bytes, stderr: bytes) -> tuple[str, str | None]:
-        raise AdapterError(f"{self.adapter_id} : session de cadrage non supportée")
+        """Un événement JSON par ligne : l'identifiant dans `thread.started`, la réponse
+        dans le **dernier** message de l'agent — les précédents annoncent ce qu'il va
+        faire. Sans `turn.completed`, le tour n'a pas abouti."""
+        text = session = None
+        completed = False
+        for line in stdout.decode("utf-8").splitlines():
+            if not line.strip():
+                continue
+            event = json.loads(line)
+            if not isinstance(event, dict):
+                raise ValueError("événement JSON qui n'est pas un objet")
+            item = event.get("item")
+            if event.get("type") == "thread.started":
+                session = event.get("thread_id")
+            elif event.get("type") == "turn.completed":
+                completed = True
+            elif event.get("type") == "item.completed" and isinstance(item, dict) and (
+                item.get("type") == "agent_message"
+            ):
+                text = item.get("text")
+        if not completed or not isinstance(text, str):
+            raise ValueError("tour sans turn.completed ni message de l'agent")
+        return text, session if isinstance(session, str) and session else None
 
 
 def _resolve() -> str:

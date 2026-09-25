@@ -14,13 +14,36 @@ from dataclasses import replace
 from unittest import mock
 
 from iabinome.adapters import claude, codex
-from iabinome.adapters.base import CallSpec, ObservedCli, probe_version
+from iabinome.adapters.base import CallSpec, FramingSessionSpec, ObservedCli, probe_version
 from iabinome.models import AgentPurpose, ReviewerAccess
 
 _SPEC = CallSpec(
     prompt="peu importe", model="un-modele", timeout_seconds=30.0,
     work_root=mock.MagicMock(), reviewer_access=None,
 )
+_FRAMING = FramingSessionSpec(model="un-modele", timeout_seconds=30.0, work_root=mock.MagicMock())
+# Formes relevées par le PO le 2026-09-25 (`reference/PROTOCOLE_CADRAGE_LOT4.md`) : champs
+# utiles recopiés tels quels, identifiants remplacés.
+_CLAUDE_OUT = (
+    b'{"stop_reason":"end_turn","session_id":"8ce4-sess","permission_denials":[],'
+    b'"is_error":false,"num_turns":2,"subtype":"success","result":"OK, SAULE-2291",'
+    b'"type":"result"}'
+)
+_CODEX_OUT = "\n".join([
+    '{"type":"thread.started","thread_id":"01a0-sess"}',
+    '{"type":"turn.started"}',
+    '{"type":"item.completed","item":{"id":"item_0","type":"agent_message",'
+    '"text":"Je vérifie le fichier demandé en lecture seule et ne modifierai rien."}}',
+    '{"type":"item.started","item":{"id":"item_1","type":"command_execution",'
+    '"command":"Get-Content","aggregated_output":"","exit_code":null,"status":"in_progress"}}',
+    '{"type":"item.completed","item":{"id":"item_1","type":"command_execution",'
+    '"command":"Get-Content","aggregated_output":"SAULE-2291\\r\\n","exit_code":0,'
+    '"status":"completed"}}',
+    '{"type":"item.completed","item":{"id":"item_2","type":"agent_message",'
+    '"text":"OK, SAULE-2291"}}',
+    '{"type":"turn.completed","usage":{"input_tokens":22426,"output_tokens":134}}',
+    "",
+]).encode("utf-8")
 
 
 class TestClaudeAdapter(unittest.TestCase):
@@ -129,6 +152,40 @@ class TestClaudeAdapter(unittest.TestCase):
             self.adapter.extract(b"IABINOME:DOCUMENT\ncorps", b"bruit sur stderr"),
             "IABINOME:DOCUMENT\ncorps",
         )
+
+    def test_framing_keeps_the_session_and_resumes_it_by_its_identifier(self) -> None:
+        """Lot 4 : les arguments de A et B, sans `--no-session-persistence`, avec la sortie
+        JSON qui porte l'identifiant, puis `--resume` aux tours suivants."""
+        with mock.patch.object(shutil, "which", return_value="claude"):
+            first = self.adapter.framing_command(_FRAMING, None, "peu importe")
+            then = self.adapter.framing_command(
+                replace(_FRAMING, effort="high"), "8ce4-sess", "peu importe"
+            )
+        self.assertEqual(first[1:], [
+            "-p", "--model", "un-modele", "--restricted", "--strict-mcp-config",
+            "--disable-slash-commands", "--tools", "Read,Grep,Glob", "--output-format", "json",
+        ])
+        self.assertEqual(then[len(first):], ["--resume", "8ce4-sess", "--effort", "high"])
+        for cmd in (first, then):
+            self.assertNotIn("--no-session-persistence", cmd)
+            self.assertNotIn("peu importe", cmd)
+        self.assertTrue(self.adapter.capabilities.supports_persistent_framing_session)
+
+    def test_framing_extract_reads_the_result_and_the_session(self) -> None:
+        self.assertEqual(
+            self.adapter.framing_extract(_CLAUDE_OUT, b""), ("OK, SAULE-2291", "8ce4-sess")
+        )
+        no_session = _CLAUDE_OUT.replace(b'"session_id":"8ce4-sess",', b"")
+        self.assertIsNone(self.adapter.framing_extract(no_session, b"")[1])
+
+    def test_framing_extract_refuses_what_is_not_an_answer(self) -> None:
+        """`DECODE_FAILED` côté cadrage : jamais une sortie sans réponse prise pour un tour."""
+        for bad in (
+            b"texte libre", b"[]", b'{"session_id":"s"}',
+            _CLAUDE_OUT.replace(b'"is_error":false', b'"is_error":true'),
+        ):
+            with self.subTest(bad), self.assertRaises(ValueError):
+                self.adapter.framing_extract(bad, b"")
 
 
 class TestCodexAdapter(unittest.TestCase):
@@ -259,6 +316,48 @@ class TestCodexAdapter(unittest.TestCase):
             self.adapter.extract(b"IABINOME:DOCUMENT\ncorps", b"8315 octets de banniere"),
             "IABINOME:DOCUMENT\ncorps",
         )
+
+    def test_framing_opens_then_resumes_with_the_measured_arguments(self) -> None:
+        """Lot 4 : sans `--ephemeral`, avec `--json` ; en reprise, `resume` n'accepte pas
+        `--sandbox`, la lecture seule passe par `-c sandbox_mode=read-only`. L'ordre est
+        celui du protocole mesuré, identifiant et `-` en dernier."""
+        with mock.patch.object(shutil, "which", return_value="codex"):
+            with mock.patch("iabinome.adapters.codex.sys.platform", "win32"):
+                first = self.adapter.framing_command(_FRAMING, None, "peu importe")
+                then = self.adapter.framing_command(
+                    replace(_FRAMING, effort="low"), "01a0-sess", "peu importe"
+                )
+        common = [
+            "--skip-git-repo-check", "--ignore-user-config", "--ignore-rules", "--json",
+            "-c", "windows.sandbox=elevated", "-c", "web_search=disabled",
+        ]
+        self.assertEqual(
+            first[1:], ["exec", "-m", "un-modele", "--sandbox", "read-only", *common, "-"]
+        )
+        self.assertEqual(then[1:], [
+            "exec", "resume", "-m", "un-modele", "-c", "sandbox_mode=read-only", *common,
+            "-c", "model_reasoning_effort=low", "01a0-sess", "-",
+        ])
+        for cmd in (first, then):
+            self.assertNotIn("--ephemeral", cmd)
+            self.assertNotIn("peu importe", cmd)
+        self.assertTrue(self.adapter.capabilities.supports_persistent_framing_session)
+
+    def test_framing_extract_keeps_the_last_agent_message_only(self) -> None:
+        """Le premier message annonce ce que l'agent va faire ; seul le dernier répond —
+        et `IABINOME:DEMANDE` ne tolère aucun texte avant sa balise."""
+        self.assertEqual(
+            self.adapter.framing_extract(_CODEX_OUT, b"bruit"), ("OK, SAULE-2291", "01a0-sess")
+        )
+        no_thread = b"\n".join(_CODEX_OUT.splitlines()[1:])
+        self.assertIsNone(self.adapter.framing_extract(no_thread, b"")[1])
+
+    def test_framing_extract_refuses_an_unfinished_or_unreadable_turn(self) -> None:
+        unfinished = _CODEX_OUT.replace(b'"type":"turn.completed"', b'"type":"turn.failed"')
+        silent = b'{"type":"thread.started","thread_id":"s"}\n{"type":"turn.completed"}\n'
+        for bad in (unfinished, silent, _CODEX_OUT + b"pas du JSON\n", b"[1]\n"):
+            with self.subTest(bad[-30:]), self.assertRaises(ValueError):
+                self.adapter.framing_extract(bad, b"")
 
 
 class TestProbeVersion(unittest.TestCase):
