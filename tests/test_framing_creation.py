@@ -100,7 +100,7 @@ class TestNominal(FramingCliCase):
         self.assertEqual(prov["closure"], "AGENT_PROPOSED")
         self.assertEqual((prov["turn_count"], prov["exchange_count"]), (1, 3))
         self.assertEqual(len(list((self.collab / "cadrage" / "appels").iterdir())), 3)
-        self.assertEqual(prov["open_questions"], ["Question : durée de vie ?"])
+        self.assertEqual(prov["open_questions"], ["durée de vie ?"])
         self.assertTrue(prov["sources"]["provided"])
         transcript = (self.collab / "cadrage" / "transcription.md").read_bytes()
         self.assertEqual(prov["transcription_sha256"], hashlib.sha256(transcript).hexdigest())

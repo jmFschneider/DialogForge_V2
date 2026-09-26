@@ -46,6 +46,9 @@ Objectif : décider.
 ETAT_CADRAGE
 DECISIONS
 - note
+
+QUESTIONS_OUVERTES
+- durée de vie ?
 """
 
 DRAFT_OUT = "IABINOME:DEMANDE\n" + fakes.DEMANDE_COMPLETE.replace("# Cache de FloraPi", "# Demande")
@@ -182,6 +185,103 @@ class TestCloseBeforeAnyExchange(FramingCase):
         self.assertIn("Un cache pour FloraPi", prompt)
         self.assertIn("IABINOME:DEMANDE", prompt)
         self.assertEqual(f.session.exchanges, 1)
+
+
+def conversation(kind: str, open_block: str, sans_reponse: str = "- Question : ?") -> str:
+    """Une sortie conversationnelle de F dont seul l'état de cadrage varie."""
+    head = (
+        "IABINOME:CADRAGE_QUESTION\n\nQUESTION\nUn choix ?\n\nPOURQUOI\nChange tout.\n"
+        if kind == QUESTION else
+        f"IABINOME:CADRAGE_PRET\n\nRESUME\nLe mandat.\n\nSANS_REPONSE\n{sans_reponse}\n"
+        "\nAPERCU\nObjectif : décider.\n"
+    )
+    return f"{head}\nETAT_CADRAGE\n{open_block}"
+
+
+# Les deux cadrages réels du 2026-09-25 (`reference/PROTOCOLE_CADRAGE_LOT4.md`, partie 2),
+# réduits à leur forme : proposition, « continuer », une question, puis `/clore`. Claude
+# écrit ses rubriques avec deux-points et une liste vide en puce nue ; Codex sans
+# deux-points et « - Aucune. ».
+REAL_CLAUDE = (
+    conversation(READY, (
+        "DECISIONS:\n- Épaisseur de l'OSB : 22 mm\nHESITATIONS:\n-\nCONTRADICTIONS:\n-\n"
+        "QUESTIONS_OUVERTES:\n- Entraxe des poutres supports\n"
+        "- Norme/certification locale spécifique éventuelle\n"
+    ), sans_reponse="- Question : Quel est l'entraxe des poutres supports ? / Effet possible : x"),
+    conversation(QUESTION, (
+        "DECISIONS:\n- Poutres : entraxe 70 cm\nHESITATIONS:\n-\n"
+        "QUESTIONS_OUVERTES:\n- Exposition à l'humidité / milieu intérieur ou extérieur\n"
+        "- Norme/certification locale spécifique éventuelle\n"
+    )),
+)
+REAL_CODEX = (
+    conversation(READY, (
+        "DECISIONS\n- Entraxe : 70 cm.\nCONTRADICTIONS\n- Aucune.\n"
+        "FICHIERS_CONSULTES\n- `corpus/fichiers/note.txt` : sans rapport avec le sujet.\n"
+        "QUESTIONS_OUVERTES\n- Charges et usage du plancher.\n"
+        "- Type de dalle OSB (rainure-languette ou bord droit).\n"
+    ), sans_reponse="- Question : quel usage et quelles charges ? / Effet possible : x"),
+    conversation(QUESTION, (
+        "DECISIONS\n- Le plancher constituera un étage habitable avec passage.\n"
+        "CONTRADICTIONS\n- Aucune.\n"
+        "QUESTIONS_OUVERTES\n- Niveau de détail souhaité pour le livrable.\n"
+        "- Confirmation du type de rive des dalles OSB.\n"
+    )),
+)
+
+
+class TestOpenQuestions(FramingCase):
+    """Amendement A4 : `open_questions` = le bloc `QUESTIONS_OUVERTES` du dernier tour
+    réussi de F. `[]` seulement sur un « rien d'ouvert » explicite (`- AUCUNE` seul) ;
+    un bloc absent, vide ou ambigu laisse la valeur précédente ; `None` tant que F n'a
+    rien exprimé."""
+
+    def closed_after(self, proposal: str, question: str) -> Any:
+        """Une question, une proposition, « continuer », une question, puis `/clore`."""
+        f = self.framing(QUESTION_OUT, proposal, question, DRAFT_OUT)
+        f.start()
+        f.answer("réponse")
+        f.reopen("apport", correction=False)
+        self.assertIsNone(f.write_draft().problem)
+        return f.artifacts().provenance["open_questions"]
+
+    def test_the_two_real_framings_keep_what_was_open_at_closure(self) -> None:
+        self.assertEqual(self.closed_after(*REAL_CLAUDE), [
+            "Exposition à l'humidité / milieu intérieur ou extérieur",
+            "Norme/certification locale spécifique éventuelle",
+        ])
+        self.assertEqual(self.closed_after(*REAL_CODEX), [
+            "Niveau de détail souhaité pour le livrable.",
+            "Confirmation du type de rive des dalles OSB.",
+        ])
+
+    def test_only_an_explicit_none_empties_the_list(self) -> None:
+        before = conversation(READY, "QUESTIONS_OUVERTES\n- durée de vie ?\n")
+        cases = {
+            "AUCUNE seul": ("QUESTIONS_OUVERTES\n- AUCUNE\n", []),
+            "casse et point final": ("QUESTIONS_OUVERTES:\n- Aucune.\n", []),
+            "bloc absent": ("DECISIONS\n- note\n", ["durée de vie ?"]),
+            "bloc vide": ("QUESTIONS_OUVERTES\n\nDECISIONS\n- note\n", ["durée de vie ?"]),
+            "puces nues": ("QUESTIONS_OUVERTES:\n-\n-\n", ["durée de vie ?"]),
+            "AUCUNE mêlé": ("QUESTIONS_OUVERTES\n- AUCUNE\n- taille ?\n", ["durée de vie ?"]),
+            "nouvelles questions": ("QUESTIONS_OUVERTES\n- taille ?\n", ["taille ?"]),
+            "rubrique suivante": (
+                "QUESTIONS_OUVERTES\n- taille ?\nCONTRADICTIONS\n- Aucune.\n", ["taille ?"]
+            ),
+        }
+        for label, (block, expected) in cases.items():
+            with self.subTest(label):
+                after = conversation(QUESTION, block)
+                self.assertEqual(self.closed_after(before, after), expected)
+
+    def test_nothing_expressed_is_not_nothing_open(self) -> None:
+        """`/clore` avant tout échange (A2) : F n'a jamais rendu d'état de cadrage."""
+        f = self.framing(DRAFT_OUT)
+        f.write_draft()
+        self.assertIsNone(f.artifacts().provenance["open_questions"])
+
+    def test_the_contract_says_how_to_write_an_empty_list(self) -> None:
+        self.assertIn("une liste vide s'écrit - AUCUNE", prompts.build_framing_start("idée"))
 
 
 class TestDraft(FramingCase):

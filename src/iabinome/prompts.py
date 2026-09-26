@@ -222,7 +222,7 @@ POURQUOI
 Effet de la réponse sur la future demande.
 ETAT_CADRAGE
 DECISIONS, HESITATIONS, CONTRADICTIONS, FICHIERS_CONSULTES, QUESTIONS_OUVERTES
-(une liste chacune, chemins logiques pour les fichiers)
+(une liste chacune, chemins logiques pour les fichiers ; une liste vide s'écrit - AUCUNE)
 
 IABINOME:CADRAGE_PRET
 RESUME

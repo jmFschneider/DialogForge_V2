@@ -45,6 +45,8 @@ _REQUIRED = {
     QUESTION: ("QUESTION", "POURQUOI", "ETAT_CADRAGE"),
     READY: ("RESUME", "SANS_REPONSE", "APERCU", "ETAT_CADRAGE"),
 }
+_STATE_LISTS = ("DECISIONS", "HESITATIONS", "CONTRADICTIONS", "FICHIERS_CONSULTES",
+                "QUESTIONS_OUVERTES")
 _TITLES = {QUESTION: "F — question", READY: "F — proposition de clôture", DRAFT: "F — brouillon"}
 _WARNING = "> Historique non normatif ; seul `demande.md` fait autorité."
 
@@ -291,7 +293,7 @@ class Framing:
         self.contributions = 0
         self._started = False
         self._closure = "USER_CLOSED"
-        self._open_questions: list[str] = []
+        self._open_questions: list[str] | None = None
         self._prompt: tuple[str, tuple[str, ...]] | None = None
         # Relevé **avant** le premier envoi : c'est la référence de `SOURCES_MODIFIED`.
         self._sources = self._snapshot()
@@ -412,8 +414,9 @@ class Framing:
             assert turn.reply is not None
             if turn.reply.kind == DRAFT:
                 self.draft = turn.reply.body
-            if turn.reply.kind == READY:
-                self._open_questions = _unanswered(turn.reply.body)
+            found = _open_questions(turn.reply.body) if turn.reply.kind != DRAFT else None
+            if found is not None:
+                self._open_questions = found
             self.note(_TITLES[turn.reply.kind], turn.reply.body)
         return turn
 
@@ -462,12 +465,19 @@ def shown(turn: Turn) -> str:
     return turn.reply.body.split("\nETAT_CADRAGE")[0].rstrip()
 
 
-def _unanswered(body: str) -> list[str]:
-    """Les questions restées sans réponse d'une proposition (bloc `SANS_REPONSE`)."""
-    found, inside = [], False
+def _open_questions(body: str) -> list[str] | None:
+    """Le bloc `QUESTIONS_OUVERTES` de l'état de cadrage (amendement A4) : ce qui reste
+    ouvert selon F. `[]` seulement si F écrit `- AUCUNE` seul ; `None` si le bloc est
+    absent, vide, fait de puces nues ou mêle `AUCUNE` à d'autres puces — l'appelant
+    garde alors ce qu'il savait, plutôt qu'affirmer qu'il ne reste rien."""
+    items, inside = [], False
     for line in body.splitlines():
-        if line.strip() in _REQUIRED[READY]:
-            inside = line.strip() == "SANS_REPONSE"
-        elif inside and line.startswith("- "):
-            found.append(line[2:].strip())
-    return found
+        text = line.strip()
+        heading = text.removesuffix(":")
+        if heading in _STATE_LISTS or any(heading in names for names in _REQUIRED.values()):
+            inside = heading == "QUESTIONS_OUVERTES"
+        elif inside and text.startswith("- "):
+            items.append(text[2:].strip())
+    if any(item.rstrip(".").upper() == "AUCUNE" for item in items):
+        return [] if len(items) == 1 else None
+    return items or None
