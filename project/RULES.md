@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-09-25 (ramasse-miettes Tk des tests ; lecture concurrente d'un fichier remplacé)
+> Dernière mise à jour : 2026-09-25 (vide explicite dans une sortie d'agent ; rejouer une correction sur traces réelles ; heredoc)
 
 ## Index
 
@@ -68,6 +68,10 @@
 
 **Avant de figer un contrat de revue, le rejouer sur des revues réelles conservées.**
 *Motif mesuré le 2026-09-19 (1.2) : les revues du 2026-09-05 sous `conception/essais/` montrent B réécrivant l'énoncé de ses sept constats pour y dire « désormais résolu ». Aucun test à faux agent ne pouvait le voir ; le contrat garde maintenant l'énoncé initial et récupère la réécriture comme justification, sans nouvel appel. `tests/test_objections.py` rejoue ces revues.*
+*Vaut aussi pour choisir entre deux corrections : le 2026-09-25, « vider `open_questions` à la reprise » était recommandé pour sa taille (une ligne) ; rejoué sur les deux cadrages réels, il aurait écrit `[]` alors que le brouillon listait deux inconnues (amendement A4).*
+
+**Dans une sortie d'agent, « rien » ne se lit que s'il est écrit comme le contrat le définit ; un bloc absent, vide ou ambigu est une inconnue, jamais une liste vide.**
+*Motif mesuré le 2026-09-25 : le contrat de F ne définissait pas la liste vide ; Claude écrivait une puce nue, Codex `- Aucune.` — l'une indiscernable d'un oubli, l'autre lue naïvement comme une question nommée « Aucune. ». A4 fixe `- AUCUNE`, garde la valeur précédente sur un bloc ambigu, et écrit `null` quand rien n'a été exprimé.*
 
 **Une consigne de relecture se fait relire avant d'être envoyée.**
 *Motif mesuré le 2026-09-05 : cinq corrections sur la mienne, toutes justes. Deux étaient graves — « n'exécute rien » aurait privé le relecteur de ses outils de recherche, et rien n'empêchait qu'une documentation périmée soit présentée comme un défaut du code. Le coût est un appel ; le bénéfice, une passe qui porte.*
@@ -154,6 +158,7 @@
 **Écrire un fichier de code par l'outil Write, jamais par un `heredoc` shell.** Un document long à guillemets multiples est mutilé au passage.
 *Motif mesuré le 2026-09-03 : `cat > transport.py <<'EOF'` a rendu `unexpected EOF while looking for matching quote` sur 240 lignes valides.*
 *Vaut aussi pour un script jetable, un correctif de script ou un patron de mutation : le 2026-09-19, une apostrophe d'un motif écrit en heredoc a été mutilée et le script est tombé en `SyntaxError`.*
+*Et pour un script Python passé en heredoc qui réécrit un fichier : le 2026-09-25, deux fois, ses `\\n` (antislash doublé, pour un `\n` littéral) sont devenus de vrais sauts de ligne dans le code de test produit (`SyntaxError`). L'outil d'édition, lui, écrit exactement.*
 
 **Une branche écrite pour un OS non testé ne doit jamais casser l'outillage de l'OS testé.** Ne pas nommer un symbole absent de la plateforme de développement — `signal.SIGKILL`, `os.killpg`, `os.getpgid` — même dans du code qui n'y tournera pas.
 *Motif : `typeshed` les déclare absents sous `win32`, donc `mypy --strict` échoue sur le poste. Contournement retenu dans `transport.py` : `os.kill(-pid, 9)`, où le PID négatif désigne le groupe.*

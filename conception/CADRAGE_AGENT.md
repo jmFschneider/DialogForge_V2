@@ -1198,3 +1198,26 @@ lancements de processus ») ; ce choix le fixe. Conséquences :
 `invoke_agent` n'est pas extrait du moteur A/B. Les tours de F appellent directement le transport
 commun (`transport.run`), et le workflow A/B n'est pas touché (§8.2 : il conserve son verrou et
 `current_call`).
+
+## Amendement du PO — 2026-09-25, après le lot 4
+
+**A4 — Sens de `open_questions` et liste vide explicite.** Trouvé par les deux cadrages réels du
+lot 4 (`reference/PROTOCOLE_CADRAGE_LOT4.md`, partie 2) : le champ reprenait le `SANS_REPONSE` de la
+dernière proposition, même après une reprise du cadrage, et citait des questions déjà répondues.
+- **Sens** (§9.2) : `open_questions` est ce qui reste ouvert **selon F au moment de la clôture** —
+  le bloc `QUESTIONS_OUVERTES` de l'état de cadrage du dernier tour conversationnel réussi, question
+  ou proposition. Libellés courts, sans l'effet possible, qui reste dans la transcription et le
+  brouillon. Retenu contre « vider la liste à la reprise », qui aurait écrit `[]` dans les deux
+  traces alors que le brouillon listait deux inconnues.
+- **Contrat de F** (§6.4, §7) : une liste vide s'écrit `- AUCUNE`, pour les cinq rubriques de
+  `ETAT_CADRAGE`. Avant A4, rien ne la définissait : Claude écrivait une puce nue, Codex
+  `- Aucune.`.
+- **Lecture** : `[]` **seulement** si le bloc porte la seule puce `AUCUNE` (casse et point final
+  tolérés). Un bloc absent, vide, fait de puces nues, ou mêlant `AUCUNE` à d'autres puces est ambigu :
+  la valeur précédente est conservée. L'en-tête est reconnu avec ou sans deux-points ; le bloc
+  s'arrête à la rubrique suivante.
+- **`null`** : tant que F n'a exprimé aucun bloc lisible — notamment `/clore` avant le premier
+  échange (A2), où F rédige sans état de cadrage. `null` veut dire « non exprimé », jamais « rien
+  d'ouvert ». Le schéma de §9.2 reste en version 1 ; aucun code ne relit le champ.
+- **Limite** : la ligne ajoutée au contrat n'a pas encore été vue par un vrai outil ; son effet se
+  constatera au prochain cadrage réel.

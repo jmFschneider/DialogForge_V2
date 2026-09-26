@@ -11,11 +11,12 @@ Proposition de classement : `reference/astra_finalisation/PLAN_TRAVAIL.md` — u
 second suivi : seul ce qui est inscrit dans les phases ci-dessous est engagé.
 Ordre retenu :
 1. ~~**7.1 — F01/F02**~~ fait le 2026-09-25, non commité (voir la case 7.1).
-2. **6.6 préalable — `open_questions`** : le PO tranche d'abord le **sens** voulu du champ, à partir des
-   deux traces réelles ; la taille du correctif ne décide pas.
-3. **6.6 — recette du lot 6** (critères §15, taille remesurée).
+2. ~~**6.6 préalable — `open_questions`**~~ tranché par le PO (lecture B) et corrigé le 2026-09-25,
+   amendement A4 (voir la case 6.6), non commité.
+3. **6.6 — recette du lot 6** (critères §15, taille remesurée) : **prochaine action**. Y noter comme
+   limite que la ligne `- AUCUNE` du contrat de F n'a pas encore été vue par un vrai outil.
 Puis, sur décision explicite seulement : développement assisté (§ Extension identifiée).
-Marge de taille après 7.1 : **≈ 171 lignes** (`src/` = 5 611, +2 329 / 2 500).
+Marge de taille après A4 : **≈ 164 lignes** (`src/` = 5 618, +2 336 / 2 500).
 
 **État de la phase 6 (cadrage avec agent F) — lots 1 à 5 faits et commités (lot 4 : `028a1dd`, `ec0c7a6`, `b2bf4fe`).**
 Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3).
@@ -25,11 +26,9 @@ Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3).
   au dernier tour, identifiant masqué, lecture seule. Côté Codex, le filtre d'environnement a retiré
   `CLAUDE_CONFIG_DIR`, et le premier tour portait l'annonce puis la réponse (règle du dernier message
   confirmée).
-- **Défaut du lot 2, trouvé par la partie 2, non corrigé, à trancher par le PO** : `open_questions`
-  (provenance du cadrage) garde les `SANS_REPONSE` de la dernière proposition même après une reprise
-  du cadrage (chez les deux outils, question répondue ensuite toujours citée). Deux lectures du champ
-  possibles : les `SANS_REPONSE` de la dernière proposition, vidés à la reprise (~1 ligne + test), ou
-  les `QUESTIONS_OUVERTES` du dernier tour de F. À trancher sur le sens, pas sur la taille.
+- **Défaut du lot 2 trouvé par la partie 2 — corrigé le 2026-09-25 (A4)** : `open_questions` gardait
+  les `SANS_REPONSE` de la dernière proposition après une reprise du cadrage. Désormais : les
+  `QUESTIONS_OUVERTES` du dernier tour réussi de F (Decisions Made, A4).
 - **Marge de taille : ≈ 210 lignes** (+2 290 / 2 500, `src/` = 5 572, compteur tokenize recalé sur
   3 282 à `ba5c0a4` et 5 520 à `db37cc8`) ; façade + `gui/` inchangés (1 537 / 2 000).
 
@@ -415,6 +414,9 @@ de la phase : 900 à 1 000 lignes.
 - [ ] 6.6 Lot 6 — recette : critères §15, taille remesurée. **Préalable** : sens de `open_questions`
       tranché par le PO, puis corrigé et testé (défaut trouvé par la partie 2 du lot 4). Le sens
       retenu est documenté ; la case n'est cochée qu'après le résultat de la recette
+      *(préalable fait le 2026-09-25, non commité : amendement A4 — lecture B, `- AUCUNE` au
+      contrat, valeur précédente gardée sur un bloc ambigu, `null` si rien d'exprimé ; 769 passés /
+      2 ignorés ; +7 lignes)*
 - **Status:** in_progress — lots 1 à 5 faits ; reste le lot 6 (recette), précédé du correctif `open_questions`
 
 ### Phase 7: Finalisation, partie 1 — ouverte par le PO le 2026-09-25
@@ -501,6 +503,7 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 | Lot 5 : le mode agent vit dans `gui/views/cadrage.py`, pas dans `creation.py` | `creation.py` aurait atteint 390 lignes effectives sur un plafond de vue de 400 ; il est à 370. `framing.shown` sert l'affichage d'un tour en CLI comme en GUI |
 | A3 — Session de F par **reprise d'identifiant** (PO, 2026-09-24) | Les deux outils l'offrent (`--session-id`/`--resume` ; `exec` puis `exec resume`), lu dans `--help`. Un processus maintenu ouvert n'existe en pratique que chez un seul outil (l'autre : `app-server`, expérimental). Le transport existant sert tel quel. Coût : le modèle relit le contexte à chaque tour dans les deux mécanismes — le gain vient de ce que F ne relit plus le projet ni l'idée. **Non mesuré** : `codex exec resume` n'accepte pas `--sandbox` ; la lecture seule en reprise est à caractériser au lot 4 |
 | **Plan de finalisation : partie 1 engagée, le reste en proposition** (PO, 2026-09-25) | `reference/astra_finalisation/PLAN_TRAVAIL.md` classe le travail restant en trois parties, d'après l'audit de bout en bout. Seuls les travaux engagés entrent dans les phases (7.1, préalable de 6.6), sans recopier la liste. Ordre : F01/F02 d'abord parce qu'ils touchent la validité de l'acceptation humaine ; `open_questions` se tranche sur le sens du champ, pas sur la taille du correctif. Parties 2 (F03, F04, `corpus.build()` vide, mesure d'utilité) et 3 : non engagées. La mesure d'utilité partira des traces existantes, avec de nouveaux appels seulement pour ce qu'elles ne permettent pas de reconstituer. Commits : un changement délimité par commit, sans préalable global sur l'arbre |
+| **A4 — `open_questions` = `QUESTIONS_OUVERTES` du dernier tour réussi de F** (PO, 2026-09-25) | Lecture B, retenue sur les deux cadrages réels : elle y rend exactement les inconnues du brouillon, là où « vider à la reprise » aurait écrit `[]`. Le PO a exigé que `[]` ne s'écrive que sur un « rien d'ouvert » explicite : le contrat de F ne définissait pas la liste vide (Claude : puce nue ; Codex : `- Aucune.`), d'où `- AUCUNE` ajouté au contrat, la valeur précédente gardée sur un bloc absent, vide ou ambigu, et `null` quand F n'a rien exprimé (`/clore` avant le premier échange). Écrit dans `conception/CADRAGE_AGENT.md` (amendement A4) |
 
 ## Errors Encountered
 | Error | Resolution |

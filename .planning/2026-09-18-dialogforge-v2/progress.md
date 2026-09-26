@@ -1769,3 +1769,26 @@ ruff (`src tests`) vert ; mypy strict vert (77 fichiers) ; **765 passés / 2 ign
 rc=0 ; `git diff --check` propre. `ruff check .` échoue sur les scripts d'audit non suivis de
 `reference/Astra_AUDIT_BOUT_EN_BOUT/` (64 erreurs, hors de ce changement). Taille `src/` = 5 611
 (+39 ; +2 329 / 2 500, marge ≈ 171).
+
+### 6.6 préalable — `open_questions` (amendement A4, non commité)
+- Commits de 7.1 sur demande du PO : `2a8c6e9` (fix, src et tests), `24a9c2d` (docs, plan).
+- Deux traces réelles relues (`C:/Projets/essais-3-1/cadrage-lot4/produit-claude` et
+  `produit-codex`) : le champ citait une question déjà répondue ; le dernier `QUESTIONS_OUVERTES`
+  de F rend exactement les inconnues du brouillon, chez les deux outils. « Vider à la reprise »
+  (recommandé jusque-là pour sa taille) aurait écrit `[]` dans les deux cas : recommandation
+  retirée. Le PO a retenu la lecture B.
+- Vérification demandée par le PO avant l'implémentation : le contrat de F ne définissait pas la
+  liste vide (`_F_CONTRACTS` : « une liste chacune ») et `parse_reply` ne regarde pas l'intérieur de
+  `ETAT_CADRAGE`. Claude écrit une puce nue, Codex `- Aucune.`. Et `/clore` avant le premier
+  échange (A2) laissait `[]` sans que F ait rien exprimé.
+- Fait : `- AUCUNE` ajouté au contrat ; `framing._open_questions` lit le bloc (en-tête avec ou sans
+  deux-points, arrêt à la rubrique suivante) ; `[]` seulement sur `AUCUNE` seul, valeur précédente
+  gardée sinon ; `null` au départ. `_unanswered` retiré. Amendement A4 dans
+  `conception/CADRAGE_AGENT.md` ; deux règles et deux motifs dans `project/RULES.md`.
+- Tests : `TestOpenQuestions` (les deux enchaînements réels réduits à leur forme, huit cas de la
+  règle, `/clore` avant tout échange, ligne du contrat) ; fixture `READY_OUT` complétée. 12 échecs
+  sur l'ancien code.
+
+### Test Results (A4)
+ruff (`src tests`) vert ; mypy strict vert ; **769 passés / 2 ignorés** ; scénario rc=0 ;
+`git diff --check` propre. Taille `src/` = 5 618 (+7 ; +2 336 / 2 500, marge ≈ 164).
