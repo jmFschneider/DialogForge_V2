@@ -63,6 +63,8 @@ est le texte que vous avez relu. La conversation, ses traces et sa provenance so
 Toute la conversation tient dans **une seule session** de l'outil, reprise à chaque tour : l'idée et
 les sources ne sont lues qu'une fois. Un adaptateur qui ne sait pas tenir une telle session est
 refusé avant tout appel. Le délai par échange est celui de `timeout` dans le fichier de réglages.
+Le coût est **une session et un échange par tour de F** : ses questions, ses propositions et la
+rédaction (`q + p + r`). Aucun nombre de jetons ni aucun prix n'est calculé ou promis.
 
 ## run
 
