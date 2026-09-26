@@ -1792,3 +1792,52 @@ rc=0 ; `git diff --check` propre. `ruff check .` échoue sur les scripts d'audit
 ### Test Results (A4)
 ruff (`src tests`) vert ; mypy strict vert ; **769 passés / 2 ignorés** ; scénario rc=0 ;
 `git diff --check` propre. Taille `src/` = 5 618 (+7 ; +2 336 / 2 500, marge ≈ 164).
+
+### 6.6 — Recette du lot 6 : critères §15 (2026-09-26, non commité)
+Commits de A4 sur demande du PO : `e7ef498` (fix), `fd30ae4` (docs).
+Méthode : chaque critère rattaché à ses tests (numéros du §14, cités dans les docstrings) ou à une
+preuve réelle ; les points du §14 sans test propre comblés dans `tests/test_framing_recette.py`
+(73, 74, 53, 80, 81, P18, périmètre 14/49/77), sans rejouer ce que les lots 1 à 5 prouvent.
+
+| # | Critère | Preuve |
+|---|---|---|
+| 1 | Voies existantes disponibles | Suite `--demande`/`--cadrer` inchangée et verte ; `test_framing_options_need_the_agent_mode` |
+| 2 | Aide de `new` : le mode agent appelle | `test_the_help_says_the_agent_mode_may_call` |
+| 3 | F paramétré indépendamment de A et B | `--agent-cadrage` et options propres ; test 50 (défaut de F par adaptateur) |
+| 4 | Session neuve pendant tout le cadrage | Tests 1 à 4 ; deux cadrages réels du lot 4 (même session, 6 tours) |
+| 5 | Aucun rechargement entre les tours | Tests 15 à 17 ; traces réelles (F ne relit ni l'idée ni le corpus) |
+| 6 | Sources copiées dans un dossier isolé | Tests 5, 6 |
+| 7 | Aucun chemin absolu persisté | Test 7, `test_no_absolute_source_path_and_no_leftover` |
+| 8 | Sans source en conception | Test 11 (et 12 : refusé en recherche) |
+| 9 | Réponses libres et corrections | Tests 18, 19, 28, 29 |
+| 10-12 | Limites 3 puis 2 ; correction = 1re réponse | Tests 23 à 31 (A1) |
+| 13 | L'utilisateur seul clôt | Tests 33, 34 |
+| 14 | Rédaction dans la même session | Tests 36, 45, 75 |
+| 15 | Relecture avant création | Tests 41, 42 |
+| 16 | Empreintes = texte relu | Test 43 |
+| 17 | GUI : unique fil moteur | Tests 65 à 67 ; 69 remplacé par le sondage `after()` (Decisions Made, lot 5) |
+| 18 | Session F fermée avant A | Test 54 |
+| 19 | `demande.md` seule entrée du cycle | Tests 55, 56 |
+| 20 | Provenance : brouillon ≠ texte accepté | Tests 58, 59 |
+| 21 | P14-P20, R7, X14 | P14 : 33, 41 ; P15 : 55 ; P16 : 37 ; P17 : 21, 22 ; P18 : recette ; P19 : 23-31 ; P20 : consigne du prompt seulement ; R7 : 73-76 et doc ; X14 : 56 |
+| 22 | Coût = une session et `q + p + r` échanges | Tests 73, 74 (recette), 76 ; phrase ajoutée à `docs/COMMANDES.md` |
+| 23 | Aucun ratio de jetons promis | Même phrase ; balayage « coût/jetons/quota » des sources de F |
+| 24 | Aucun des cinq interdits contourné | Balayage des sources de F (motifs de la recette GUI + coût + import du moteur A/B) |
+| 25 | Façade + GUI < 2 000 lignes logiques | **1 540** (compteur recalé sur 1 537 à `db37cc8`) |
+| 26 | Croissance `src/` < +2 500 | **5 618 = +2 336**, marge ≈ 164 |
+| 27 | Marge remesurée avant livraison | Ce relevé, compteur recalé sur 3 282 / 5 520 / 5 572 |
+| 28 | Aucun fournisseur réel dans les tests | `FakeAdapter` partout ; `shutil.which` et version substitués (`test_adapters.py`) |
+
+**Limites consignées** :
+- P20 (alternatives étayées, jamais inventées) n'est qu'une consigne du prompt : aucun test mécanique ne
+  peut juger qu'une alternative est « étayée ».
+- La ligne `- AUCUNE` du contrat (A4) n'a pas encore été vue par un vrai outil.
+- Les cadrages réels du lot 4 sont passés par la CLI ; le mode agent de la GUI n'a été éprouvé qu'avec
+  le faux agent, et aucune recette visuelle n'a été faite.
+- Le tableau de `docs/COMMANDES.md` qui dit que `new` n'appelle pas d'agent relève de F03 (partie 2,
+  non engagée) ; la ligne `--cadrer-avec-agent` et l'aide, elles, l'annoncent.
+
+### Test Results (6.6)
+ruff (`src tests`) vert ; mypy strict vert (78 fichiers) ; **778 passés / 2 ignorés** ; scénario
+rc=0 ; `git diff --check` propre. `src/` inchangé par la recette (5 618) ; tests seuls, plus une
+phrase de documentation.

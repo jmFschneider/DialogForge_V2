@@ -9,17 +9,19 @@ avec reprise après incident sans rejouer un appel ambigu.
 **Partie 1 du plan de finalisation, engagée par le PO le 2026-09-25** (voir Decisions Made).
 Proposition de classement : `reference/astra_finalisation/PLAN_TRAVAIL.md` — une proposition, pas un
 second suivi : seul ce qui est inscrit dans les phases ci-dessous est engagé.
-Ordre retenu :
-1. ~~**7.1 — F01/F02**~~ fait le 2026-09-25, non commité (voir la case 7.1).
-2. ~~**6.6 préalable — `open_questions`**~~ tranché par le PO (lecture B) et corrigé le 2026-09-25,
-   amendement A4 (voir la case 6.6), non commité.
-3. **6.6 — recette du lot 6** (critères §15, taille remesurée) : **prochaine action**. Y noter comme
-   limite que la ligne `- AUCUNE` du contrat de F n'a pas encore été vue par un vrai outil.
-Puis, sur décision explicite seulement : développement assisté (§ Extension identifiée).
-Marge de taille après A4 : **≈ 164 lignes** (`src/` = 5 618, +2 336 / 2 500).
+Ordre retenu, **engagé en entier et fait** :
+1. ~~**7.1 — F01/F02**~~ fait et commité le 2026-09-25 (`2a8c6e9`).
+2. ~~**6.6 préalable — `open_questions`**~~ lecture B, amendement A4, commité (`e7ef498`, `fd30ae4`).
+3. ~~**6.6 — recette du lot 6**~~ faite le 2026-09-26, non commitée : 28 critères du §15 tenus, limites
+   consignées (progress.md, « 6.6 — Recette du lot 6 »). **La phase 6 est complète.**
 
-**État de la phase 6 (cadrage avec agent F) — lots 1 à 5 faits et commités (lot 4 : `028a1dd`, `ec0c7a6`, `b2bf4fe`).**
-Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A3).
+**Prochaine action : une décision du PO**, rien d'engagé au-delà. Soit ouvrir le point 1.3 du plan de
+finalisation (développement assisté, § Extension identifiée), soit engager tout ou partie de la
+partie 2 (F03, F04, `corpus.build()` vide, mesure d'utilité), soit s'arrêter là.
+Marge de taille : **≈ 164 lignes** (`src/` = 5 618, +2 336 / 2 500) ; façade + GUI 1 540 / 2 000.
+
+**État de la phase 6 (cadrage avec agent F) — complète : lots 1 à 5 commités (lot 4 : `028a1dd`, `ec0c7a6`, `b2bf4fe`), recette 6.6 faite.**
+Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A4).
 - **Lot 4 conforme chez les deux outils** (`reference/PROTOCOLE_CADRAGE_LOT4.md`). Partie 1 (4 appels
   hors produit) : même identifiant, contexte rappelé, aucune écriture en reprise. Partie 2 (un cadrage
   réel par le produit et par outil, 6 échanges chacun, avec un « continuer ») : même session du premier
@@ -276,8 +278,8 @@ Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la se
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 7 (finalisation, partie 1) — ouverte le 2026-09-25, 7.1 fait (non commité). Phase 6 (cadrage avec
-agent F) — ouverte le 2026-09-24, reste 6.6. Phase 5 (GUI V1) complète et commitée
+Phase 7 (finalisation, partie 1) — ouverte le 2026-09-25 ; ce qui est engagé est fait, 1.3 attend une
+décision du PO. Phase 6 (cadrage avec agent F) — complète le 2026-09-26 (recette 6.6). Phase 5 (GUI V1) complète et commitée
 (`581cbb3`). Phase 4 complète (J3, `v0.1.0`).
 
 ## Plan de référence
@@ -411,13 +413,18 @@ de la phase : 900 à 1 000 lignes.
 - [x] 6.5 Lot 5 — GUI : mode « Cadrer avec un agent », modale, unique fil moteur (§4, §14.7)
       *(2026-09-24, `c718055` : `gui/views/cadrage.py`, contrôleur, écran de création ;
       751 passés / 2 ignorés ; +310 lignes)*
-- [ ] 6.6 Lot 6 — recette : critères §15, taille remesurée. **Préalable** : sens de `open_questions`
+- [x] 6.6 Lot 6 — recette : critères §15, taille remesurée. **Préalable** : sens de `open_questions`
       tranché par le PO, puis corrigé et testé (défaut trouvé par la partie 2 du lot 4). Le sens
       retenu est documenté ; la case n'est cochée qu'après le résultat de la recette
       *(préalable fait le 2026-09-25, non commité : amendement A4 — lecture B, `- AUCUNE` au
       contrat, valeur précédente gardée sur un bloc ambigu, `null` si rien d'exprimé ; 769 passés /
       2 ignorés ; +7 lignes)*
-- **Status:** in_progress — lots 1 à 5 faits ; reste le lot 6 (recette), précédé du correctif `open_questions`
+      *(recette le 2026-09-26, non commitée : 28 critères tenus, `tests/test_framing_recette.py`
+      pour les points du §14 sans test propre, une phrase de coût dans `docs/COMMANDES.md` ;
+      778 passés / 2 ignorés ; `src/` inchangé, 5 618 ; façade + GUI 1 540. Limites : P20 non
+      testable mécaniquement, `- AUCUNE` pas encore vu en réel, mode agent GUI éprouvé au faux
+      agent seulement)*
+- **Status:** complete — lots 1 à 6 faits (2026-09-26)
 
 ### Phase 7: Finalisation, partie 1 — ouverte par le PO le 2026-09-25
 Source : `reference/astra_finalisation/PLAN_TRAVAIL.md` (partie 1), constats de
@@ -438,7 +445,7 @@ ci-dessus ; le point 1.3 reste conditionnel (§ Extension identifiée). Parties 
       `decisions.json` inchangé. Un livrable ou une revue modifiés mais présents restent une autre
       version, acceptable explicitement. 765 passés / 2 ignorés ; +39 lignes. Relu à froid par un
       agent : rien de bloquant)*
-- **Status:** in_progress — 7.1 fait ; la partie 1 continue par le préalable de 6.6
+- **Status:** in_progress — 7.1 fait, point 1.2 fait (6.6) ; le point 1.3 attend une décision du PO
 
 ## Extension identifiée (hors phases)
 
