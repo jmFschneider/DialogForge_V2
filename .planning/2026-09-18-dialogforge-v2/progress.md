@@ -1841,3 +1841,88 @@ preuve réelle ; les points du §14 sans test propre comblés dans `tests/test_f
 ruff (`src tests`) vert ; mypy strict vert (78 fichiers) ; **778 passés / 2 ignorés** ; scénario
 rc=0 ; `git diff --check` propre. `src/` inchangé par la recette (5 618) ; tests seuls, plus une
 phrase de documentation.
+
+## Session 2026-09-26 — point 1.3 ouvert : préparation de la conception du développement assisté
+- Commits de la recette sur demande du PO : `590a8db` (test), `1b2da3d` (docs).
+- Le PO ouvre le point 1.3 (lot 4 initial). Lus pour le préparer : `POURQUOI.md` (non lu en début
+  de session le 2026-09-25, rattrapé ici), `astra/06` §1-§3 et §8, `astra/03` §7, `astra/04` §2,
+  `astra/01` §5, `astra/README.md`, `ANALYSE_PROGRAMME_INITIAL.md`.
+- Méthode reprise des phases 5 et 6 (`essais-3-1/gui-v1`, `Creation-prompt-2`) : conception par une
+  collaboration DialogForge. Préparé hors dépôt : `C:\Projets\essais-3-1\preparation-dev-assiste\`
+  (`demande.md`, six sections conformes ; `sources.txt`, 10 fichiers de ce dépôt). La demande cite
+  `astra/06` §8 et `astra/03` §7, hors corpus ; elle pose le cadre (aucune exécution autonome, Git
+  en lecture, marge ≈ 164 lignes à tenir ou chiffrer).
+- Rien lancé : la collaboration de conception appelle les fournisseurs, le PO la lance.
+
+## Session 2026-09-26 — poursuite nocturne du point 1.3 avec Codex et Claude
+- Le PO demande de poursuivre avec l'aide de Claude pour terminer avant demain.
+- Relus : CLAUDE.md, POURQUOI.md, règles, plan et préparation hors dépôt. Les exécutables
+  Claude et Codex sont présents ; la collaboration n'existait pas.
+- Collaboration créée puis `run` lancé dans `C:\Projets\essais-3-1\dev-assiste`, avec les
+  autorisations d'exécution hors du bac à sable. Demande et dix sources inchangées.
+  Configuration effective : A = codex / gpt-5.6-sol ; B = claude / opus ; une révision,
+  délai de 1 200 secondes par appel. Premier appel en cours (PROPOSAL_A).
+- Questions au PO en attente : délégation éventuelle de l'acceptation sous contraintes,
+  et projet de l'essai réel. Pas d'acceptation ni d'implémentation à ce stade.
+- État Git initial : seuls task_plan.md et progress.md modifiés parmi les fichiers suivis ;
+  documents d'audit/finalisation non suivis déjà présents, conservés.
+- Réponse du PO pendant le premier appel : délégation de l'acceptation sous contraintes puis
+  du code ; ajout net autorisé inférieur à 1 000 lignes, de préférence au plus 500. L'amendement
+  sera transmis par une intervention tracée, sans modifier la demande pendant un appel.
+- Le PO choisit DialogForge_2 pour l'essai. État initial vérifié : ruff src/tests vert,
+  mypy src vert ; pytest : 772 passés, 8 ignorés, 561 sous-tests (112,90 s dans le bac à sable).
+  Aucun fichier de production modifié avant acceptation de la conception.
+- Premier cycle réel terminé (4 appels) : AWAITING_APPROVAL, six constats encore ouverts.
+  La révision 1 conserve une orchestration B séparée : non acceptée par Codex.
+- Tour de correction lancé via `decide --correct` avec `amendement-dev-assiste.md` :
+  nouveau plafond, projet d'essai, délégation et réemploi des collaborations ordinaires.
+  A produit un rapport documentaire sur le code extérieur, B le critique ; pas de second moteur.
+
+## Session 2026-09-27 — implémentation du développement assisté
+- Tour ciblé terminé : B accepte la conception à l'appel 6, avec deux NOTE ouvertes.
+  Codex accepte sous délégation avec réserves tracées dans `dev-assiste/decisions.json` :
+  `sources.txt` contrôlé séparément de sa copie de corpus (`B-verify-001`), contrôle textuel
+  ambigu des validations reporté (`B-verify-002`). Le livrable exact est copié dans
+  `conception/DEVELOPPEMENT_ASSISTE.md`. Aucun code écrit avant cette acceptation.
+- Code : `development.py` et trois commandes CLI `dev-export`, `dev-package`, `dev-verify`.
+  Export réel de la conception acceptée produit sous `essais-3-1`; copie Git isolée de
+  DialogForge_2 créée pour l'essai réel. Le produit ne lance que des lectures Git sur deux commits,
+  ne lance aucun test du projet cible et réutilise `new/run/show/decide` pour la revue.
+- Avant revue externe : 15 tests ciblés et 20 sous-tests passés ; documentation : 8 tests,
+  193 sous-tests ; suite complète : **786 passés, 8 ignorés, 613 sous-tests** ; Ruff et mypy verts.
+  Mesure recalée exactement sur 5 618 à HEAD : ajout net de 399 lignes de code effectif.
+- Relecture statique réelle par Claude Opus en lecture seule : dix observations, dont trois
+  majeures sur le rattachement du paquet et le parcours de correction. Corrections en cours :
+  racine du paquet fermée, demande initiale vérifiée contre sa configuration, acceptation seule
+  soumise au contrôle de péremption ; revue arrêtée acceptée comme antécédent si elle a ses pièces,
+  racine Git réelle utilisée pour refuser une sortie dans le dépôt, chemins de contrôle refusés,
+  délai Git rendu comme refus normal. Tests de régression ajoutés, résultats en attente.
+- `B-verify-002` : report du contrôle textuel des identifiants de validation dans la prose,
+  indiqué dans `docs/COMMANDES.md`. Les contrôles des pièces et de leurs empreintes restent tenus.
+
+## Session 2026-09-27 — clôture du point 1.3 et essai réel
+
+- Deux relectures statiques de l'implémentation par Claude Opus ont conduit à renforcer les
+  contrôles d'identité du paquet, de la révision, de la demande, des antécédents et de la
+  publication sans remplacement. Les régressions ont été couvertes par des tests ciblés.
+- Implémentation et conception commitées en `74f6973` ; croissance effective de `src/` :
+  5 618 → 6 090, soit **+472 lignes** (cible ≤ 500, plafond strict < 1 000).
+  Suite complète après implémentation : **786 passés, 8 ignorés, 613 sous-tests** ; après les
+  corrections ciblées : 31 passés, 219 sous-tests ; Ruff et mypy strict verts.
+- Essai hors dépôt dans `C:\Projets\essais-3-1\dev-assiste-essai-20260927` : clone Git de
+  DialogForge_2. Export de la conception acceptée, puis quatre commits documentaires successifs
+  (`3b5a05d`, `f998f3b`, `cbcea09`, `f5383e8`), chacun capturé à partir de sa base exacte.
+  Chaque paquet a été soumis à une collaboration A=Codex, B=Claude en accès `consult`, avec un
+  rapport, une critique, `dev-verify` réussi et une décision sur le rapport avec réserves.
+- Dernier paquet : `b20bc318615be3fdda50e4b3147487a5b70f618313b42f93ef813ea07cdf7591` ;
+  base `cbcea09c6b75e8d1c128f6bcdda3b8e76669b812`, tête
+  `f5383e8fbfdba5cdaa3140c4aea9bf9cd5bc1df4`. Validation documentaire déclarée
+  `PASSED` (8 tests, 193 sous-tests) ; contrôle sémantique déclaré `NOT_RUN` avec motif et
+  note d'inspection du diff. B a accepté la dernière version du rapport, ses six constats
+  de relecture sont résolus, puis la décision humaine déléguée a accepté le rapport avec
+  réserves après vérification du paquet.
+- La revue a relevé une imprécision mineure non introduite par le dernier diff : « réponses
+  présentes dans le registre ». Elle est corrigée dans `docs/COMMANDES.md` du dépôt principal,
+  hors du paquet figé de l'essai ; les 8 tests documentaires y passent. Les résultats importés
+  restent déclaratifs, et DialogForge ne certifie ni leur exécution ni le jugement éditorial.
+  Aucun merge, installation ou déploiement n'a été effectué.

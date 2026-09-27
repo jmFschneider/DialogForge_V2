@@ -15,10 +15,21 @@ Ordre retenu, **engagé en entier et fait** :
 3. ~~**6.6 — recette du lot 6**~~ faite le 2026-09-26, non commitée : 28 critères du §15 tenus, limites
    consignées (progress.md, « 6.6 — Recette du lot 6 »). **La phase 6 est complète.**
 
-**Prochaine action : une décision du PO**, rien d'engagé au-delà. Soit ouvrir le point 1.3 du plan de
-finalisation (développement assisté, § Extension identifiée), soit engager tout ou partie de la
-partie 2 (F03, F04, `corpus.build()` vide, mesure d'utilité), soit s'arrêter là.
-Marge de taille : **≈ 164 lignes** (`src/` = 5 618, +2 336 / 2 500) ; façade + GUI 1 540 / 2 000.
+**Point 1.3 — développement assisté : ouvert par le PO le 2026-09-26** (Decisions Made). Même
+méthode que les phases 5 et 6 : conception produite par une collaboration DialogForge, acceptée par
+le PO, puis implémentation lot par lot. **Prochaine action** : suivre la collaboration de
+conception `C:\Projets\essais-3-1\dev-assiste`, lancée le 2026-09-26 par Codex à la demande du PO
+de poursuivre avec l'aide de Claude cette nuit (A = Codex, B = Claude, une révision).
+Demande et corpus préparés inchangés. Lire le livrable et le bilan avant toute acceptation.
+Le PO délègue désormais à Codex l'acceptation sous contraintes, puis l'implémentation et les
+validations (2026-09-26). Conception acceptée avec réserves le 2026-09-27 (heure de Paris),
+après accord de B à l'appel 6 : `conception/DEVELOPPEMENT_ASSISTE.md`.
+Projet d'essai choisi par le PO : DialogForge_2 lui-même, modification limitée et réversible.
+Implémenter les trois commandes locales puis tests, revue Claude et essai réel.
+Partie 2 : toujours non engagée.
+Taille du lot : **ajout net inférieur à 1 000 lignes effectives dans src/, cible ≤ 500**,
+autorisé par le PO le 2026-09-26 en remplacement de la marge de 164 lignes pour ce lot.
+Référence avant lot : `src/` = 5 618 ; façade + GUI 1 540 / 2 000 (plafond inchangé).
 
 **État de la phase 6 (cadrage avec agent F) — complète : lots 1 à 5 commités (lot 4 : `028a1dd`, `ec0c7a6`, `b2bf4fe`), recette 6.6 faite.**
 Conception : `conception/CADRAGE_AGENT.md` (acceptée, amendements A1-A4).
@@ -445,7 +456,14 @@ ci-dessus ; le point 1.3 reste conditionnel (§ Extension identifiée). Parties 
       `decisions.json` inchangé. Un livrable ou une revue modifiés mais présents restent une autre
       version, acceptable explicitement. 765 passés / 2 ignorés ; +39 lignes. Relu à froid par un
       agent : rien de bloquant)*
-- **Status:** in_progress — 7.1 fait, point 1.2 fait (6.6) ; le point 1.3 attend une décision du PO
+- [x] 7.2 Point 1.3 — développement assisté : conception acceptée avec deux réserves,
+      `dev-export`, `dev-package` et `dev-verify` livrés, essai réel sur une copie Git de
+      DialogForge_2. Quatre révisions documentaires, chacune avec son paquet, ses validations et
+      sa revue A/B ; rapports acceptés avec réserves après `dev-verify`. Le dernier paquet est
+      `b20bc318…`, tête `f5383e8`, et le dépôt principal reprend aussi la dernière précision
+      éditoriale « présentes dans le registre ». Code du lot : +472 lignes effectives dans `src/`,
+      sous la cible de 500 ; suite complète : 786 passés, 8 ignorés, 613 sous-tests.
+- **Status:** complete — partie 1 de la finalisation terminée (2026-09-27)
 
 ## Extension identifiée (hors phases)
 
@@ -454,7 +472,8 @@ paquet de revue à partir d'une base Git identifiée, boucle de dispositions ré
 une modification limitée et réversible. **Ne s'ouvre qu'après J3** et n'introduit ni worker, ni
 commit, ni déploiement automatique dans le moteur documentaire. Le travail est confié à l'agent de
 développement habituel : ce n'est pas une exécution autonome par le moteur (`astra/06` §8). Point 1.3
-du plan de finalisation, critère de sortie compris ; **son ouverture reste une décision explicite du PO**.
+du plan de finalisation, critère de sortie compris. **Ouvert par le PO le 2026-09-26 et achevé le
+2026-09-27** : conception et implémentation livrées, essai réel tracé au point 7.2.
 
 Également conditionnelle après J3, et non engagée : recherche externe. (L'interface graphique
 légère est engagée depuis le 2026-09-23 : phase 5.)
@@ -462,6 +481,7 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
+| **Délégation nocturne du point 1.3 et taille** (PO, 2026-09-26) | Le PO valide l'option « conception puis code : délégation de l'acceptation si les contraintes sont respectées ». Il autorise le débordement de taille « en dessous de 1000 lignes et préférablement 500 » : interprété et annoncé comme ajout net du lot dans src/ < 1 000, cible ≤ 500, depuis 5 618. La conception est produite et critiquée avant acceptation déléguée, puis implémentation, tests et relecture avec Claude. Les autres limites du lot demeurent. |
 | Dossier `C:\Projets\DialogForge_2` | Nom retenu par le PO le 2026-09-18 ; le plan `astra/` proposait `DialogForge_V2`. `C:\Projets\DialogForge` est la plateforme historique, source de l'étude : intouchée |
 | Départ au commit `4a11cc7` d'IAbinome | HEAD d'IAbinome **est** le commit de référence de l'étude : écart nul, aucun arbitrage à rendre |
 | Remote `origin` retiré du clone | Rend impossible une écriture accidentelle vers IAbinome ; aucune publication distante n'est utile au lot 0 |
@@ -511,6 +531,7 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 | A3 — Session de F par **reprise d'identifiant** (PO, 2026-09-24) | Les deux outils l'offrent (`--session-id`/`--resume` ; `exec` puis `exec resume`), lu dans `--help`. Un processus maintenu ouvert n'existe en pratique que chez un seul outil (l'autre : `app-server`, expérimental). Le transport existant sert tel quel. Coût : le modèle relit le contexte à chaque tour dans les deux mécanismes — le gain vient de ce que F ne relit plus le projet ni l'idée. **Non mesuré** : `codex exec resume` n'accepte pas `--sandbox` ; la lecture seule en reprise est à caractériser au lot 4 |
 | **Plan de finalisation : partie 1 engagée, le reste en proposition** (PO, 2026-09-25) | `reference/astra_finalisation/PLAN_TRAVAIL.md` classe le travail restant en trois parties, d'après l'audit de bout en bout. Seuls les travaux engagés entrent dans les phases (7.1, préalable de 6.6), sans recopier la liste. Ordre : F01/F02 d'abord parce qu'ils touchent la validité de l'acceptation humaine ; `open_questions` se tranche sur le sens du champ, pas sur la taille du correctif. Parties 2 (F03, F04, `corpus.build()` vide, mesure d'utilité) et 3 : non engagées. La mesure d'utilité partira des traces existantes, avec de nouveaux appels seulement pour ce qu'elles ne permettent pas de reconstituer. Commits : un changement délimité par commit, sans préalable global sur l'arbre |
 | **A4 — `open_questions` = `QUESTIONS_OUVERTES` du dernier tour réussi de F** (PO, 2026-09-25) | Lecture B, retenue sur les deux cadrages réels : elle y rend exactement les inconnues du brouillon, là où « vider à la reprise » aurait écrit `[]`. Le PO a exigé que `[]` ne s'écrive que sur un « rien d'ouvert » explicite : le contrat de F ne définissait pas la liste vide (Claude : puce nue ; Codex : `- Aucune.`), d'où `- AUCUNE` ajouté au contrat, la valeur précédente gardée sur un bloc absent, vide ou ambigu, et `null` quand F n'a rien exprimé (`/clore` avant le premier échange). Écrit dans `conception/CADRAGE_AGENT.md` (amendement A4) |
+| **Ouverture du développement assisté (point 1.3 / lot 4 initial)** (PO, 2026-09-26) | Décision explicite prévue par le plan, prise pour « rester dans le cadre prévu : les plus importants d'abord ». Méthode reprise des phases 5 et 6 : une collaboration DialogForge produit la conception, le PO l'accepte, puis implémentation. Cadre posé dans la demande : ni implémentation, ni exécution des tests du projet cible, ni commit, merge, installation ou déploiement par DialogForge (interdit « pas d'exécution autonome », `POURQUOI.md`) ; Git lu seulement ; marge de taille ≈ 164 lignes, que la conception doit tenir ou dont elle chiffre l'écart sans supposer de relèvement |
 
 ## Errors Encountered
 | Error | Resolution |

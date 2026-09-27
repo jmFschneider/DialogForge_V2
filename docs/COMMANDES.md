@@ -218,13 +218,21 @@ sont des déclarations dont il contrôle le rattachement, sans certifier leur ex
 
 `dialogforge dev-verify --package <dossier> --review <collaboration>`
 
-Vérifie les empreintes du paquet, sa copie dans le corpus de la collaboration, la demande de
-revue et l'applicabilité d'une décision existante. Affiche le paquet, les commits, les validations
-fournies et les constats ouverts. La vérification ne juge ni le contenu intellectuel du rapport
-ni l'exécution réelle des validations. Effectuez-la avant de décider sur le rapport.
+Vérifie le schéma de `package.json`, les tailles et empreintes, l'absence de fichier surnuméraire
+et le `package-id` recalculé. Contrôle les identifiants du paquet, de la base et de la tête dans la
+demande de revue, la copie du paquet dans le corpus, les sources dans son manifeste et le mode
+`consult`. `sources.txt` est contrôlé séparément : il appartient au paquet mais n'est pas copié
+dans `corpus/fichiers/` ; cette absence est admise dans la comparaison. Si la collaboration est
+terminée, contrôle l'applicabilité d'une décision existante.
+Affiche le paquet, les commits, les validations fournies, la décision applicable ou absente et les
+constats ouverts. Elle ne juge ni le contenu intellectuel du rapport ni l'exécution réelle des
+validations. Effectuez-la avant de décider sur le rapport.
+Un code de sortie 0 atteste la réussite des contrôles de rattachement du paquet et de la
+collaboration. Il ne certifie ni l'exécution des validations déclarées ni le contenu du rapport.
 Le contrôle textuel des identifiants de validation cités dans la prose est reporté (réserve
-`B-verify-002` de la conception acceptée) : seules les pièces du paquet et leurs empreintes
-sont vérifiées. Les réponses `CONTESTE` et `ARBITRAGE` affichées peuvent être historiques.
+`B-verify-002` de la conception acceptée) ; les autres contrôles de rattachement restent
+applicables. Les réponses `CONTESTE` et `ARBITRAGE` présentes dans le registre sont aussi
+affichées et peuvent être historiques.
 
 | Option | Sens |
 |---|---|
