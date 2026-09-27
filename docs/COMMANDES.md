@@ -1,6 +1,6 @@
 # Commandes
 
-Référence des neuf commandes, des statuts et des codes de sortie. Pour un premier parcours,
+Référence des douze commandes, des statuts et des codes de sortie. Pour un premier parcours,
 commencez par [`PRISE_EN_MAIN.md`](PRISE_EN_MAIN.md). `dialogforge <commande> --help` donne la
 même information en ligne.
 
@@ -15,6 +15,9 @@ même information en ligne.
 | [`plan`](#plan) | Résumé pour un plan PWF, liaison facultative | non |
 | [`list`](#list) | Énumérer les collaborations d'un dossier | non, lecture seule |
 | [`gui`](#gui) | Ouvrir la fenêtre locale (Tkinter) | comme la CLI, selon l'écran ouvert |
+| [`dev-export`](#dev-export) | Exporter une conception acceptée | non |
+| [`dev-package`](#dev-package) | Figer deux commits et les validations fournies | non ; lit Git |
+| [`dev-verify`](#dev-verify) | Vérifier le rattachement du paquet à sa revue | non, lecture seule |
 
 `<dossier>` désigne le dossier d'une collaboration, celui que `new` a créé.
 
@@ -164,6 +167,69 @@ fonctionne comme avant.
 
 Énumère les collaborations d'un dossier, **calculées** depuis les dossiers : pas d'index, rien à garder
 à jour. Un dossier illisible est nommé plutôt que caché.
+
+## dev-export
+
+`dialogforge dev-export <collaboration> --output <dossier>`
+
+Produit un mandat pour l'agent de développement habituel : demande, conception acceptée,
+réserves et objections ouvertes. L'acceptation doit encore s'appliquer aux fichiers présents.
+Le dossier de sortie doit être absent. Le mandat précise le format JSON des validations.
+Placez ce dossier hors de la collaboration source.
+
+| Option | Sens |
+|---|---|
+| `--output <dossier>` | Nouveau dossier contenant `export.md` et `export.json`. |
+
+## dev-package
+
+`dialogforge dev-package --export <dossier> --repo <dépôt> --base <commit> --head <commit> --output <dossier> [--validation <json> ...] [--developer-note <md> ...] [--previous-review <collaboration> ...]`
+
+Capture le diff binaire de deux commits, les fichiers ajoutés ou modifiés, les résultats de
+validation **déjà produits**, les notes éventuelles et les revues antérieures. Un résultat doit
+nommer l'OID complet de la tête. Tous ces éléments entrent dans l'identité du paquet ; celui-ci
+est publié en une fois et ne peut être enrichi. Une nouvelle preuve demande un nouveau paquet
+et une nouvelle collaboration de revue.
+Le dossier du paquet doit se trouver hors du dépôt cible, de l'export et des revues sources.
+
+| Option | Sens |
+|---|---|
+| `--export <dossier>` | Export produit par `dev-export`. |
+| `--repo <dépôt>` | Dépôt Git local lu sans opération d'écriture. |
+| `--base <commit>` | Commit de base ; nom résolu en OID complet. |
+| `--head <commit>` | Commit candidat ; nom résolu en OID complet. |
+| `--validation <json>` | Résultat externe, répétable ; identifiant unique et tête exacte exigés. |
+| `--developer-note <md>` | Note du développeur, répétable, déclarative. |
+| `--previous-review <collaboration>` | Revue précédente terminée, répétable ; ses constats deviennent des sources. |
+| `--output <dossier>` | Nouveau dossier du paquet. |
+
+Le paquet inclut `review-request.md` et `sources.txt`. Utilisez-les avec `new --demande`,
+`--source-root` et `--source-list`, en `--reviewer-access consult`, puis `run` et `show`.
+A rédige un rapport sur le code extérieur ; B critique ce rapport en lisant la même copie du
+paquet. `decide --correct` sert aux corrections du rapport. Une correction du code ou un résultat
+de validation différent exige un nouveau commit, un nouveau paquet et une nouvelle collaboration.
+
+La capture ne contient que les objets des deux commits : ni index, ni travail non commité, ni
+fichiers ignorés ou non suivis. Les sous-modules ne fournissent que leur gitlink, et Git LFS son
+pointeur commité. DialogForge n'exécute ni le code ni les tests du projet ; les résultats importés
+sont des déclarations dont il contrôle le rattachement, sans certifier leur exécution.
+
+## dev-verify
+
+`dialogforge dev-verify --package <dossier> --review <collaboration>`
+
+Vérifie les empreintes du paquet, sa copie dans le corpus de la collaboration, la demande de
+revue et l'applicabilité d'une décision existante. Affiche le paquet, les commits, les validations
+fournies et les constats ouverts. La vérification ne juge ni le contenu intellectuel du rapport
+ni l'exécution réelle des validations. Effectuez-la avant de décider sur le rapport.
+Le contrôle textuel des identifiants de validation cités dans la prose est reporté (réserve
+`B-verify-002` de la conception acceptée) : seules les pièces du paquet et leurs empreintes
+sont vérifiées. Les réponses `CONTESTE` et `ARBITRAGE` affichées peuvent être historiques.
+
+| Option | Sens |
+|---|---|
+| `--package <dossier>` | Paquet original publié par `dev-package`. |
+| `--review <collaboration>` | Collaboration ordinaire créée à partir de ce paquet. |
 
 ## gui
 

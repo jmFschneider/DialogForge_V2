@@ -59,6 +59,10 @@
 
 ## Travail avec les agents
 
+**Développement assisté (PO, 2026-09-26 ; acceptation déléguée le 27) : Git peut être lu sur deux commits, jamais écrit par DialogForge.** Le développeur extérieur écrit le code et exécute ses tests. Les paquets figent code et résultats déclarés ; une modification impose un nouveau paquet et une collaboration ordinaire. Aucun second moteur d'appels. Conception : `conception/DEVELOPPEMENT_ASSISTE.md`.
+
+**Taille de ce lot : ajout net dans `src/` strictement inférieur à 1 000 lignes effectives depuis 5 618 ; cible ≤ 500.** Cette décision du PO remplace pour ce lot la marge restante de 164 lignes. La limite façade/GUI n'est pas modifiée.
+
 **Claude produit, Codex relit palier par palier — et réciproquement.**
 *Motif : économie de tokens côté Claude, et la revue croisée rattrape ce que l'auteur ne voit pas.*
 **Suspendue en étape 2 le 2026-09-03, décision du PO** : la conception a déjà été contredite cinq tours, et sa précision rend la relecture de code palier par palier peu rentable. **La règle reste valable pour la conception**, où elle a produit les huit remarques techniques toutes retenues. Réouverture si un palier révèle un défaut que la relecture aurait attrapé. **Rouverte le 2026-09-05** : la condition s'est réalisée — deux défauts de gabarit trouvés en mission réelle, invisibles pour la suite de tests. La relecture rendue a produit **huit observations, huit exactes, dont trois inatteignables par un cycle nominal**.

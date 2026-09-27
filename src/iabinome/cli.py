@@ -25,6 +25,7 @@ from typing import Any
 from . import (
     decisions,
     demande,
+    development,
     facade,
     framing_cli,
     lock,
@@ -203,6 +204,27 @@ def _obtain_demande(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
 
 def cmd_run(args: argparse.Namespace) -> int:
     return _drive(Path(args.collab), timeout_seconds=args.timeout, command_label="run")
+
+
+def cmd_development(args: argparse.Namespace) -> int:
+    try:
+        if args.command == "dev-export":
+            development.export_conception(Path(args.collab), Path(args.output))
+            print(f"export créé : {args.output}")
+        elif args.command == "dev-package":
+            digest = development.build_package(
+                Path(args.export), Path(args.repo), args.base, args.head, Path(args.output),
+                validations=[Path(p) for p in args.validation],
+                developer_notes=[Path(p) for p in args.developer_note],
+                previous_reviews=[Path(p) for p in args.previous_review],
+            )
+            print(f"paquet créé : {args.output} — {digest}")
+        else:
+            result = development.verify_package(Path(args.package), Path(args.review))
+            print(json.dumps(result, ensure_ascii=False))
+    except (OSError, ValueError, KeyError, lock.LockError) as exc:
+        return _fail(str(exc))
+    return 0
 
 
 def cmd_resume(args: argparse.Namespace) -> int:
@@ -640,6 +662,29 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_gui = sub.add_parser("gui", help="ouvrir la fenêtre locale (Tkinter)")
     p_gui.set_defaults(func=cmd_gui)
+
+    p_export = sub.add_parser("dev-export", help="exporter une conception acceptée, sans appel")
+    p_export.add_argument("collab", help="collaboration de conception acceptée")
+    p_export.add_argument("--output", required=True, help="dossier d'export à créer")
+    p_export.set_defaults(func=cmd_development)
+    p_package = sub.add_parser("dev-package", help="figer code et validations, Git en lecture")
+    for option, help_text in (
+        ("export", "dossier de la conception exportée"), ("repo", "dépôt Git local à lire"),
+        ("base", "commit de base"), ("head", "commit candidat exact"),
+        ("output", "dossier du paquet à créer"),
+    ):
+        p_package.add_argument(f"--{option}", required=True, help=help_text)
+    for option, help_text in (
+        ("validation", "résultat JSON externe, répétable"),
+        ("developer-note", "note Markdown du développeur, répétable"),
+        ("previous-review", "collaboration précédente terminée, répétable"),
+    ):
+        p_package.add_argument(f"--{option}", action="append", default=[], help=help_text)
+    p_package.set_defaults(func=cmd_development)
+    p_verify = sub.add_parser("dev-verify", help="vérifier paquet et revue, sans appel ni écriture")
+    p_verify.add_argument("--package", required=True, help="dossier du paquet original")
+    p_verify.add_argument("--review", required=True, help="collaboration ordinaire de revue")
+    p_verify.set_defaults(func=cmd_development)
 
     return parser
 
