@@ -76,6 +76,44 @@ class ViewCase(unittest.TestCase):
 
 
 class TestAccueilView(ViewCase):
+    def test_selected_root_lists_existing_collaborations_without_opening_them(self) -> None:
+        directory = self.root_dir / "mes-collaborations"
+        directory.mkdir()
+        collab = fakes.collaboration(directory)
+        self.controller.set_collaborations_root(directory)
+        view = self.controller._frame
+        assert isinstance(view, AccueilView)
+        rows = [view._table.item(row, "values") for row in view._table.get_children()]
+        self.assertEqual([(row[0], row[1]) for row in rows], [(collab.name, "Prête")])
+        self.assertEqual(recents.load(self.prefs), ())
+
+    def test_home_reads_a_finished_collaboration_from_the_selected_root(self) -> None:
+        directory = self.root_dir / "mes-collaborations"
+        directory.mkdir()
+        collab = fakes.collaboration(directory)
+        a = fakes.FakeAdapter("fake-a", ("IABINOME:DOCUMENT\n# Proposition\nCorps.",))
+        b = fakes.FakeAdapter("fake-b", (fakes.review("ACCEPTER"),))
+        workflow.run(collab, adapters={"fake-a": a, "fake-b": b}, timeout_seconds=30.0)
+        self.controller.set_collaborations_root(directory)
+        view = self.controller._frame
+        assert isinstance(view, AccueilView)
+        rows = [view._table.item(row, "values") for row in view._table.get_children()]
+        self.assertEqual(rows[0][0], collab.name)
+        self.assertNotEqual(rows[0][1], "Prête")
+
+    def test_root_can_be_selected_from_home_and_is_remembered(self) -> None:
+        directory = self.root_dir / "mes-collaborations"
+        directory.mkdir()
+        self.controller.show_accueil()
+        view = self.controller._frame
+        assert isinstance(view, AccueilView)
+        with mock.patch(
+            "iabinome.gui.views.accueil.filedialog.askdirectory", return_value=str(directory),
+        ):
+            _find_button(view, "Choisir le répertoire…").invoke()
+        self.assertEqual(self.controller.collaborations_root(), directory.resolve())
+        self.assertIsInstance(self.controller._frame, AccueilView)
+
     def test_it_lists_recents_with_their_situation_read_from_disk(self) -> None:
         collab = self.fresh_collaboration()
         missing = self.root_dir / "disparu"

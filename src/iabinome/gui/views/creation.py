@@ -63,8 +63,9 @@ class CreationView(ttk.Frame):
 
         folder_row = ttk.Frame(body)
         folder_row.pack(fill="x")
-        ttk.Label(folder_row, text="Dossier").pack(anchor="w")
-        self._dossier = StringVar()
+        ttk.Label(folder_row, text="Dossier de la nouvelle collaboration").pack(anchor="w")
+        root = self._controller.collaborations_root()
+        self._dossier = StringVar(value=str(root / "nouvelle-collaboration") if root else "")
         entry_row = ttk.Frame(folder_row)
         entry_row.pack(fill="x")
         ttk.Entry(entry_row, textvariable=self._dossier).pack(side="left", fill="x", expand=True)
@@ -280,9 +281,14 @@ class CreationView(ttk.Frame):
     # -- Choix de fichiers/dossiers --
 
     def _choose_folder(self) -> None:
-        chosen = filedialog.askdirectory(title="Dossier de la collaboration")
+        current = Path(self._dossier.get()) if self._dossier.get() else None
+        chosen = filedialog.askdirectory(
+            title="Répertoire parent de la nouvelle collaboration",
+            initialdir=str(current.parent) if current else str(Path.home()),
+        )
         if chosen:
-            self._dossier.set(chosen)
+            name = current.name if current else "nouvelle-collaboration"
+            self._dossier.set(str(Path(chosen) / name))
 
     def _choose_source_root(self) -> None:
         chosen = filedialog.askdirectory(title="Racine du corpus")
@@ -365,6 +371,7 @@ class CreationView(ttk.Frame):
         except facade.CreationError as exc:
             self._error.configure(text=str(exc))
             return
+        self._controller.record_created(result.path)
         messagebox.showinfo(
             "Collaboration créée", "Collaboration créée — aucun appel fournisseur effectué.",
         )
@@ -394,6 +401,7 @@ class CreationView(ttk.Frame):
         except facade.CreationError as exc:
             self._error.configure(text=str(exc))
             return
+        self._controller.record_created(result.path)
         self._controller.show_suivi(result.path)
         self._controller.start_run(result.path, timeout_seconds=resolved.seconds)
 

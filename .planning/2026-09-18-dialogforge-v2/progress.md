@@ -1926,3 +1926,18 @@ phrase de documentation.
   hors du paquet figé de l'essai ; les 8 tests documentaires y passent. Les résultats importés
   restent déclaratifs, et DialogForge ne certifie ni leur exécution ni le jugement éditorial.
   Aucun merge, installation ou déploiement n'a été effectué.
+
+## Correctif GUI 2026-09-28 — accueil et répertoire des collaborations
+
+- À la demande du PO, les collaborations créées par la GUI sont inscrites immédiatement
+  dans les récents. L'accueil affiche aussi les collaborations trouvées directement dans
+  le répertoire parent choisi, avec leur état relu sur disque, même si elles n'ont jamais
+  été ouvertes par la GUI.
+- Le répertoire parent se choisit sur l'accueil et est mémorisé comme préférence locale.
+  Le formulaire de création propose un nouveau sous-dossier dans cette racine ; son bouton
+  de dossier choisit le parent. À la première création sans racine choisie, le parent
+  de cette collaboration devient la racine par défaut. Les dossiers existants ne sont
+  pas déplacés.
+- Validation : 40 tests GUI ciblés passés, Ruff et mypy GUI verts ; suite complète
+  805 passés, 8 ignorés, 620 sous-tests passés avant le dernier ajustement local
+  (`record_created` mémorise le premier parent), puis 40 tests ciblés relancés et verts.

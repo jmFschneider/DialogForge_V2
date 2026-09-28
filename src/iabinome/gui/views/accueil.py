@@ -69,15 +69,30 @@ class AccueilView(ttk.Frame):
         ).pack(side="left", padx=(8, 0))
         new_button.focus_set()
 
-        ttk.Label(self, text="Collaborations récentes").pack(
+        root_row = ttk.Frame(self)
+        root_row.pack(fill="x", padx=16, pady=(0, 4))
+        root = self._controller.collaborations_root()
+        ttk.Label(
+            root_row, text=f"Répertoire des collaborations : {root or '(non défini)'}",
+        ).pack(side="left", fill="x", expand=True)
+        ttk.Button(root_row, text="Choisir le répertoire…", command=self._choose_root).pack(
+            side="right"
+        )
+
+        ttk.Label(self, text="Collaborations récentes et du répertoire choisi").pack(
             anchor="w", padx=16, pady=(8, 0)
         )
+        table_frame = ttk.Frame(self)
+        table_frame.pack(fill="both", expand=True, padx=16, pady=8)
         self._table = ttk.Treeview(
-            self, columns=_COLUMNS, show="headings", selectmode="browse", height=8,
+            table_frame, columns=_COLUMNS, show="headings", selectmode="browse", height=8,
         )
         for key, title in zip(_COLUMNS, _HEADINGS, strict=True):
             self._table.heading(key, text=title)
-        self._table.pack(fill="both", expand=True, padx=16, pady=8)
+        scroll = ttk.Scrollbar(table_frame, orient="vertical", command=self._table.yview)
+        self._table.configure(yscrollcommand=scroll.set)
+        self._table.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
         self._fill_recents()
 
         footer = ttk.Frame(self)
@@ -118,6 +133,15 @@ class AccueilView(ttk.Frame):
         chosen = filedialog.askdirectory(title="Ouvrir une collaboration")
         if chosen:
             self._controller.open_collaboration(Path(chosen))
+
+    def _choose_root(self) -> None:
+        current = self._controller.collaborations_root()
+        chosen = filedialog.askdirectory(
+            title="Répertoire des collaborations",
+            initialdir=str(current) if current is not None else str(Path.home()),
+        )
+        if chosen:
+            self._controller.set_collaborations_root(Path(chosen))
 
     def _open_selected(self) -> None:
         path = self._selected_path()

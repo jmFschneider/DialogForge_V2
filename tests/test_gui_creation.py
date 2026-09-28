@@ -116,6 +116,22 @@ class TestCreateOnly(CreationCase):
         self.assertEqual(etat["status"], "READY")
         self.assertEqual(fakes.launched_calls(collab), 0)
         self.assertIsInstance(self.controller._frame, SuiviView)
+        self.assertEqual(self.controller.recent_entries()[0].path, collab.resolve())
+        self.assertEqual(self.controller.collaborations_root(), self.root_dir.resolve())
+
+    def test_selected_root_prefills_a_new_child_and_parent_can_be_changed(self) -> None:
+        selected = self.root_dir / "choisi"
+        selected.mkdir()
+        self.controller.set_collaborations_root(selected)
+        view = self.view()
+        self.assertEqual(Path(view._dossier.get()), selected / "nouvelle-collaboration")
+        other = self.root_dir / "autre"
+        other.mkdir()
+        with mock.patch(
+            "iabinome.gui.views.creation.filedialog.askdirectory", return_value=str(other),
+        ):
+            _find_button(view, "Choisir…").invoke()
+        self.assertEqual(Path(view._dossier.get()), other / "nouvelle-collaboration")
 
     def test_an_empty_destination_is_refused_locally_and_creates_nothing(self) -> None:
         """AC-12 : un refus ne laisse aucun dossier partiel."""
@@ -170,6 +186,7 @@ class TestCreateAndStart(CreationCase):
         self.assertTrue(collab.is_dir(), "la collaboration locale n'a pas ete creee")
         self.assertIsInstance(self.controller._frame, SuiviView)
         start_run.assert_called_once()
+        self.assertEqual(self.controller.recent_entries()[0].path, collab.resolve())
         (path,), kwargs = start_run.call_args
         self.assertEqual(path, collab)
         self.assertGreater(kwargs["timeout_seconds"], 0)

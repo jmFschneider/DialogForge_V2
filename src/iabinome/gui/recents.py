@@ -2,9 +2,9 @@
 (`conception/GUI_V1.md` §5.2), jamais lu par une commande de la CLI.
 
 `list <racine>` énumère un dossier ; les récents retrouvent des dossiers ouverts
-à des emplacements différents, ordonnés par usage. Seuls des chemins absolus et
-une date d'ouverture y sont gardés — jamais un statut ni une phase, relus à
-chaque affichage depuis le dossier lui-même (§3.3).
+à des emplacements différents, ordonnés par usage. Une racine choisie par la GUI
+est aussi gardée ici. Seuls des chemins et une date d'ouverture y sont gardés —
+jamais un statut ni une phase, relus à chaque affichage depuis le dossier lui-même.
 
 Ce fichier se supprime sans effet sur aucune collaboration (AC-05) : il vaut
 alors une liste vide.
@@ -48,6 +48,24 @@ def load(prefs_path: Path = DEFAULT_PATH) -> tuple[Recent, ...]:
         return ()
 
 
+def load_root(prefs_path: Path = DEFAULT_PATH) -> Path | None:
+    """Répertoire parent choisi dans la GUI, indépendant des collaborations."""
+    try:
+        text, _ = storage.read_text(prefs_path)
+        raw = json.loads(text)
+        value = raw.get("root_path")
+        return Path(value) if isinstance(value, str) and Path(value).is_absolute() else None
+    except (OSError, ValueError, TypeError, AttributeError):
+        return None
+
+
+def save_root(root: Path, prefs_path: Path = DEFAULT_PATH) -> None:
+    """Mémorise la racine sans perdre la liste des dossiers ouverts."""
+    resolved = root.resolve()
+    prefs_path.parent.mkdir(parents=True, exist_ok=True)
+    storage.write_atomic_text(prefs_path, _dump(load(prefs_path), resolved))
+
+
 def record_opened(
     path: Path, prefs_path: Path = DEFAULT_PATH, *, max_entries: int = _MAX_ENTRIES,
 ) -> tuple[Recent, ...]:
@@ -60,17 +78,19 @@ def record_opened(
     updated = (Recent(resolved, _now()), *kept)[:max_entries]
     try:
         prefs_path.parent.mkdir(parents=True, exist_ok=True)
-        storage.write_atomic_text(prefs_path, _dump(updated))
+        storage.write_atomic_text(prefs_path, _dump(updated, load_root(prefs_path)))
     except OSError:
         pass
     return updated
 
 
-def _dump(entries: tuple[Recent, ...]) -> str:
+def _dump(entries: tuple[Recent, ...], root: Path | None = None) -> str:
     payload: dict[str, Any] = {
         "schema_version": _SCHEMA_VERSION,
         "recents": [{"path": str(r.path), "last_opened_at": r.last_opened_at} for r in entries],
     }
+    if root is not None:
+        payload["root_path"] = str(root)
     return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
 
 

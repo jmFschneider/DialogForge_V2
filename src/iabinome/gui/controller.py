@@ -62,6 +62,25 @@ class Controller:
 
         self._swap(lambda: CreationView(self.root, self))
 
+    def collaborations_root(self) -> Path | None:
+        return recents.load_root(self.recents_path)
+
+    def set_collaborations_root(self, path: Path) -> None:
+        try:
+            recents.save_root(path, self.recents_path)
+        except OSError as exc:
+            messagebox.showerror("Répertoire non mémorisé", str(exc))
+            return
+        self.show_accueil()
+
+    def record_created(self, path: Path) -> None:
+        if self.collaborations_root() is None:
+            try:
+                recents.save_root(path.parent, self.recents_path)
+            except OSError:
+                pass  # Une préférence inaccessible ne doit pas annuler la création.
+        recents.record_opened(path, self.recents_path)
+
     # -- Ouverture, strictement en lecture (§5.1, AC-02) --
 
     def open_collaboration(self, path: Path) -> None:
@@ -79,7 +98,19 @@ class Controller:
         return facade.inspect_collaboration(path, owned_by_this_gui=owned_by_this_gui)
 
     def recent_entries(self) -> tuple[recents.Recent, ...]:
-        return recents.load(self.recents_path)
+        entries = list(recents.load(self.recents_path))
+        known = {entry.path for entry in entries}
+        root = self.collaborations_root()
+        if root is not None and root.is_dir():
+            try:
+                for folder in sorted(root.iterdir(), key=lambda p: p.name.casefold()):
+                    if folder.is_dir() and folder.resolve() not in known and (
+                        folder / "etat.json"
+                    ).is_file():
+                        entries.append(recents.Recent(folder.resolve(), ""))
+            except OSError:
+                pass
+        return tuple(entries)
 
     # -- Exécution : un fil au plus (§3.1, §10.4) --
 

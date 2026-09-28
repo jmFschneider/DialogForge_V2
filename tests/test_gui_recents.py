@@ -55,6 +55,19 @@ class TestRecording(RecentsCase):
         self.assertEqual(recents.load(self.prefs), ())
         self.assertEqual((collab / "temoin.txt").read_text(encoding="utf-8"), "intact")
 
+    def test_root_and_recents_survive_each_other(self) -> None:
+        root = Path(self._tmp.name) / "collaborations"
+        root.mkdir()
+        recents.save_root(root, self.prefs)
+        self.assertEqual(recents.load_root(self.prefs), root.resolve())
+        collab = root / "une-collaboration"
+        recents.record_opened(collab, self.prefs)
+        self.assertEqual(recents.load_root(self.prefs), root.resolve())
+        other = Path(self._tmp.name) / "autre"
+        other.mkdir()
+        recents.save_root(other, self.prefs)
+        self.assertEqual(recents.load(self.prefs)[0].path, collab.resolve())
+
 
 class TestReadingIsForgiving(RecentsCase):
     def test_a_corrupted_file_is_read_as_empty_rather_than_raising(self) -> None:
