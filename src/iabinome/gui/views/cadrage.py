@@ -15,7 +15,7 @@ from tkinter import Misc, StringVar, Toplevel, ttk
 from tkinter.scrolledtext import ScrolledText
 from typing import TYPE_CHECKING
 
-from ... import facade, framing
+from ... import facade, framing, model_catalog
 from ...adapters.base import FramingSessionSpec
 from ...demande import validate_framed
 from ...framing import DRAFT, QUESTION, READY, Turn
@@ -35,20 +35,28 @@ class FramingPanel(ttk.Frame):
     sont celles du corpus de l'écran de création ; A et B restent réglés à part."""
 
     def __init__(
-        self, master: Misc, *, on_start: Callable[[], None], on_resume: Callable[[], None],
+        self, master: Misc, *, catalog: dict[str, tuple[str, ...]],
+        on_start: Callable[[], None], on_resume: Callable[[], None],
     ) -> None:
         super().__init__(master)
+        self._catalog = catalog
         self.agent = StringVar(value=sorted(ADAPTERS)[0])
-        self.model = StringVar()
+        self.model = StringVar(value=model_catalog.DEFAULT)
         self.effort = StringVar(value=_NON_SPECIFIE)
         row = ttk.Frame(self)
         row.pack(fill="x", pady=(4, 0))
         ttk.Label(row, text="Agent de cadrage").pack(side="left")
-        ttk.Combobox(
+        agent_selector = ttk.Combobox(
             row, textvariable=self.agent, values=sorted(ADAPTERS), state="readonly", width=10,
-        ).pack(side="left", padx=(4, 12))
+        )
+        agent_selector.pack(side="left", padx=(4, 12))
+        agent_selector.bind("<<ComboboxSelected>>", lambda _event: self._sync_model())
         ttk.Label(row, text="Modèle").pack(side="left")
-        ttk.Entry(row, textvariable=self.model, width=16).pack(side="left", padx=(4, 12))
+        self._model_selector = ttk.Combobox(
+            row, textvariable=self.model,
+            values=model_catalog.choices(catalog, self.agent.get()), state="readonly", width=16,
+        )
+        self._model_selector.pack(side="left", padx=(4, 12))
         ttk.Label(row, text="Effort").pack(side="left")
         efforts = ttk.Combobox(row, textvariable=self.effort, state="readonly", width=14)
         efforts.configure(postcommand=lambda: efforts.configure(values=self._efforts()))
@@ -66,6 +74,15 @@ class FramingPanel(ttk.Frame):
     def chosen_effort(self) -> str | None:
         value = self.effort.get()
         return None if value in ("", _NON_SPECIFIE) else value
+
+    def chosen_model(self) -> str | None:
+        return model_catalog.selected(self._catalog, self.agent.get(), self.model.get())
+
+    def _sync_model(self) -> None:
+        options = model_catalog.choices(self._catalog, self.agent.get())
+        self._model_selector.configure(values=options)
+        if self.model.get() not in options:
+            self.model.set(model_catalog.DEFAULT)
 
     def _efforts(self) -> tuple[str, ...]:
         adapter = ADAPTERS.get(self.agent.get())
@@ -85,7 +102,11 @@ def begin(
         raise framing.FramingError("décrivez votre idée, même incomplète")
     facade.check_creation(base, adapters=ADAPTERS)
     agent, effort = panel.agent.get(), panel.chosen_effort()
-    model, _ = framing.check_adapter(agent, ADAPTERS, panel.model.get() or None, effort)
+    try:
+        chosen_model = panel.chosen_model()
+    except model_catalog.ModelCatalogError as exc:
+        raise framing.FramingError(str(exc)) from exc
+    model, _ = framing.check_adapter(agent, ADAPTERS, chosen_model, effort)
     root = framing.prepare(base.kind, base.source_root, base.source_list, base.source_label)
     spec = FramingSessionSpec(model, timeout, root / "travail", effort)
     return controller.open_framing(ADAPTERS[agent], spec, root, idea)

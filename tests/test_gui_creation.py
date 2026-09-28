@@ -13,6 +13,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
+from iabinome import model_catalog
 from iabinome.gui.controller import Controller
 from iabinome.gui.views.creation import CreationView
 from iabinome.gui.views.suivi import SuiviView
@@ -101,6 +102,41 @@ class TestTheCorpusBlock(CreationCase):
         view._kind.set("Recherche")
         view._toggle_kind()
         self.assertEqual(view._corpus_frame.winfo_manager(), "pack")
+
+
+class TestModelLists(CreationCase):
+    def test_the_exact_model_id_is_used_and_agent_change_resets_selection(self) -> None:
+        view = self.view()
+        self.fill_minimum(view)
+        view._agent_b.set("codex")
+        view._sync_model("B")
+        self.assertIn("gpt-6-sol", view._model_selector_b.cget("values"))
+        view._model_b.set("gpt-6-sol")
+        request = view._build_request()
+        assert request is not None
+        self.assertEqual(request.model_b, "gpt-6-sol")
+        view._agent_b.set("claude")
+        view._sync_model("B")
+        self.assertEqual(view._model_b.get(), model_catalog.DEFAULT)
+        self.assertNotIn("gpt-6-sol", view._model_selector_b.cget("values"))
+
+    def test_the_framing_model_uses_the_same_catalog(self) -> None:
+        view = self.view()
+        panel = view._framing_panel
+        panel.agent.set("codex")
+        panel._sync_model()
+        panel.model.set("gpt-6-sol")
+        self.assertEqual(panel.chosen_model(), "gpt-6-sol")
+        panel.agent.set("claude")
+        panel._sync_model()
+        self.assertEqual(panel.chosen_model(), None)
+
+    def test_a_mistyped_model_is_refused_before_creation(self) -> None:
+        view = self.view()
+        self.fill_minimum(view)
+        view._agent_b.set("codex")
+        view._model_b.set("GPT-6-Sol")
+        self.assertIn("absent de la liste", view._local_errors(framing_start=False) or "")
 
 
 class TestCreateOnly(CreationCase):

@@ -1927,6 +1927,15 @@ phrase de documentation.
   restent déclaratifs, et DialogForge ne certifie ni leur exécution ni le jugement éditorial.
   Aucun merge, installation ou déploiement n'a été effectué.
 
+## Retour d'usage 2026-09-28 — essais GUI sur une même demande
+
+- Deux collaborations de recherche web sur la reprise d'activité chez les seniors, avec A/B
+  inversés, ont atteint `AWAITING_APPROVAL`. Même empreinte de demande, un constat ouvert
+  dans chaque revue finale ; aucune décision d'acceptation enregistrée.
+- Points d'amélioration et état de chacun consignés dans
+  `project/retour_essais_2026-09-28.md`. La lisibilité visuelle de la progression A/B
+  est ajoutée explicitement à ce retour par le PO. Ce relevé n'engage pas de nouveau lot.
+
 ## Correctif GUI 2026-09-28 — accueil et répertoire des collaborations
 
 - À la demande du PO, les collaborations créées par la GUI sont inscrites immédiatement

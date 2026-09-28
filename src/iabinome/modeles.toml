@@ -1,0 +1,7 @@
+# Identifiants transmis tels quels aux CLI. Mettre à jour cette liste quand les
+# fournisseurs changent leur catalogue. Rouvrir l'écran de création après modification.
+# « (par défaut) » est ajouté par la GUI et garde le modèle de l'adaptateur.
+
+[models]
+claude = ["opus", "sonnet", "fable"]
+codex = ["gpt-6-sol", "gpt-6-luna", "gpt-5.6-sol"]

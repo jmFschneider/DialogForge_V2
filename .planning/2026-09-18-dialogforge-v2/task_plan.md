@@ -10,6 +10,10 @@ Retour GUI du 2026-09-28 sur la liste d'accueil et le répertoire des collaborat
 correctif local réalisé et validé (détail dans `progress.md`). Reste à intégrer selon le
 processus de finalisation du plan ; les autres points de retour d'usage restent ouverts.
 
+Retour d'usage du 2026-09-28 : voir `project/retour_essais_2026-09-28.md` pour les
+améliorations relevées sur deux essais GUI à agents inversés, dont la progression
+visuelle A/B. Relevé seulement : périmètre et priorité à arbitrer avant engagement.
+
 **Partie 1 du plan de finalisation, engagée par le PO le 2026-09-25** (voir Decisions Made).
 Proposition de classement : `reference/astra_finalisation/PLAN_TRAVAIL.md` — une proposition, pas un
 second suivi : seul ce qui est inscrit dans les phases ci-dessous est engagé.

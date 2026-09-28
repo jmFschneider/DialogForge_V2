@@ -248,6 +248,13 @@ la fois — jamais de worker ni de processus détaché ([`conception/GUI_V1.md`]
 CLI et GUI partagent les mêmes dossiers, la même façade et les mêmes actions permises : ce que l'une
 fait, l'autre le voit au prochain rafraîchissement.
 
+Les modèles A, B et de cadrage se choisissent dans des listes propres à chaque agent. Leurs
+identifiants exacts sont dans [`src/iabinome/modeles.toml`](../src/iabinome/modeles.toml) : modifiez
+ce fichier lorsque le catalogue des fournisseurs change, puis rouvrez l'écran de création. L'option
+« (par défaut) » utilise le modèle prévu par l'adaptateur. Ces listes évitent les fautes de saisie ;
+elles ne garantissent pas qu'un modèle est autorisé pour le compte connecté. La CLI `new` conserve
+ses options de modèle libres.
+
 L'écran de suivi offre les mêmes actions que la CLI (répondre, relancer, retraiter, corriger,
 décider), une par bouton, chacune confirmée quand elle peut effectuer un appel.
 

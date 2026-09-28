@@ -14,7 +14,7 @@ from tkinter import BooleanVar, Misc, StringVar, filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 from typing import TYPE_CHECKING
 
-from ... import facade, framing, settings, storage
+from ... import facade, framing, model_catalog, settings, storage
 from ...models import MissionKind, ReviewerAccess
 from ...registry import ADAPTERS
 from .. import dialogs
@@ -32,6 +32,12 @@ class CreationView(ttk.Frame):
     def __init__(self, master: Misc, controller: Controller) -> None:
         super().__init__(master)
         self._controller = controller
+        self._catalog_error: str | None = None
+        try:
+            self._model_catalog = model_catalog.load()
+        except model_catalog.ModelCatalogError as exc:
+            self._model_catalog = {}
+            self._catalog_error = str(exc)
         self._imported_path: str | None = None
         self._imported_text: str | None = None
         self._mode = StringVar(value="saisir")
@@ -42,8 +48,8 @@ class CreationView(ttk.Frame):
         self._source_root = StringVar()
         self._source_list = StringVar()
         self._source_label = StringVar()
-        self._model_a = StringVar()
-        self._model_b = StringVar()
+        self._model_a = StringVar(value=model_catalog.DEFAULT)
+        self._model_b = StringVar(value=model_catalog.DEFAULT)
         self._effort_a = StringVar(value=_NON_SPECIFIE)
         self._effort_b = StringVar(value=_NON_SPECIFIE)
         self._web_access = BooleanVar(value=False)
@@ -114,7 +120,8 @@ class CreationView(ttk.Frame):
         self._demande_text.bind("<<Modified>>", self._on_demande_changed)
         self._import_row = import_row
         self._framing_panel = cadrage.FramingPanel(
-            parent, on_start=self._start_framing, on_resume=self._resume_framing,
+            parent, catalog=self._model_catalog, on_start=self._start_framing,
+            on_resume=self._resume_framing,
         )
 
     def _build_type_and_agents(self, parent: ttk.Frame) -> None:
@@ -128,13 +135,17 @@ class CreationView(ttk.Frame):
         agents = ttk.Frame(parent)
         agents.pack(fill="x", pady=(8, 0))
         ttk.Label(agents, text="Agent A").pack(side="left")
-        ttk.Combobox(
+        agent_a = ttk.Combobox(
             agents, textvariable=self._agent_a, values=sorted(ADAPTERS), state="readonly", width=10,
-        ).pack(side="left", padx=(4, 12))
+        )
+        agent_a.pack(side="left", padx=(4, 12))
+        agent_a.bind("<<ComboboxSelected>>", lambda _event: self._sync_model("A"))
         ttk.Label(agents, text="Agent B").pack(side="left")
-        ttk.Combobox(
+        agent_b = ttk.Combobox(
             agents, textvariable=self._agent_b, values=sorted(ADAPTERS), state="readonly", width=10,
-        ).pack(side="left", padx=(4, 12))
+        )
+        agent_b.pack(side="left", padx=(4, 12))
+        agent_b.bind("<<ComboboxSelected>>", lambda _event: self._sync_model("B"))
         ttk.Label(agents, text="Révisions maximales").pack(side="left")
         ttk.Entry(agents, textvariable=self._revisions, width=4).pack(side="left", padx=(4, 0))
 
@@ -161,7 +172,16 @@ class CreationView(ttk.Frame):
             row = ttk.Frame(parent)
             row.pack(fill="x", pady=2)
             ttk.Label(row, text=f"Modèle {label}", width=12).pack(side="left")
-            ttk.Entry(row, textvariable=model).pack(side="left", fill="x", expand=True)
+            agent = self._agent_a.get() if label == "A" else self._agent_b.get()
+            selector = ttk.Combobox(
+                row, textvariable=model, values=model_catalog.choices(self._model_catalog, agent),
+                state="readonly",
+            )
+            selector.pack(side="left", fill="x", expand=True)
+            if label == "A":
+                self._model_selector_a = selector
+            else:
+                self._model_selector_b = selector
             ttk.Label(row, text=f"Effort {label}", width=10).pack(side="left", padx=(8, 0))
             ttk.Combobox(
                 row, textvariable=effort, values=self._effort_values(label), state="readonly",
@@ -260,6 +280,20 @@ class CreationView(ttk.Frame):
         levels = () if adapter is None else adapter.capabilities.effort_levels
         return (_NON_SPECIFIE, *levels)
 
+    def _sync_model(self, role: str) -> None:
+        agent = (self._agent_a if role == "A" else self._agent_b).get()
+        model = self._model_a if role == "A" else self._model_b
+        selector = self._model_selector_a if role == "A" else self._model_selector_b
+        options = model_catalog.choices(self._model_catalog, agent)
+        selector.configure(values=options)
+        if model.get() not in options:
+            model.set(model_catalog.DEFAULT)
+
+    def _chosen_model(self, role: str) -> str | None:
+        agent = (self._agent_a if role == "A" else self._agent_b).get()
+        model = (self._model_a if role == "A" else self._model_b).get()
+        return model_catalog.selected(self._model_catalog, agent, model)
+
     def _on_mode(self) -> None:
         """Quitter le mode agent termine le cadrage ; son brouillon reste dans l'éditeur."""
         if self._mode.get() == "agent":
@@ -323,12 +357,19 @@ class CreationView(ttk.Frame):
         )
 
     def _local_errors(self, *, framing_start: bool) -> str | None:
+        if self._catalog_error is not None:
+            return self._catalog_error
         if not self._dossier.get().strip():
             return "Le dossier est requis."
         if not framing_start and not self._current_text().strip():
             return "La demande ne peut pas être vide."
         if not self._revisions.get().strip().lstrip("-").isdigit():
             return "Révisions maximales : un entier attendu."
+        try:
+            self._chosen_model("A")
+            self._chosen_model("B")
+        except model_catalog.ModelCatalogError as exc:
+            return str(exc)
         return None
 
     def _build_request(self, *, framing_start: bool = False) -> facade.CreationRequest | None:
@@ -345,7 +386,7 @@ class CreationView(ttk.Frame):
             kind=_KIND[self._kind.get()], reviewer_access=_ACCESS[self._reviewer.get()],
             agent_a=self._agent_a.get(), agent_b=self._agent_b.get(),
             max_revisions=int(self._revisions.get()),
-            model_a=self._model_a.get() or None, model_b=self._model_b.get() or None,
+            model_a=self._chosen_model("A"), model_b=self._chosen_model("B"),
             effort_a=self._effort(self._effort_a), effort_b=self._effort(self._effort_b),
             web_access=self._web_access.get(),
             source_root=Path(self._source_root.get()) if sources and self._source_root.get()
