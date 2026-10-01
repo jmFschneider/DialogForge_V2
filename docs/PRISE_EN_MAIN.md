@@ -75,6 +75,14 @@ les valeurs par défaut, et `new` se réduit alors à un dossier et une demande.
 dialogforge new ./plan --demande ./exemples/demande-conception.md --kind conception --reviewer-access consult --agent-a claude --agent-b codex --source-root ./exemples --source-list ./exemples/corpus.txt --max-revisions 1
 ```
 
+Une fois une recherche **acceptée**, `--depuis <recherche>` en fait directement le dossier d'entrée
+d'une conception : son livrable, son bilan et sa décision deviennent le corpus. Dans la GUI, c'est le
+bouton « Poursuivre en conception » de l'écran de suivi.
+
+```
+dialogforge new ./plan --demande ./demande-conception.md --kind conception --depuis ./essai --reviewer-access consult --agent-a claude --agent-b codex --max-revisions 1
+```
+
 Les fichiers sont **copiés octet pour octet** et hachés dans `corpus/manifeste.json`. Le corpus,
 c'est exactement ce que le manifeste énumère : ajouter un fichier au dossier après coup ne l'y fait
 pas entrer, et en retirer un fait échouer la vérification.

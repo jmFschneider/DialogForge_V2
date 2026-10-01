@@ -119,12 +119,19 @@ def build(
     """Copie vers `destination/fichiers/...` chaque chemin listé dans
     `source_list` (un par ligne, relatif à `source_root`), écrit
     `destination/manifeste.json`, et retourne le manifeste."""
+    return build_from(source_root, _read_list(source_list), destination, origin_label)
+
+
+def build_from(
+    source_root: Path, paths: list[str], destination: Path, origin_label: str
+) -> Manifest:
+    """`build`, la liste étant déjà connue (poursuite d'une recherche en conception)."""
     try:
         root = source_root.resolve(strict=True)
     except OSError as exc:
         raise CorpusError(f"racine introuvable : {source_root} ({exc})") from exc
     fichiers_dir = destination / "fichiers"
-    entries = [_copy_one(root, p, fichiers_dir) for p in _read_list(source_list)]
+    entries = [_copy_one(root, p, fichiers_dir) for p in paths]
     manifest = Manifest(
         schema_version=SCHEMA_VERSION,
         captured_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),

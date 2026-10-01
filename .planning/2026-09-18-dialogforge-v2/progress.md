@@ -2058,3 +2058,30 @@ Note `conception/TYPES_DE_MISSION.md` écrite puis validée telle quelle par le 
   1 échec, rétablie). Accueil et création capturés à l'écran.
 - Validation : ruff, mypy strict, **823 passés / 2 ignorés**, scénario rc=0. `src/` +7 ; façade +
   GUI 1 809 / 2 000 ; toutes les vues sous 400 lignes.
+- Commité et poussé : `73b6a62`.
+
+## Session 2026-10-01 (suite) — types de mission, lot 3 (D4, poursuivre en conception)
+
+- **Moteur** : `corpus.build_from` (liste de chemins déjà connue ; `build` s'y ramène).
+  `CreationRequest.from_research` ; `facade._check_follow_up` refuse : autre type que conception,
+  autre corpus ou cadrage en plus, dossier illisible, source qui n'est pas une recherche, recherche
+  non acceptée sur sa version actuelle (arrêt compris). Le corpus = `facade.FOLLOW_UP_FILES` :
+  livrable, bilan **et `decisions.json`** — ajouté à la note, parce que les réserves d'une
+  acceptation n'existent que là. Provenance : le manifeste nomme « recherche <nom> » et garde
+  l'empreinte de chaque fichier, livrable compris ; aucun fichier nouveau.
+- **Cadrage par F** : `check_creation(..., framing_start=True)` refuse `--depuis` avant tout appel
+  (sinon le refus ne tombait qu'à la création finale, après les appels de F). Combiner les deux reste
+  une extension possible, non engagée.
+- **CLI** : `new --kind conception --depuis <recherche>` ; documenté dans `COMMANDES.md` et
+  `PRISE_EN_MAIN.md`.
+- **GUI** : `Presentation.can_follow_up` (règle dans la façade) ; bouton « Poursuivre en conception »
+  sur l'écran de suivi ; `show_creation(from_research=…)` ouvre la création préparée (dossier
+  voisin `…-conception`, type Conception, section Sources écrite, corpus remplacé par le dossier
+  d'entrée). Pour tenir le plafond de vue, les réglages du prochain lancement passent dans
+  `views/lancement.py` : `creation.py` 378 lignes.
+- **Tests** : `tests/test_follow_up.py` (13). Contre-épreuves : acceptation non exigée sur le type de
+  décision → d'abord **non détectée**, d'où le test « recherche arrêtée » ajouté, puis 1 échec ;
+  refus au début du cadrage retiré → 1 échec ; chacune rétablie. Écrans de suivi et de création
+  capturés.
+- Validation : ruff, mypy strict, **835 passés / 2 ignorés**, scénario rc=0. `src/` +95 (6 423 →
+  6 518) ; façade + GUI **1 897 / 2 000**.

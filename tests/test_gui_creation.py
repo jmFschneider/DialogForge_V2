@@ -237,7 +237,7 @@ class TestCreateAndStart(CreationCase):
         """AC-10."""
         view = self.view()
         self.fill_minimum(view)
-        view._timeout_override.set("120")
+        view._launch.timeout_override.set("120")
         with mock.patch("iabinome.gui.views.creation.dialogs.confirm", return_value=True), \
              mock.patch.object(Controller, "start_run"):
             _find_button(view, "Créer et démarrer").invoke()

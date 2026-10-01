@@ -17,7 +17,7 @@ from ... import facade, framing, model_catalog, settings, storage
 from ...models import MissionKind, ReviewerAccess
 from ...registry import ADAPTERS
 from .. import dialogs, widgets
-from . import cadrage
+from . import cadrage, lancement
 
 if TYPE_CHECKING:
     from ..controller import Controller
@@ -32,9 +32,12 @@ _KIND_HINT = {
 
 
 class CreationView(ttk.Frame):
-    def __init__(self, master: Misc, controller: Controller) -> None:
+    def __init__(
+        self, master: Misc, controller: Controller, *, from_research: Path | None = None,
+    ) -> None:
         super().__init__(master)
         self._controller = controller
+        self._from_research = from_research
         self._catalog_error: str | None = None
         try:
             self._model_catalog = model_catalog.load()
@@ -57,9 +60,19 @@ class CreationView(ttk.Frame):
         self._effort_b = StringVar(value=_NON_SPECIFIE)
         self._web_access = BooleanVar(value=False)
         self._reviewer = StringVar(value="Consultation")
-        self._config_path = StringVar()
-        self._timeout_override = StringVar()
         self._build()
+        if from_research is not None:
+            self._follow_up(from_research)
+
+    def _follow_up(self, research: Path) -> None:
+        """`TYPES_DE_MISSION.md` D4 : la recherche acceptée remplace le corpus à déclarer."""
+        dest, text = facade.follow_up_defaults(research)
+        self._dossier.set(str(dest))
+        self._kind.set("Conception")
+        self._demande_text.insert("1.0", text)
+        for child in self._corpus_frame.winfo_children():
+            child.destroy()
+        ttk.Label(self._corpus_frame, text=facade.follow_up_label(research)).pack(anchor="w")
 
     # -- Construction --
 
@@ -211,22 +224,8 @@ class CreationView(ttk.Frame):
             ).pack(side="left", padx=(8, 0))
 
     def _build_launch(self, parent: ttk.Frame) -> None:
-        row = ttk.Frame(parent)
-        row.pack(fill="x")
-        ttk.Label(row, text="Fichier de réglages").pack(side="left")
-        ttk.Entry(row, textvariable=self._config_path).pack(side="left", fill="x", expand=True)
-        ttk.Button(
-            row, text="Choisir…", command=widgets.browse(self._config_path, "Fichier de réglages"),
-        ).pack(side="left")
-        timeout_row = ttk.Frame(parent)
-        timeout_row.pack(fill="x", pady=(4, 0))
-        ttk.Label(timeout_row, text="Délai (secondes, surcharge)").pack(side="left")
-        ttk.Entry(timeout_row, textvariable=self._timeout_override, width=10).pack(
-            side="left", padx=(4, 0)
-        )
-        self._launch_origin = ttk.Label(parent, text="")
-        self._launch_origin.pack(anchor="w", pady=(4, 0))
-        ttk.Button(parent, text="Résoudre", command=self._show_resolved_timeout).pack(anchor="w")
+        self._launch = lancement.LaunchPanel(parent, self._dossier)
+        self._launch.pack(fill="x")
 
     # -- Provenance et lecture de la demande (§6.2) --
 
@@ -314,17 +313,6 @@ class CreationView(ttk.Frame):
 
     # -- Validation locale et résolution du délai (§6.4, §6.5 niveau 1) --
 
-    def _show_resolved_timeout(self) -> None:
-        dest = Path(self._dossier.get()) if self._dossier.get() else Path.cwd()
-        try:
-            resolved = self._resolved_timeout(dest)
-        except (settings.SettingsError, ValueError) as exc:
-            self._launch_origin.configure(text=f"Délai : refusé — {exc}")
-            return
-        self._launch_origin.configure(
-            text=f"Délai effectif : {resolved.seconds:g} s — origine : {resolved.origin}"
-        )
-
     def _local_errors(self, *, framing_start: bool) -> str | None:
         if self._catalog_error is not None:
             return self._catalog_error
@@ -363,7 +351,7 @@ class CreationView(ttk.Frame):
             source_list=Path(self._source_list.get()) if sources and self._source_list.get()
             else None,
             source_label=(self._source_label.get() or None) if sources else None,
-            framing=framed,
+            framing=framed, from_research=self._from_research,
         )
 
     def _effort(self, var: StringVar) -> str | None:
@@ -393,7 +381,7 @@ class CreationView(ttk.Frame):
         request = self._build_request()
         if request is None:
             return
-        resolved = self._resolved_timeout(request.collab)
+        resolved = self._launch.resolved(request.collab)
         body = (
             ("Vous avez relu le texte qui deviendra demande.md. La création figera son "
              "empreinte. La poursuite lancera ensuite A.\n\n" if request.framing else "")
@@ -419,19 +407,12 @@ class CreationView(ttk.Frame):
 
     # -- Cadrer avec un agent (`CADRAGE_AGENT.md` §4) --
 
-    def _resolved_timeout(self, collab: Path) -> settings.Timeout:
-        return settings.resolve_timeout(
-            self._config_path.get() or None,
-            float(self._timeout_override.get()) if self._timeout_override.get() else None,
-            base=collab.parent,
-        )
-
     def _start_framing(self) -> None:
         base = self._build_request(framing_start=True)
         if base is None:
             return
         try:
-            timeout = self._resolved_timeout(base.collab).seconds
+            timeout = self._launch.resolved(base.collab).seconds
             f = cadrage.begin(self._controller, base, self._framing_panel, timeout)
         except (facade.CreationError, framing.FramingError, settings.SettingsError,
                 ValueError) as exc:

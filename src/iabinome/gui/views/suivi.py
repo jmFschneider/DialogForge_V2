@@ -93,6 +93,10 @@ class SuiviView(ttk.Frame):
         footer = ttk.Frame(self)
         footer.pack(fill="x", padx=16, pady=(0, 16))
         ttk.Button(footer, text="Actualiser", command=self._refresh).pack(side="left")
+        self._follow_up = ttk.Button(
+            footer, text="Poursuivre en conception",
+            command=lambda: self._controller.show_creation(from_research=self._path),
+        )
         ttk.Button(
             footer, text="Retour à l'accueil", command=self._controller.show_accueil,
         ).pack(side="right")
@@ -127,6 +131,10 @@ class SuiviView(ttk.Frame):
         else:
             self._trace_button.pack_forget()
         self._activity.configure(text=self._activity_text(snapshot))
+        if snapshot.presentation.can_follow_up:
+            self._follow_up.pack(side="left", padx=(8, 0))
+        else:
+            self._follow_up.pack_forget()
         self._result.configure(text=self._result_text(snapshot))
         for child in self._actions_row.winfo_children():
             child.destroy()

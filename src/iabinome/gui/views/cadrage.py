@@ -127,7 +127,7 @@ def begin(
         raise framing.FramingError("une exécution est active dans cette fenêtre")
     if not idea:
         raise framing.FramingError("décrivez votre idée, même incomplète")
-    facade.check_creation(base, adapters=ADAPTERS)
+    facade.check_creation(base, adapters=ADAPTERS, framing_start=True)
     agent, effort = panel.agent.get(), panel.chosen_effort()
     try:
         chosen_model = panel.chosen_model()

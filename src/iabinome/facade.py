@@ -132,6 +132,7 @@ class Presentation:
     progress: Progress
     next_action_text: str
     trace_dir: str | None = None
+    can_follow_up: bool = False
 
 
 @dataclass(frozen=True)
@@ -174,6 +175,7 @@ def inspect_collaboration(
         progress=_progress(state, config, decision),
         next_action_text=decisions.next_action(path, state),
         trace_dir=_trace_dir(state),
+        can_follow_up=_accepted_research(config, decision),
     )
     return CollaborationSnapshot(
         path=path, name=path.name, configuration=config, state=state,
@@ -316,6 +318,15 @@ def _trace_dir(state: State) -> str | None:
     return None
 
 
+def _accepted_research(config: Configuration, decision: DecisionSummary) -> bool:
+    """`TYPES_DE_MISSION.md` D4 : seule une recherche acceptée se poursuit en conception,
+    comme seule une conception acceptée s'exporte vers le développement."""
+    return (
+        config.mission_kind is MissionKind.RECHERCHE and decision.applies_to_current_version
+        and decision.kind in (decisions.ACCEPTED, decisions.ACCEPTED_WITH_RESERVES)
+    )
+
+
 def _readable_documents(path: Path, state: State) -> tuple[str, ...]:
     """Ce que l'écran de suivi propose à la lecture — seulement ce qui existe,
     dans l'ordre où un humain les lirait (§7, §8.6). Après un appel inabouti,
@@ -376,12 +387,20 @@ class CreationRequest:
     # Cadrage avec agent F (`conception/CADRAGE_AGENT.md` §10) : le brouillon de F, sa
     # provenance, et le corpus déjà préparé — jamais relu depuis le projet d'origine.
     framing: FramingArtifacts | None = None
+    # Poursuite d'une recherche acceptée (D4) : son livrable devient le dossier d'entrée.
+    from_research: Path | None = None
 
 
 @dataclass(frozen=True)
 class CreationResult:
     path: Path
     missing_sections: tuple[str, ...]
+
+
+FOLLOW_UP_FILES = (decisions.DELIVERED, "livrables/bilan.md", decisions.DECISIONS)
+"""Le dossier d'entrée d'une conception qui poursuit une recherche : le livrable accepté, son
+bilan, et la décision, qui porte les réserves éventuelles. Le manifeste en garde les empreintes
+et nomme la recherche d'origine : c'est la provenance."""
 
 
 class CreationError(RuntimeError):
@@ -412,11 +431,16 @@ def create_collaboration(
     )
 
 
-def check_creation(request: CreationRequest, *, adapters: Mapping[str, AgentAdapter]) -> None:
+def check_creation(
+    request: CreationRequest, *, adapters: Mapping[str, AgentAdapter],
+    framing_start: bool = False,
+) -> None:
     """Les refus de `create_collaboration`, sans rien écrire : le cadrage avec agent
     les passe **avant** d'ouvrir la session de F (§3.2), pour qu'aucun appel ne soit
     payé au profit d'une création qui serait refusée ensuite."""
     dest = request.collab
+    if framing_start and request.from_research is not None:
+        raise CreationError("--depuis ne se combine pas avec le cadrage par un agent")
     if dest.exists():
         raise CreationError(f"{dest} existe deja")
     if bool(request.source_root) != bool(request.source_list):
@@ -426,8 +450,11 @@ def check_creation(request: CreationRequest, *, adapters: Mapping[str, AgentAdap
     framed_corpus = request.framing is not None and (
         request.framing.root / "corpus" / "manifeste.json"
     ).is_file()
+    if request.from_research is not None:
+        _check_follow_up(request)
     problem = request.kind.missing_source(
-        corpus=bool(request.source_root) or framed_corpus, web=request.web_access,
+        corpus=bool(request.source_root) or framed_corpus or request.from_research is not None,
+        web=request.web_access,
     )
     if problem:
         raise CreationError(problem)
@@ -443,6 +470,43 @@ def check_creation(request: CreationRequest, *, adapters: Mapping[str, AgentAdap
                 f"effort {who} : {effort!r} refusé par {adapter_id} — attendu : "
                 f"{', '.join(levels) or 'aucun'}"
             )
+
+
+def follow_up_defaults(research: Path) -> tuple[Path, str]:
+    """Ce que l'écran de création propose pour poursuivre une recherche : un dossier voisin,
+    et une demande dont seule la section Sources est écrite — le reste revient à l'humain."""
+    text = (
+        "# Demande\n\n## Objectif\n\n## Livrable\n\n## Sources\n"
+        f"Le livrable accepté de la recherche « {research.name} », son bilan et sa décision,"
+        " fournis en corpus.\n\n## Contraintes\n\n## Non-objectifs\n\n## Critères de fin\n"
+    )
+    return research.parent / f"{research.name}-conception", text
+
+
+def follow_up_label(research: Path) -> str:
+    return (
+        f"Dossier d'entrée : la recherche acceptée « {research.name} »"
+        " (livrable, bilan, décision)"
+    )
+
+
+def _check_follow_up(request: CreationRequest) -> None:
+    research = request.from_research
+    assert research is not None
+    if request.kind is not MissionKind.CONCEPTION:
+        raise CreationError("--depuis ne vaut qu'en conception (--kind conception)")
+    if request.source_root or request.framing is not None:
+        raise CreationError("--depuis fournit déjà le dossier d'entrée : pas d'autre corpus")
+    try:
+        snapshot = inspect_collaboration(research)
+    except InspectionError as exc:
+        raise CreationError(f"recherche illisible : {exc}") from exc
+    if snapshot.configuration.mission_kind is not MissionKind.RECHERCHE:
+        raise CreationError(f"{research} n'est pas une recherche")
+    if not snapshot.presentation.can_follow_up:
+        raise CreationError(
+            f"{research} : recherche non acceptée dans sa version actuelle — décider d'abord"
+        )
 
 
 def _write_collaboration(
@@ -467,6 +531,13 @@ def _write_collaboration(
         problem = request.kind.missing_source(corpus=bool(manifest.entries), web=request.web_access)
         if problem:
             raise ValueError(f"corpus vide — {problem}")
+        manifest_text, _ = storage.read_text(tmp / "corpus" / "manifeste.json")
+        corpus_sha = contracts.normalize(manifest_text).sha256
+    if request.from_research is not None:
+        research = request.from_research.resolve()
+        corpus.build_from(
+            research, list(FOLLOW_UP_FILES), tmp / "corpus", f"recherche {research.name}",
+        )
         manifest_text, _ = storage.read_text(tmp / "corpus" / "manifeste.json")
         corpus_sha = contracts.normalize(manifest_text).sha256
     agent_a, agent_b = adapters[request.agent_a], adapters[request.agent_b]

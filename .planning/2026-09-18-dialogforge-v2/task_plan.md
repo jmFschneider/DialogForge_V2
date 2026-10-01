@@ -8,10 +8,10 @@ avec reprise après incident sans rejouer un appel ambigu.
 ## Next Step
 **Types de mission redéfinis — `conception/TYPES_DE_MISSION.md`, D1 à D6 validés par le PO le
 2026-10-01**, à implémenter **avant toute nouvelle phase de développement** (PO : « remettre le
-projet d'équerre »). Ordre : ~~lot 1 = D1, D2, D3, D5 et documentation~~ et ~~lot 2 = D6
-(accueil, écran de création avec découpage)~~ **faits le 2026-10-01** ; **prochain : lot 3** = D4
-(« Poursuivre en conception »), à faire avant toute nouvelle phase. Toutes les vues sont sous 400
-lignes (`creation.py` 397) ; façade + GUI 1 809 / 2 000. Remplace le point 1
+projet d'équerre »). **Les trois lots sont faits le 2026-10-01** (D1 à D6). Le projet est
+d'équerre ; **prochaine étape : choisir avec le PO la prochaine phase de développement.**
+Façade + GUI : **1 897 / 2 000** — la marge restante (≈ 100 lignes) ne suffit plus pour une
+fonction GUI d'ampleur sans re-décision du plafond. Plus grande vue : `creation.py`, 378 / 400. Remplace le point 1
 du retour d'usage du 2026-09-28 (recherche sans corpus local).
 
 **Dépôt publié le 2026-10-01** : `main` sur `origin` (`jmFschneider/DialogForge_V2`, public),

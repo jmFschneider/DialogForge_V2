@@ -57,10 +57,10 @@ class Controller:
 
         self._swap(lambda: SuiviView(self.root, self, path))
 
-    def show_creation(self) -> None:
+    def show_creation(self, *, from_research: Path | None = None) -> None:
         from .views.creation import CreationView
 
-        self._swap(lambda: CreationView(self.root, self))
+        self._swap(lambda: CreationView(self.root, self, from_research=from_research))
 
     def collaborations_root(self) -> Path | None:
         return recents.load_root(self.recents_path)

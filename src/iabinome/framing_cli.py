@@ -29,7 +29,7 @@ def run(
     adapters: Mapping[str, AgentAdapter],
 ) -> int:
     try:
-        facade.check_creation(base, adapters=adapters)
+        facade.check_creation(base, adapters=adapters, framing_start=True)
         model, _ = framing.check_adapter(
             args.agent_cadrage, adapters, args.model_cadrage, args.effort_cadrage
         )

@@ -81,6 +81,12 @@ découpage de l'écran, pas d'un ajout de plus.
   quelques lignes, plus le découpage de `creation.py`. Façade + GUI : 1 799 / 2 000.
 - Hors de cette note : un troisième type, tout enchaînement automatique, toute exécution de code.
 
+## Mise en œuvre (2026-10-01)
+
+Les trois lots sont faits. Un écart par rapport à D4 : le corpus d'une conception qui poursuit une
+recherche comprend aussi `decisions.json`, seul fichier qui porte les réserves d'une acceptation.
+Le cadrage par un agent ne se combine pas encore avec `--depuis` : refusé avant tout appel.
+
 ## Ordre proposé
 
 1. D1, D2, D3, D5 et la documentation : un lot.

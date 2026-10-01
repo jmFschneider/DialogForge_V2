@@ -43,6 +43,7 @@ vérifié avant toute écriture : un refus ne laisse rien derrière lui, un cadr
 | `--source-label <nom>` | Nom du corpus ; défaut : le nom de `--source-root`. |
 | `--model-a`, `--model-b` | Modèle de chaque rôle ; défaut : celui de l'adaptateur. |
 | `--effort-a`, `--effort-b` | Effort de raisonnement, facultatif. Le vocabulaire est celui de l'outil ([détail](CONFIGURATION.md#effort-de-raisonnement)). |
+| `--depuis <recherche>` | Poursuivre une recherche **acceptée** en conception : son livrable, son bilan et sa décision deviennent le corpus, copiés et hachés ; le manifeste nomme la recherche d'origine. Avec `--kind conception`, sans autre corpus, sans cadrage par agent. |
 | `--web-access` / `--no-web-access` | Autoriser ou non la recherche web, pour A et B ; fermé par défaut ([détail](CONFIGURATION.md#accès-web)). |
 | `--max-revisions <N>` | Nombre maximal de révisions ; entier positif ou nul. Défaut : 2. |
 | `--config <fichier>` | Fichier de réglages à utiliser ([détail](CONFIGURATION.md)). |

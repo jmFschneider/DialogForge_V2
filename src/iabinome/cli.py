@@ -189,6 +189,7 @@ def _request(args: argparse.Namespace, source: facade.DemandeSource) -> facade.C
         source_root=Path(args.source_root) if args.source_root else None,
         source_list=Path(args.source_list) if args.source_list else None,
         source_label=args.source_label,
+        from_research=Path(args.depuis) if args.depuis else None,
     )
 
 
@@ -574,6 +575,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="fichier qui liste les sources, un chemin par ligne relatif à --source-root",
     )
     p_new.add_argument("--source-label", help="nom du corpus (défaut : nom de --source-root)")
+    p_new.add_argument(
+        "--depuis", metavar="RECHERCHE",
+        help="poursuivre une recherche acceptée : son livrable devient le corpus"
+        " de la conception (avec --kind conception)",
+    )
     p_new.add_argument("--model-a", help="modèle de A (défaut : celui de l'adaptateur)")
     p_new.add_argument("--model-b", help="modèle de B (défaut : celui de l'adaptateur)")
     p_new.add_argument("--effort-a", help=_EFFORT_HELP.format("A"))
