@@ -34,6 +34,8 @@ Un outil de **~3 250 lignes de code** (`src/`, hors commentaires et docstrings ;
 qui coordonne **deux agents IA en CLI** aux rôles distincts :
 **A produit, B critique, l'humain arbitre.** Tout en fichiers sur disque.
 Le livrable est un document de **conception ou de recherche** — les deux, décidé le 2026-09-03.
+**Sens redéfini le 2026-10-01 (PO)** : recherche → conception → développement. La recherche établit
+un dossier sourcé ; la conception en tire le plan avant le code (`conception/TYPES_DE_MISSION.md`).
 
 **Le rôle et l'outil sont deux axes indépendants** — et le **modèle** en est un troisième. A et B sont
 chacun Claude *ou* Codex, choisis au lancement. Rien dans le code ne suppose lequel est où.

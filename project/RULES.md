@@ -38,6 +38,9 @@
 **Relire une réponse déjà payée ne coûte pas un appel.**
 *Motif (2.1) : sur `CONTRACT_ERROR` et `DECODE_FAILED` la seule sortie était `--retry-call`, un nouvel appel payant, alors que la réponse brute était sur disque — et que le code disait lui-même « aucun appel n'est nécessaire pour retenter l'extraction ». `--reprocess` relit localement, trace l'opération et laisse les données brutes intactes ; s'il échoue encore, l'état reste `ERROR` : jamais un avis favorable par défaut.*
 
+**Le type d'une mission dit ce qu'on attend du livrable, pas si l'on a un corpus.** Recherche : un dossier sourcé, avec au moins une source (web ou corpus local). Conception : un plan tiré d'un dossier fourni (corpus exigé). Les sources se contrôlent à la création. *(PO, 2026-10-01, `conception/TYPES_DE_MISSION.md`.)*
+*Motif mesuré le 2026-10-01 : `recherche` exigeait un corpus, si bien que les 17 collaborations réelles étaient toutes de type `conception`, dont 6 recherches web sans corpus. Le type servait à déclarer un corpus, et la consigne de recherche ne servait jamais.*
+
 **Le livrable de la boucle est un document, jamais une exécution.**
 *Motif : l'exécution autonome n'a jamais mené une implémentation au bout — 1 tâche sur 7 sur FloraPi, 1 sur 10 sur DialogForge.*
 

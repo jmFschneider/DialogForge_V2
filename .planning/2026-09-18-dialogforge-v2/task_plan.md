@@ -6,6 +6,12 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
+**Types de mission redéfinis — `conception/TYPES_DE_MISSION.md`, D1 à D6 validés par le PO le
+2026-10-01**, à implémenter **avant toute nouvelle phase de développement** (PO : « remettre le
+projet d'équerre »). Ordre : lot 1 = D1, D2, D3, D5 et documentation ; lot 2 = D6 (accueil, puis
+écran de création avec découpage) ; lot 3 = D4 (« Poursuivre en conception »). Remplace le point 1
+du retour d'usage du 2026-09-28 (recherche sans corpus local).
+
 **Dépôt publié le 2026-10-01** : `main` sur `origin` (`jmFschneider/DialogForge_V2`, public),
 tag `v0.1.0` poussé. On travaille désormais sur `main` ; `v2-socle` reste locale, sans push.
 Licence MIT, validée par le PO le 2026-10-01 (`LICENSE`).
@@ -499,6 +505,7 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 | Dossier `C:\Projets\DialogForge_2` | Nom retenu par le PO le 2026-09-18 ; le plan `astra/` proposait `DialogForge_V2`. `C:\Projets\DialogForge` est la plateforme historique, source de l'étude : intouchée |
 | Départ au commit `4a11cc7` d'IAbinome | HEAD d'IAbinome **est** le commit de référence de l'étude : écart nul, aucun arbitrage à rendre |
 | Remote `origin` retiré du clone | Rend impossible une écriture accidentelle vers IAbinome ; aucune publication distante n'est utile au lot 0 |
+| **Types de mission redéfinis : recherche → conception → développement** (PO, 2026-10-01) | `conception/TYPES_DE_MISSION.md`, D1 à D6 validés. Recherche = étude sourcée (web et/ou corpus, au moins une source) ; conception = plan et solutions à partir d'un dossier (corpus exigé). Aucune collaboration `recherche` n'existait : pas de migration, contrôle des sources à la création seulement. Maintient la décision du 2026-09-03 (deux types de livrables) en redéfinissant leur sens |
 | **Publication sur GitHub, branche `main`** (PO, 2026-10-01) | Remplace la ligne précédente pour la publication : `origin` pointe vers `jmFschneider/DialogForge_V2` (public), jamais vers IAbinome. `v2-socle` est fusionnée dans `main`, avec le commit initial de GitHub (histoires non liées, README local conservé). Historique publié tel quel : aucun secret trouvé, et l'adresse e-mail figure déjà dans les métadonnées des commits |
 | Package encore nommé `iabinome` | Lot 0 vérifie le réemploi ; renommer maintenant mélangerait changement fonctionnel et renommage |
 | PWF en skill autonome épinglé, pas en plugin marketplace | Le plan exige une version consignée ; la route marketplace suit `master` et mettrait à jour toute seule. Contrepartie acceptée : pas de hook `SessionStart`, pas de commandes `/plan-*` |
