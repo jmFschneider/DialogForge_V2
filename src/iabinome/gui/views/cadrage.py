@@ -37,9 +37,16 @@ class FramingPanel(ttk.Frame):
     def __init__(
         self, master: Misc, *, catalog: dict[str, tuple[str, ...]],
         on_start: Callable[[], None], on_resume: Callable[[], None],
+        anchor: Misc, editor: ttk.Frame, import_button: ttk.Button,
     ) -> None:
         super().__init__(master)
         self._catalog = catalog
+        self._anchor, self._editor, self._import_button = anchor, editor, import_button
+        self._revealed = False
+        self._draft_title = ttk.Label(
+            master, text="Demande rédigée par F — à relire et corriger avant de créer",
+            font=("", 10, "bold"),
+        )
         self.agent = StringVar(value=sorted(ADAPTERS)[0])
         self.model = StringVar(value=model_catalog.DEFAULT)
         self.effort = StringVar(value=_NON_SPECIFIE)
@@ -70,6 +77,26 @@ class FramingPanel(ttk.Frame):
         ttk.Button(buttons, text="Reprendre le cadrage", command=on_resume).pack(
             side="left", padx=(8, 0)
         )
+
+    def enter(self) -> None:
+        """Retour d'usage du 2026-09-28 : en mode agent, l'idée est la seule saisie. La
+        demande éditable n'apparaît qu'avec le brouillon de F, juste sous le cadrage."""
+        self.pack(fill="x", after=self._anchor)
+        self._import_button.state(["disabled"])
+        if not self._revealed:
+            self._editor.pack_forget()
+
+    def reveal(self) -> None:
+        self._revealed = True
+        self._draft_title.pack(anchor="w", pady=(12, 0), after=self)
+        self._editor.pack(fill="x", after=self._draft_title)
+
+    def leave(self) -> None:
+        self._revealed = False
+        self.pack_forget()
+        self._draft_title.pack_forget()
+        self._import_button.state(["!disabled"])
+        self._editor.pack(fill="x", after=self._anchor)
 
     def chosen_effort(self) -> str | None:
         value = self.effort.get()

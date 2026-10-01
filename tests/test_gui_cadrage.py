@@ -223,6 +223,28 @@ class TestOwnership(GuiFramingCase):
         self.assertIsNone(self.controller.framing)
         self.assertFalse(root.exists())
 
+    def test_the_idea_is_the_only_input_until_the_draft_appears_below_it(self) -> None:
+        """Retour d'usage du 2026-09-28 : la demande et l'idée étaient visibles ensemble."""
+        view = self.view(QUESTION_OUT, READY_OUT, DRAFT_OUT)
+        editor, panel = view._demande_text.frame.master, view._framing_panel
+        importer = _find_button(editor.winfo_children()[-1], "Importer…")
+        self.assertEqual(editor.winfo_manager(), "")
+        self.assertTrue(importer.instate(["disabled"]))
+        self.to_draft(view)
+        order = [str(w) for w in panel.master.pack_slaves()]
+        self.assertEqual(order.index(str(editor)), order.index(str(panel)) + 2)
+        title = order[order.index(str(panel)) + 1]
+        self.assertIn("Demande rédigée par F", str(panel.nametowidget(title).cget("text")))
+        view._mode.set("agent")
+        view._on_mode()  # recliquer le mode ne cache pas le brouillon
+        self.assertEqual(editor.winfo_manager(), "pack")
+        view._mode.set("saisir")
+        view._on_mode()
+        self.assertEqual(panel.winfo_manager(), "")
+        self.assertEqual(editor.winfo_manager(), "pack")
+        self.assertFalse(importer.instate(["disabled"]))
+        self.assertNotIn(title, [str(w) for w in panel.master.pack_slaves()])
+
     def test_leaving_the_agent_mode_or_the_screen_discards(self) -> None:
         view = self.view(QUESTION_OUT, QUESTION_OUT)
         self.start(view)

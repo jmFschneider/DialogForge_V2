@@ -12,9 +12,12 @@ Licence MIT, validée par le PO le 2026-10-01 (`LICENSE`).
 
 Retour d'usage du 2026-09-28 (`project/retour_essais_2026-09-28.md`) : **points 4, 5 et 6
 engagés par le PO et faits le 2026-10-01** (diagnostic des appels inaboutis, visibilité du
-dossier, progression A/B). Points 3 et correctif d'accueil déjà intégrés. **Restent ouverts,
-à arbitrer** : 1 (recherche web sans corpus local, à concevoir avant tout code) et 2
-(parcours de cadrage). Façade + GUI : 1 773 lignes effectives sur 2 000.
+dossier, progression A/B), puis **point 2** le même jour, comme correctif (parcours de
+cadrage). Point 3 et correctif d'accueil déjà intégrés. **Reste ouvert, à arbitrer** : 1
+(recherche web sans corpus local, à concevoir avant tout code). Façade + GUI : 1 799 lignes
+effectives sur 2 000. `creation.py` : 423 lignes, au-dessus du plafond de vue de 400 depuis
+le catalogue de modèles du 2026-09-28 — tout ajout futur à cet écran passe par `cadrage.py`
+ou un découpage.
 
 **Partie 1 du plan de finalisation, engagée par le PO le 2026-09-25** (voir Decisions Made).
 Proposition de classement : `reference/astra_finalisation/PLAN_TRAVAIL.md` — une proposition, pas un

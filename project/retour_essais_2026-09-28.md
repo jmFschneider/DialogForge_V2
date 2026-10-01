@@ -69,4 +69,10 @@ implémentation. Le point 3 est intégré.
   encore possibles sont marquées « si B la demande », une ligne « Vous » porte la
   décision, et une phrase dit qui agit ou ce qui vous attend.
 
-Restent ouverts : 1 (recherche web sans corpus) et 2 (parcours de cadrage).
+**2026-10-01 — point 2 traité comme un correctif (PO) :** en mode agent, l'idée de départ
+est la seule saisie. L'éditeur de demande et l'import sont retirés jusqu'au brouillon de F,
+qui apparaît sous le cadrage avec le titre « Demande rédigée par F — à relire et corriger
+avant de créer ». Revenir à « Saisir » ou « Importer » rétablit l'éditeur. Le choix du mode
+se lit « Cadrer avec un agent (une idée suffit) ».
+
+Reste ouvert : 1 (recherche web sans corpus local, à concevoir avant tout code).

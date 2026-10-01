@@ -1996,3 +1996,20 @@ déjà acceptée dans sa collaboration le 2026-09-23, le rappel du plan était p
   scénario rc=0. Taille : +119 lignes effectives dans `src/` (6 252 → 6 368 au compteur, qui
   affiche aussi −3 sur `modeles.toml`, inchangé) ; façade + GUI 1 773 / 2 000.
 - `README.md` réécrit par le PO pendant la session et commité par lui (`a4d3c41`), hors de ce lot.
+- Commité et poussé : `ab3f739`.
+
+## Session 2026-10-01 (suite) — retour d'usage, point 2 (parcours de cadrage)
+
+Le PO pensait le point en place ; vérifié dans le code : non. Depuis `c718055`, seul le choix des
+modèles avait changé dans le panneau. Traité comme correctif, sans conception (PO).
+
+- `cadrage.FramingPanel` porte la disposition du mode agent (`enter`, `reveal`, `leave`) : l'éditeur
+  de demande est retiré et l'import désactivé en mode agent. Le brouillon de F fait apparaître
+  l'éditeur sous le panneau, titré « Demande rédigée par F — à relire et corriger avant de créer ».
+  Recliquer le mode agent ne cache pas un brouillon déjà rendu. Quitter le mode rétablit l'éditeur.
+  Le libellé du mode devient « Cadrer avec un agent (une idée suffit) ».
+- `creation.py` ne fait que câbler (+4 lignes, 423 au total, déjà au-dessus du plafond de vue de 400
+  depuis le catalogue de modèles) ; la logique est dans `cadrage.py` (257).
+- Test `test_the_idea_is_the_only_input_until_the_draft_appears_below_it` ; contre-épreuve (éditeur
+  jamais retiré) → 1 échec, rétablie. Écran de création capturé avant et après le brouillon.
+- Validation : ruff, mypy strict, **818 passés / 2 ignorés**, scénario rc=0. Façade + GUI 1 799 / 2 000.

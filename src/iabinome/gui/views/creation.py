@@ -105,23 +105,26 @@ class CreationView(ttk.Frame):
         modes.pack(fill="x")
         for text, value in (
             ("Saisir", "saisir"), ("Importer un fichier", "importer"),
-            ("Cadrer avec un agent", "agent"),
+            ("Cadrer avec un agent (une idée suffit)", "agent"),
         ):
             ttk.Radiobutton(
                 modes, text=text, value=value, variable=self._mode, command=self._on_mode,
             ).pack(side="left")
-        self._demande_text = ScrolledText(parent, height=8, wrap="word")
+        editor = ttk.Frame(parent)
+        editor.pack(fill="x")
+        self._demande_text = ScrolledText(editor, height=8, wrap="word")
         self._demande_text.pack(fill="x", pady=(4, 0))
-        import_row = ttk.Frame(parent)
+        import_row = ttk.Frame(editor)
         import_row.pack(fill="x", pady=(4, 0))
-        ttk.Button(import_row, text="Importer…", command=self._import_file).pack(side="left")
+        import_button = ttk.Button(import_row, text="Importer…", command=self._import_file)
+        import_button.pack(side="left")
         self._source_label_text = ttk.Label(import_row, text="Source affichée : saisie directe")
         self._source_label_text.pack(side="left", padx=(8, 0))
         self._demande_text.bind("<<Modified>>", self._on_demande_changed)
-        self._import_row = import_row
         self._framing_panel = cadrage.FramingPanel(
             parent, catalog=self._model_catalog, on_start=self._start_framing,
-            on_resume=self._resume_framing,
+            on_resume=self._resume_framing, anchor=modes, editor=editor,
+            import_button=import_button,
         )
 
     def _build_type_and_agents(self, parent: ttk.Frame) -> None:
@@ -297,10 +300,10 @@ class CreationView(ttk.Frame):
     def _on_mode(self) -> None:
         """Quitter le mode agent termine le cadrage ; son brouillon reste dans l'éditeur."""
         if self._mode.get() == "agent":
-            self._framing_panel.pack(fill="x", after=self._import_row)
+            self._framing_panel.enter()
         else:
             self._controller.discard_framing()
-            self._framing_panel.pack_forget()
+            self._framing_panel.leave()
         if self._mode.get() == "saisir":
             self._reset_import()
         self._toggle_kind()
@@ -484,3 +487,4 @@ class CreationView(ttk.Frame):
         self._source_label_text.configure(
             text="Source affichée : brouillon du cadrage, à relire avant de créer"
         )
+        self._framing_panel.reveal()
