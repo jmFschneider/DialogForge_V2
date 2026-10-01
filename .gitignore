@@ -16,3 +16,10 @@ iabinome.toml
 # Copie locale complète de PWF : reconstruite depuis le commit épinglé, jamais
 # modifiée ni versionnée avec le code du produit.
 tools/planning-with-files/
+
+# Artefacts d'audit et essais temporaires : rapports de résultats, sorties brutes,
+# dossiers d'essai isolés hors du plan de développement V2.
+reference/Astra_AUDIT_BOUT_EN_BOUT/
+Reprise_Activité*/
+Remise en Forme/
+test/
