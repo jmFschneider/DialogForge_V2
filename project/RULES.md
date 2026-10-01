@@ -136,6 +136,9 @@
 **Jamais d'opération git destructive (`reset --hard`, `checkout --`, `clean`) avec des modifications en cours : `stash` d'abord.**
 *Motif : deux à trois heures de travail perdues sur FloraPi de cette façon.*
 
+**Ne jamais classer « temporaire » un dossier non suivi sans l'avoir ouvert : un dossier à la racine peut être une collaboration réelle.**
+*Motif mesuré le 2026-10-01 : `git clean -fd` a effacé quatre collaborations GUI (`Reprise_Activité_*`) jugées « essais temporaires » sur leur seul nom, alors qu'elles figuraient dans `~/.dialogforge/recents.json`. Ici, le PO les tenait pour des tests. Avec un `stash -u` préalable, la perte aurait été réversible.*
+
 **Messages de commit sans accents**, préfixes `docs:` `feat:` `fix:` `test:` `chore:`.
 *Motif : cohérence avec le prédécesseur, dont l'historique entier suit cette convention.*
 

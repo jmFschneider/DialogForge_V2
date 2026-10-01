@@ -6,6 +6,10 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
+**Dépôt publié le 2026-10-01** : `main` sur `origin` (`jmFschneider/DialogForge_V2`, public),
+tag `v0.1.0` poussé. On travaille désormais sur `main` ; `v2-socle` reste locale, sans push.
+Licence encore à choisir par le PO (MIT proposée).
+
 Retour GUI du 2026-09-28 sur la liste d'accueil et le répertoire des collaborations :
 correctif local réalisé et validé (détail dans `progress.md`). Reste à intégrer selon le
 processus de finalisation du plan ; les autres points de retour d'usage restent ouverts.
@@ -493,6 +497,7 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 | Dossier `C:\Projets\DialogForge_2` | Nom retenu par le PO le 2026-09-18 ; le plan `astra/` proposait `DialogForge_V2`. `C:\Projets\DialogForge` est la plateforme historique, source de l'étude : intouchée |
 | Départ au commit `4a11cc7` d'IAbinome | HEAD d'IAbinome **est** le commit de référence de l'étude : écart nul, aucun arbitrage à rendre |
 | Remote `origin` retiré du clone | Rend impossible une écriture accidentelle vers IAbinome ; aucune publication distante n'est utile au lot 0 |
+| **Publication sur GitHub, branche `main`** (PO, 2026-10-01) | Remplace la ligne précédente pour la publication : `origin` pointe vers `jmFschneider/DialogForge_V2` (public), jamais vers IAbinome. `v2-socle` est fusionnée dans `main`, avec le commit initial de GitHub (histoires non liées, README local conservé). Historique publié tel quel : aucun secret trouvé, et l'adresse e-mail figure déjà dans les métadonnées des commits |
 | Package encore nommé `iabinome` | Lot 0 vérifie le réemploi ; renommer maintenant mélangerait changement fonctionnel et renommage |
 | PWF en skill autonome épinglé, pas en plugin marketplace | Le plan exige une version consignée ; la route marketplace suit `master` et mettrait à jour toute seule. Contrepartie acceptée : pas de hook `SessionStart`, pas de commandes `/plan-*` |
 | Cadrage guidé = questionnaire de terminal, **sans appel de modèle** (1.1, 2026-09-19) | « Ne pas ajouter d'appel de cadrage quand les informations suffisent » : le plus sûr est de n'en ajouter aucun. La « question utile » sur ambiguïté existe déjà — A rend `IABINOME:QUESTION`, `resume --answer` reprend. **Condition de réouverture** : des essais réels (lot 3) où le questionnaire laisse passer des demandes que A doit ensuite questionner systématiquement |

@@ -18,8 +18,8 @@ est le rapport à la taille du projet servi (règle 1 de `POURQUOI.md`), pas ce 
 |---|---|
 | Source | `C:\Projets\IAbinome`, clone local complet avec historique Git |
 | Commit de départ | `4a11cc7eae47a4920b845fda6e65937557a967cf` — *docs: cloturer le plan correctif et preparer la session CONTEXT_ONLY* |
-| Branche de travail | `v2-socle` |
-| Destination de push | Aucune. Le remote `origin` a été retiré après le clone : impossible d'écrire dans IAbinome par erreur |
+| Branche de travail | `main` (le développement V2 s'est fait sur `v2-socle`, fusionnée dans `main` le 2026-10-01) |
+| Destination de push | `origin` = dépôt public `jmFschneider/DialogForge_V2`, depuis le 2026-10-01. Le remote vers IAbinome a été retiré après le clone et n'a jamais été rétabli |
 | Non importés | Environnement virtuel, fichiers non suivis, fichier de réglages local (ignoré par Git) |
 
 Les dépôts sources — IAbinome et DialogForge — restent inchangés ; ce dépôt ne réécrit pas les missions

@@ -1950,3 +1950,21 @@ phrase de documentation.
 - Validation : 40 tests GUI ciblés passés, Ruff et mypy GUI verts ; suite complète
   805 passés, 8 ignorés, 620 sous-tests passés avant le dernier ajustement local
   (`record_created` mémorise le premier parent), puis 40 tests ciblés relancés et verts.
+
+## Session 2026-10-01 — nettoyage du dépôt et première publication sur GitHub
+
+- `git clean -fd` à la demande du PO : 81 entrées non suivies supprimées, dont les sorties brutes de
+  l'audit (`reference/Astra_AUDIT_BOUT_EN_BOUT/`, hors les deux rapports suivis) et les collaborations
+  d'essai GUI `Reprise_Activité_*`, `Remise en Forme/`, `test/`. **Erreur de l'assistant** : il les a
+  classées « temporaires » sans les ouvrir et sans faire le `stash` qu'exige `RULES.md`. Le PO les
+  tenait pour des tests et les laisse perdues. Le relevé `project/retour_essais_2026-09-28.md` reste.
+- Suppression de `prompts/demande.md` validée (`7702d84`). Le message de ce commit annonce à tort
+  821 fichiers supprimés : ils n'étaient pas suivis. Comme il est déjà publié, il n'a pas été réécrit.
+- Branche `main` créée depuis `v2-socle`, fusionnée avec le commit initial de GitHub (`ac2a216`,
+  histoires non liées, conflit sur `README.md` résolu en gardant la version locale, `362a0d9`).
+  Push de `main` vers `origin`. `master` (= `4a11cc7`, déjà dans l'historique) supprimée en local.
+- Relecture après le push : dépôt **public**, 170 fichiers, 125 commits. Aucun secret (clé, jeton,
+  mot de passe). Seuls l'e-mail du PO (déjà dans les métadonnées des commits) et les chemins
+  `C:\Users\schne\…` figurent dans 4 fichiers. Pas de réécriture d'historique.
+- `.gitignore` corrigé, `docs/DEVELOPPEMENT.md` et ce plan mis à jour (branche, remote), tag `v0.1.0`
+  poussé. Aucun code touché. Licence en attente de décision du PO.
