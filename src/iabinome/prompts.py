@@ -31,7 +31,16 @@ primaire prime ; qualifie résumé et reprise secondaire. Deux reprises d'une m�
 origine ne font pas deux preuves. Distingue absent, nul, négatif, inconnu et non
 prouvé. Un résultat négatif documenté est un résultat. Conserve contre-preuves,
 biais et contextes non couverts. Borne chaque conclusion au contexte étudié.
+Une source web se cite par son adresse et sa date de consultation.
 Si le critère de fin manque, rends QUESTION."""
+
+_CONCEPTION = """\
+Pars du dossier fourni : ses faits établis ne se rouvrent pas sans contre-preuve.
+Compare les options sérieuses et motive le choix retenu. Nomme risques, hypothèses
+et points ouverts. Termine par des étapes de réalisation vérifiables, assez précises
+pour être confiées au développement."""
+
+_KIND_BLOCK = {MissionKind.RECHERCHE: _RESEARCH, MissionKind.CONCEPTION: _CONCEPTION}
 
 _B_REVIEW = """\
 Tu es B, contradicteur. Cherche omissions, contradictions, faits non établis,
@@ -91,9 +100,7 @@ _CONTEXT_ONLY = (
 
 
 def build_proposal(demande: str, kind: MissionKind, corpus_date: str | None) -> str:
-    blocks = [_A_PROPOSAL]
-    if kind is MissionKind.RECHERCHE:
-        blocks.append(_RESEARCH)
+    blocks = [_A_PROPOSAL, _KIND_BLOCK[kind]]
     return _assemble(blocks, corpus_date, {"DEMANDE": demande})
 
 
@@ -139,9 +146,7 @@ def _a_on_document(
     de charge sont les mêmes que pour B : sans elles, A n'aurait ni l'autorité,
     ni la version courante, ni la critique à traiter. Il n'y a plus de
     finalisation par A : la version examinée est promue telle quelle (1.3)."""
-    blocks = [head]
-    if kind is MissionKind.RECHERCHE:
-        blocks.append(_RESEARCH)
+    blocks = [head, _KIND_BLOCK[kind]]
     return _assemble(
         blocks,
         corpus_date,

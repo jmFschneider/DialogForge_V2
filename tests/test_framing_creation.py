@@ -50,12 +50,12 @@ class FramingCliCase(unittest.TestCase):
         self.addCleanup(prepared.stop)
 
     def new(self, inputs: list[Any], *replies: Any, extra: tuple[str, ...] = (),
-            kind: str = "conception") -> int:
+            kind: str = "recherche") -> int:
         self.f.framing_responses = list(replies)
         argv = [
             "new", str(self.collab), "--cadrer-avec-agent", "--agent-cadrage", "fake-f",
             "--kind", kind, "--reviewer-access", "consult", "--agent-a", "fake-a",
-            "--agent-b", "fake-b", *extra,
+            "--agent-b", "fake-b", "--web-access", *extra,
         ]
         with mock.patch("builtins.input", side_effect=inputs), \
                 mock.patch("sys.stdout"), mock.patch("sys.stderr"):
@@ -190,13 +190,13 @@ class TestNothingCreated(FramingCliCase):
                                              else READY_OUT))
 
     def test_deterministic_refusals_come_before_any_call(self) -> None:
-        """§3.2 et tests 8, 9 : destination, recherche sans corpus, adaptateur de F."""
+        """§3.2 et tests 8, 9 : destination, source exigée par le type, adaptateur de F."""
         self.f.capabilities = fakes.FakeAdapter(
             supports_persistent_framing_session=False
         ).capabilities
         self.assert_nothing(self.new([]))
         self.f.capabilities = fakes.FakeAdapter().capabilities
-        self.assert_nothing(self.new([], kind="recherche"))
+        self.assert_nothing(self.new([], kind="conception"))
         self.collab.mkdir()
         with mock.patch("builtins.input", side_effect=AssertionError("aucune saisie")):
             self.assertEqual(self.new([]), 1)

@@ -66,6 +66,7 @@ class GuiFramingCase(unittest.TestCase):
     def view(self, *replies: Any) -> CreationView:
         self.f.framing_responses = list(replies)
         view = CreationView(_ROOT, self.controller)
+        view._web_access.set(True)
         view._dossier.set(str(self.collab))
         view._agent_a.set("fake-a")
         view._agent_b.set("fake-b")

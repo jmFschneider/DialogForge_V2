@@ -55,7 +55,6 @@ from .models import (
     Configuration,
     Decision,
     IntegrityError,
-    MissionKind,
     Phase,
     ReviewerAccess,
     Role,
@@ -338,9 +337,7 @@ class _Engine:
         programme.
         """
         if self.config.corpus_manifest_sha256 is None:
-            if self.config.mission_kind is MissionKind.RECHERCHE:
-                raise WorkflowError("mission de recherche sans corpus")
-            return
+            return  # sources exigées à la création seulement (`TYPES_DE_MISSION.md` D3)
         root = self.collab / "corpus"
         text, _ = storage.read_text(root / "manifeste.json")
         if contracts.normalize(text).sha256 != self.config.corpus_manifest_sha256:

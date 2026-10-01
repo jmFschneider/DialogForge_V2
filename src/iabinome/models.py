@@ -34,8 +34,25 @@ class IntegrityError(RuntimeError):
 
 
 class MissionKind(Enum):
+    """Recherche → conception → développement (`conception/TYPES_DE_MISSION.md`) :
+    la recherche établit un dossier sourcé, la conception en tire le plan."""
+
     CONCEPTION = "CONCEPTION"
     RECHERCHE = "RECHERCHE"
+
+    def missing_source(self, *, corpus: bool, web: bool) -> str | None:
+        """Le refus de création, ou `None` : contrôlé à la création seulement (D3)."""
+        if self is MissionKind.RECHERCHE and not (corpus or web):
+            return (
+                "recherche sans source : ouvrir l'accès web, ou fournir un corpus"
+                " (--source-root et --source-list)"
+            )
+        if self is MissionKind.CONCEPTION and not corpus:
+            return (
+                "conception sans dossier d'entrée : fournir un corpus (--source-root et"
+                " --source-list), par exemple le livrable d'une recherche"
+            )
+        return None
 
 
 class ReviewerAccess(Enum):

@@ -45,9 +45,14 @@ class CliCase(unittest.TestCase):
         self.addCleanup(blank.stop)
 
     def new_args(self, **overrides: str) -> list[str]:
+        """Une recherche web par défaut : la mission qui n'exige aucun corpus."""
+        return self.bare_args(**overrides) + ["--web-access"]
+
+    def bare_args(self, **overrides: str) -> list[str]:
+        """Les mêmes arguments, sans accès web."""
         args = {
             "collab": str(self.collab), "--demande": str(self.demande),
-            "--kind": "conception", "--reviewer-access": "consult",
+            "--kind": "recherche", "--reviewer-access": "consult",
             "--agent-a": "fake-a", "--agent-b": "fake-b",
         }
         args.update(overrides)
@@ -94,8 +99,13 @@ class TestNewRequiredOptions(CliCase):
 
 
 class TestNewCorpus(CliCase):
-    def test_research_without_corpus_is_refused(self) -> None:
-        code = cli.main(["new", *self.new_args(**{"--kind": "recherche"})])
+    def test_research_without_any_source_is_refused(self) -> None:
+        code = cli.main(["new", *self.bare_args(**{"--kind": "recherche"})])
+        self.assertEqual(code, 1)
+        self.assertFalse(self.collab.exists())
+
+    def test_conception_without_an_input_folder_is_refused_even_with_the_web(self) -> None:
+        code = cli.main(["new", *self.new_args(**{"--kind": "conception"})])
         self.assertEqual(code, 1)
         self.assertFalse(self.collab.exists())
 
@@ -119,7 +129,10 @@ class TestNewCorpus(CliCase):
 
 class TestNewCreatesCollaboration(CliCase):
     def test_a_conception_collaboration_is_created(self) -> None:
-        code = cli.main(["new", *self.new_args()])
+        root, listing = self.make_source(files={"dossier.md": "# Dossier de recherche\n"})
+        code = cli.main(["new", *self.bare_args(**{
+            "--kind": "conception", "--source-root": str(root), "--source-list": str(listing),
+        })])
         self.assertEqual(code, 0)
         config = fakes.read_json(self.collab / "configuration.json")
         self.assertEqual(config["mission_kind"], "CONCEPTION")

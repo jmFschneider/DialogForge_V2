@@ -193,5 +193,27 @@ class TestTargetedReview(unittest.TestCase):
         self.assertLess(prompt.index("relecture ciblée"), prompt.index('"schema_version": 2'))
 
 
+class TestEachKindCarriesItsOwnInstruction(unittest.TestCase):
+    """`TYPES_DE_MISSION.md` D2 : la recherche source, la conception tire un plan du dossier.
+    Chaque consigne vaut pour la proposition et la révision de A, jamais pour l'autre type."""
+
+    def prompts_of_a(self, kind: MissionKind) -> list[str]:
+        return [
+            prompts.build_proposal("La demande.", kind, None),
+            prompts.build_revision("La demande.", "# Doc", "{}", kind, None),
+        ]
+
+    def test_research_asks_for_the_address_and_date_of_a_web_source(self) -> None:
+        for prompt in self.prompts_of_a(MissionKind.RECHERCHE):
+            self.assertIn("adresse et sa date de consultation", prompt)
+            self.assertNotIn("Pars du dossier fourni", prompt)
+
+    def test_design_starts_from_the_folder_and_ends_with_steps_for_development(self) -> None:
+        for prompt in self.prompts_of_a(MissionKind.CONCEPTION):
+            self.assertIn("Pars du dossier fourni", prompt)
+            self.assertIn("étapes de réalisation vérifiables", prompt)
+            self.assertNotIn("date de consultation", prompt)
+
+
 if __name__ == "__main__":
     unittest.main()

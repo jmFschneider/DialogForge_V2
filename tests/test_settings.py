@@ -166,7 +166,7 @@ class TestPrecedence(SettingsCase):
         former = self.root / "iabinome.toml"
         former.write_text(
             'agent_a = "fake-a"\nagent_b = "fake-b"\n'
-            'kind = "conception"\nreviewer_access = "consult"\n',
+            'kind = "recherche"\nweb_access = true\nreviewer_access = "consult"\n',
             encoding="utf-8",
         )
         err = io.StringIO()
@@ -180,7 +180,7 @@ class TestPrecedence(SettingsCase):
     def test_the_file_supplies_what_the_command_line_omits(self) -> None:
         path = self.write_config(
             'agent_a = "fake-a"\nagent_b = "fake-b"\n'
-            'kind = "conception"\nreviewer_access = "consult"\n'
+            'kind = "recherche"\nweb_access = true\nreviewer_access = "consult"\n'
             'model_b = "un-modele-du-fichier"\nmax_revisions = 7\n'
         )
         with redirect_stderr(io.StringIO()):
@@ -194,7 +194,8 @@ class TestPrecedence(SettingsCase):
     def test_a_command_line_flag_beats_the_file(self) -> None:
         path = self.write_config(
             'agent_a = "fake-a"\nagent_b = "fake-b"\n'
-            'kind = "conception"\nreviewer_access = "consult"\nmax_revisions = 7\n'
+            'kind = "recherche"\nweb_access = true\n'
+            'reviewer_access = "consult"\nmax_revisions = 7\n'
         )
         with redirect_stderr(io.StringIO()):
             self.assertEqual(self.new("--max-revisions", "0", config=path), 0)
@@ -205,7 +206,8 @@ class TestPrecedence(SettingsCase):
         rendu `--max-revisions 0` inoperant, et silencieusement."""
         path = self.write_config(
             'agent_a = "fake-a"\nagent_b = "fake-b"\n'
-            'kind = "conception"\nreviewer_access = "consult"\nmax_revisions = 5\n'
+            'kind = "recherche"\nweb_access = true\n'
+            'reviewer_access = "consult"\nmax_revisions = 5\n'
         )
         with redirect_stderr(io.StringIO()):
             self.assertEqual(self.new("--max-revisions", "0", config=path), 0)
@@ -215,7 +217,7 @@ class TestPrecedence(SettingsCase):
         self.assertEqual(
             self.new(
                 "--agent-a", "fake-a", "--agent-b", "fake-b",
-                "--kind", "conception", "--reviewer-access", "consult",
+                "--kind", "recherche", "--web-access", "--reviewer-access", "consult",
             ),
             0,
         )
@@ -227,7 +229,7 @@ class TestPrecedence(SettingsCase):
         self.assertEqual(
             self.new(
                 "--agent-a", "fake-a", "--agent-b", "fake-b",
-                "--kind", "conception", "--reviewer-access", "consult",
+                "--kind", "recherche", "--web-access", "--reviewer-access", "consult",
             ),
             0,
         )
@@ -256,7 +258,7 @@ class TestRefusalsFromTheFile(SettingsCase):
     def test_an_unknown_agent_in_the_file_is_refused(self) -> None:
         message = self.refused_new(
             'agent_a = "un-outil-inconnu"\nagent_b = "fake-b"\n'
-            'kind = "conception"\nreviewer_access = "consult"\n'
+            'kind = "recherche"\nweb_access = true\nreviewer_access = "consult"\n'
         )
         self.assertIn("un-outil-inconnu", message)
 
@@ -269,7 +271,8 @@ class TestRefusalsFromTheFile(SettingsCase):
     def test_a_negative_max_revisions_in_the_file_is_refused(self) -> None:
         self.refused_new(
             'agent_a = "fake-a"\nagent_b = "fake-b"\n'
-            'kind = "conception"\nreviewer_access = "consult"\nmax_revisions = -1\n'
+            'kind = "recherche"\nweb_access = true\n'
+            'reviewer_access = "consult"\nmax_revisions = -1\n'
         )
 
     def test_a_nan_timeout_in_the_file_is_refused(self) -> None:
@@ -286,7 +289,8 @@ class TestVisibility(SettingsCase):
         """Un reglage qui agit sans se montrer est la moitie d'un etat cache."""
         path = self.write_config(
             'agent_a = "fake-a"\nagent_b = "fake-b"\n'
-            'kind = "conception"\nreviewer_access = "consult"\nmax_revisions = 3\n'
+            'kind = "recherche"\nweb_access = true\n'
+            'reviewer_access = "consult"\nmax_revisions = 3\n'
         )
         with redirect_stderr(io.StringIO()) as err:
             self.assertEqual(cli.main([
@@ -306,7 +310,7 @@ class TestVisibility(SettingsCase):
             cli.main([
                 "new", str(self.collab), "--demande", str(self.demande),
                 "--agent-a", "fake-a", "--agent-b", "fake-b",
-                "--kind", "conception", "--reviewer-access", "consult",
+                "--kind", "recherche", "--web-access", "--reviewer-access", "consult",
             ])
         self.assertEqual(err.getvalue(), "")
 
@@ -321,7 +325,8 @@ class TestScope(SettingsCase):
     def test_editing_the_file_does_not_change_an_existing_collaboration(self) -> None:
         path = self.write_config(
             'agent_a = "fake-a"\nagent_b = "fake-b"\n'
-            'kind = "conception"\nreviewer_access = "consult"\nmax_revisions = 4\n'
+            'kind = "recherche"\nweb_access = true\n'
+            'reviewer_access = "consult"\nmax_revisions = 4\n'
         )
         with redirect_stderr(io.StringIO()):
             self.assertEqual(cli.main([

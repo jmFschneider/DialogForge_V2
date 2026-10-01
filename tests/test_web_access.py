@@ -56,6 +56,15 @@ class TestConfiguration(WorkflowCase):
 
 
 class TestNewFixesIt(CliCase):
+    def sourced(self) -> list[str]:
+        """Une recherche sur corpus local : le web n'y est pas exigé, il reste un choix."""
+        if not (self.root / "source").exists():
+            self.make_source(files={"note.md": "Une note.\n"})
+        return self.bare_args(**{
+            "--source-root": str(self.root / "source"),
+            "--source-list": str(self.root / "manifeste-source.txt"),
+        })
+
     def created(self) -> dict[str, object]:
         raw = fakes.read_json(self.collab / "configuration.json")
         assert isinstance(raw, dict)
@@ -67,16 +76,16 @@ class TestNewFixesIt(CliCase):
         return path
 
     def test_by_default_nothing_is_recorded(self) -> None:
-        self.assertEqual(cli.main(["new", *self.new_args()]), 0)
+        self.assertEqual(cli.main(["new", *self.sourced()]), 0)
         self.assertNotIn("web_access", self.created())
 
     def test_the_flag_opens_it_for_the_collaboration(self) -> None:
-        argv = ["new", *self.new_args(), "--web-access"]
+        argv = ["new", *self.sourced(), "--web-access"]
         self.assertEqual(cli.main(argv), 0)
         self.assertIs(self.created()["web_access"], True)
 
     def test_the_configuration_file_can_open_it_and_says_so(self) -> None:
-        argv = ["new", *self.new_args(), "--config", str(self.toml("web_access = true\n"))]
+        argv = ["new", *self.sourced(), "--config", str(self.toml("web_access = true\n"))]
         with redirect_stderr(io.StringIO()) as err:
             self.assertEqual(cli.main(argv), 0)
         self.assertIs(self.created()["web_access"], True)
@@ -84,7 +93,7 @@ class TestNewFixesIt(CliCase):
 
     def test_the_flag_can_close_what_the_file_opens(self) -> None:
         argv = [
-            "new", *self.new_args(), "--no-web-access",
+            "new", *self.sourced(), "--no-web-access",
             "--config", str(self.toml("web_access = true\n")),
         ]
         with redirect_stderr(io.StringIO()):
@@ -93,7 +102,7 @@ class TestNewFixesIt(CliCase):
 
     def test_the_file_must_hold_a_real_boolean(self) -> None:
         for text in ('web_access = "true"\n', "web_access = 1\n"):
-            argv = ["new", *self.new_args(), "--config", str(self.toml(text))]
+            argv = ["new", *self.sourced(), "--config", str(self.toml(text))]
             with redirect_stderr(io.StringIO()) as err:
                 self.assertEqual(cli.main(argv), 1, text)
             self.assertIn("web_access", err.getvalue())
@@ -102,7 +111,7 @@ class TestNewFixesIt(CliCase):
     def test_it_is_fixed_at_new_and_run_does_not_reread_the_file(self) -> None:
         """`configuration.json` est la seule vérité une fois la collaboration créée : un fichier
         qui ouvre le web **après** `new` n'ouvre rien."""
-        self.assertEqual(cli.main(["new", *self.new_args()]), 0)
+        self.assertEqual(cli.main(["new", *self.sourced()]), 0)
         opened = self.toml("web_access = true\n")
         self.a.responses = [_DOC]
         self.b.responses = [fakes.review("ACCEPTER")]

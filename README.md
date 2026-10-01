@@ -30,7 +30,7 @@ Créez une collaboration à partir d'une demande, lancez le cycle, lisez le rés
 décision :
 
 ```powershell
-dialogforge new ./ma-collab --demande ./demande.md --kind conception --reviewer-access consult --agent-a codex --agent-b claude --max-revisions 1
+dialogforge new ./ma-collab --demande ./demande.md --kind recherche --web-access --reviewer-access consult --agent-a codex --agent-b claude --max-revisions 1
 dialogforge run ./ma-collab
 dialogforge show ./ma-collab
 dialogforge decide ./ma-collab --accept
@@ -49,8 +49,9 @@ moment l'état et la prochaine action ; chaque arrêt indique la commande à uti
 
 | Besoin | Fonction |
 |---|---|
-| Préparer une conception | Demande libre, questionnaire local ou cadrage avec un agent, puis cycle A/B. |
-| Travailler sur des sources locales | Une mission de `recherche` copie le corpus déclaré, le hache et le vérifie. |
+| Enchaîner recherche → conception → développement | Une recherche établit un dossier sourcé (web ou corpus) ; une conception en tire le plan, juste avant le code. |
+| Formuler la demande | Demande libre, questionnaire local ou cadrage avec un agent, puis cycle A/B. |
+| Travailler sur des sources locales | Un corpus déclaré est copié, haché et vérifié ; il est exigé en conception. |
 | Régler les rôles | Claude et Codex peuvent tenir A ou B ; modèles et effort sont réglables par rôle. |
 | Limiter les capacités du relecteur | `consult` conserve les outils de sa CLI ; `context-only` les lui retire. |
 | Choisir l'accès web | Fermé par défaut et figé lors de la création ; il peut être ouvert pour A et B. |

@@ -31,8 +31,8 @@ class CreationCase(unittest.TestCase):
         base: dict[str, object] = {
             "collab": self.root / "collab",
             "demande": facade.DemandeSource("Concevoir le cache.", "cadrage"),
-            "kind": MissionKind.CONCEPTION, "reviewer_access": ReviewerAccess.CONSULT,
-            "agent_a": "fake-a", "agent_b": "fake-b", "max_revisions": 2,
+            "kind": MissionKind.RECHERCHE, "reviewer_access": ReviewerAccess.CONSULT,
+            "agent_a": "fake-a", "agent_b": "fake-b", "max_revisions": 2, "web_access": True,
         }
         base.update(overrides)
         return facade.CreationRequest(**base)  # type: ignore[arg-type]
@@ -55,10 +55,14 @@ class TestRefusalsLeaveNothingBehind(CreationCase):
         )
         self.assertFalse((self.root / "collab").exists())
 
-    def test_research_without_a_corpus_is_refused(self) -> None:
-        self.assertIn(
-            "sans corpus", self.refused(kind=MissionKind.RECHERCHE),
-        )
+    def test_research_without_any_source_is_refused(self) -> None:
+        refusal = self.refused(kind=MissionKind.RECHERCHE, web_access=False)
+        self.assertIn("recherche sans source", refusal)
+        self.assertFalse((self.root / "collab").exists())
+
+    def test_conception_without_an_input_folder_is_refused_even_with_the_web(self) -> None:
+        refusal = self.refused(kind=MissionKind.CONCEPTION, web_access=True)
+        self.assertIn("conception sans dossier d'entrée", refusal)
         self.assertFalse((self.root / "collab").exists())
 
     def test_research_with_an_empty_corpus_is_refused(self) -> None:
@@ -71,7 +75,9 @@ class TestRefusalsLeaveNothingBehind(CreationCase):
         src.mkdir()
         listing = self.root / "vide.txt"
         listing.write_text("", encoding="utf-8")
-        self.refused(kind=MissionKind.RECHERCHE, source_root=src, source_list=listing)
+        self.refused(
+            kind=MissionKind.RECHERCHE, source_root=src, source_list=listing, web_access=False,
+        )
         self.assertFalse((self.root / "collab").exists())
         self.assertEqual(list(self.root.glob(".new-*")), [], "un dossier temporaire est resté")
 
@@ -101,7 +107,15 @@ class TestRefusalsLeaveNothingBehind(CreationCase):
 
 class TestASuccessfulCreation(CreationCase):
     def test_a_conception_collaboration_is_created_ready(self) -> None:
-        result = facade.create_collaboration(self.request(), adapters=self.adapters)
+        src = self.root / "src"
+        src.mkdir()
+        (src / "dossier.md").write_text("# Dossier de recherche", encoding="utf-8")
+        listing = self.root / "liste.txt"
+        listing.write_text("dossier.md\n", encoding="utf-8")
+        result = facade.create_collaboration(
+            self.request(kind=MissionKind.CONCEPTION, source_root=src, source_list=listing),
+            adapters=self.adapters,
+        )
         self.assertEqual(result.path, self.root / "collab")
         config = fakes.read_json(result.path / "configuration.json")
         self.assertEqual(config["mission_kind"], "CONCEPTION")

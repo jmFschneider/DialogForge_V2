@@ -246,12 +246,12 @@ def parse_reply(text: str, expected: tuple[str, ...]) -> Reply:
 
 def prepare(
     kind: MissionKind, source_root: Path | None = None, source_list: Path | None = None,
-    source_label: str | None = None,
+    source_label: str | None = None, web_access: bool = False,
 ) -> Path:
     """Le dossier jetable du cadrage (§5.1, §8.1), avant toute session. F travaille dans
     `travail/`, qui ne contient que la copie `corpus/fichiers/` ; manifeste, traces et
-    transcription restent à côté, hors de sa racine. Sans source : permis en
-    conception, refusé en recherche (§2.2)."""
+    transcription restent à côté, hors de sa racine. Les sources exigées par le type
+    sont celles de la création (`MissionKind.missing_source`)."""
     root = Path(tempfile.mkdtemp(prefix="framing-"))
     try:
         (root / "travail").mkdir()
@@ -267,8 +267,9 @@ def prepare(
                 shutil.copytree(
                     root / "corpus" / "fichiers", root / "travail" / "corpus" / "fichiers"
                 )
-        if not entries and kind is MissionKind.RECHERCHE:
-            raise FramingError("mission de recherche sans corpus")
+        problem = kind.missing_source(corpus=bool(entries), web=web_access)
+        if problem:
+            raise FramingError(problem)
     except (corpus.CorpusError, OSError) as exc:
         shutil.rmtree(root, ignore_errors=True)
         raise FramingError(str(exc)) from exc

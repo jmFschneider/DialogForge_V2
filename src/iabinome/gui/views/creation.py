@@ -23,7 +23,7 @@ from . import cadrage
 if TYPE_CHECKING:
     from ..controller import Controller
 
-_KIND = {"Conception": MissionKind.CONCEPTION, "Recherche": MissionKind.RECHERCHE}
+_KIND = {"Recherche": MissionKind.RECHERCHE, "Conception": MissionKind.CONCEPTION}
 _ACCESS = {"Consultation": ReviewerAccess.CONSULT, "Contexte seul": ReviewerAccess.CONTEXT_ONLY}
 _NON_SPECIFIE = "(non spécifié)"
 
@@ -41,7 +41,7 @@ class CreationView(ttk.Frame):
         self._imported_path: str | None = None
         self._imported_text: str | None = None
         self._mode = StringVar(value="saisir")
-        self._kind = StringVar(value="Conception")
+        self._kind = StringVar(value="Recherche")
         self._agent_a = StringVar(value=sorted(ADAPTERS)[0])
         self._agent_b = StringVar(value=sorted(ADAPTERS)[-1])
         self._revisions = StringVar(value="2")
@@ -81,7 +81,7 @@ class CreationView(ttk.Frame):
         self._build_type_and_agents(body)
         self._corpus_frame = ttk.Frame(body)
         self._build_corpus(self._corpus_frame)
-        self._toggle_kind()
+        self._corpus_frame.pack(fill="x")
 
         self._build_disclosure(body, "Réglages avancés de la collaboration", self._build_advanced)
         self._build_disclosure(body, "Réglages du prochain lancement", self._build_launch)
@@ -132,9 +132,12 @@ class CreationView(ttk.Frame):
         row.pack(fill="x", pady=(12, 0))
         ttk.Label(row, text="Type").pack(side="left")
         for label in _KIND:
-            ttk.Radiobutton(
-                row, text=label, value=label, variable=self._kind, command=self._toggle_kind,
-            ).pack(side="left", padx=(8, 0))
+            ttk.Radiobutton(row, text=label, value=label, variable=self._kind).pack(
+                side="left", padx=(8, 0)
+            )
+        ttk.Checkbutton(
+            row, text="Accès web pour A et B", variable=self._web_access,
+        ).pack(side="left", padx=(16, 0))
         agents = ttk.Frame(parent)
         agents.pack(fill="x", pady=(8, 0))
         ttk.Label(agents, text="Agent A").pack(side="left")
@@ -153,7 +156,9 @@ class CreationView(ttk.Frame):
         ttk.Entry(agents, textvariable=self._revisions, width=4).pack(side="left", padx=(4, 0))
 
     def _build_corpus(self, parent: ttk.Frame) -> None:
-        ttk.Label(parent, text="Corpus de recherche").pack(anchor="w", pady=(12, 0))
+        ttk.Label(
+            parent, text="Corpus local — exigé en conception ; en recherche, si le web est fermé",
+        ).pack(anchor="w", pady=(12, 0))
         for label, var, browse in (
             ("Racine", self._source_root, self._choose_source_root),
             ("Liste", self._source_list, self._choose_source_list),
@@ -190,9 +195,6 @@ class CreationView(ttk.Frame):
                 row, textvariable=effort, values=self._effort_values(label), state="readonly",
                 width=14,
             ).pack(side="left")
-        ttk.Checkbutton(
-            parent, text="Accès web : autoriser pour A et B", variable=self._web_access,
-        ).pack(anchor="w", pady=(4, 0))
         access_row = ttk.Frame(parent)
         access_row.pack(fill="x")
         ttk.Label(access_row, text="Accès du critique").pack(side="left")
@@ -306,14 +308,6 @@ class CreationView(ttk.Frame):
             self._framing_panel.leave()
         if self._mode.get() == "saisir":
             self._reset_import()
-        self._toggle_kind()
-
-    def _toggle_kind(self) -> None:
-        # Sources obligatoires en recherche, facultatives pour un cadrage (§2.2).
-        if self._kind.get() == "Recherche" or self._mode.get() == "agent":
-            self._corpus_frame.pack(fill="x")
-        else:
-            self._corpus_frame.pack_forget()
 
     # -- Choix de fichiers/dossiers --
 

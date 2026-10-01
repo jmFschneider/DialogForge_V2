@@ -134,6 +134,8 @@ class TestExamplesAreAccepted(unittest.TestCase):
         code, err = self._new(
             "--demande", str(ROOT / "exemples" / "demande-conception.md"),
             "--kind", "conception",
+            "--source-root", str(ROOT / "exemples"),
+            "--source-list", str(ROOT / "exemples" / "corpus.txt"),
         )
         self.assertEqual(code, 0, err)
         self.assertNotIn("absente", err)

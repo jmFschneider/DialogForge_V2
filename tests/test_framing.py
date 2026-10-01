@@ -60,8 +60,8 @@ class FramingCase(unittest.TestCase):
         self.addCleanup(self._tmp.cleanup)
         self.tmp = Path(self._tmp.name)
 
-    def framing(self, *replies: Any, kind: MissionKind = MissionKind.CONCEPTION,
-                sources: dict[str, str] | None = None) -> framing.Framing:
+    def framing(self, *replies: Any, kind: MissionKind = MissionKind.RECHERCHE,
+                sources: dict[str, str] | None = None, web: bool = True) -> framing.Framing:
         self.fake = fakes.FakeAdapter(framing_responses=replies)
         root_args: dict[str, Any] = {}
         if sources is not None:
@@ -70,7 +70,7 @@ class FramingCase(unittest.TestCase):
                 (self.tmp / "projet" / name).write_text(content, encoding="utf-8")
             (self.tmp / "liste.txt").write_text("\n".join(sources), encoding="utf-8")
             root_args = {"source_root": self.tmp / "projet", "source_list": self.tmp / "liste.txt"}
-        root = framing.prepare(kind, **root_args)
+        root = framing.prepare(kind, **root_args, web_access=web)
         self.addCleanup(shutil.rmtree, root, ignore_errors=True)
         spec = FramingSessionSpec(model="m", timeout_seconds=30.0, work_root=root / "travail")
         return framing.Framing(framing.open_session(self.fake, spec), root, "Un cache pour FloraPi")
@@ -355,11 +355,14 @@ class TestSources(FramingCase):
         self.assertIsNone(f.draft)
         self.assertTrue(f.session.closed)
 
-    def test_no_source_is_fine_in_conception_not_in_research(self) -> None:
-        """Tests 11 et 12."""
+    def test_the_sources_required_by_the_kind_are_checked_before_any_session(self) -> None:
+        """Tests 11 et 12, redéfinis par `TYPES_DE_MISSION.md` D1 : une recherche web part
+        sans corpus ; sans web, elle en exige un ; une conception l'exige toujours."""
         self.assertIsNone(self.framing(QUESTION_OUT).start().problem)
-        with self.assertRaisesRegex(FramingError, "recherche sans corpus"):
+        with self.assertRaisesRegex(FramingError, "recherche sans source"):
             framing.prepare(MissionKind.RECHERCHE)
+        with self.assertRaisesRegex(FramingError, "conception sans dossier d'entrée"):
+            framing.prepare(MissionKind.CONCEPTION, web_access=True)
 
     def test_discarding_closes_then_removes_everything(self) -> None:
         """Tests 13, 35 et 51 : annulation — session fermée, dossier détruit."""

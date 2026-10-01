@@ -37,7 +37,10 @@ class CreationCase(unittest.TestCase):
             self.addCleanup(patcher.stop)
 
     def view(self) -> CreationView:
-        return CreationView(_ROOT, self.controller)
+        """Une recherche web par défaut : la mission qui n'exige aucun corpus."""
+        view = CreationView(_ROOT, self.controller)
+        view._web_access.set(True)
+        return view
 
     def fill_minimum(self, view: CreationView, *, dest: Path | None = None) -> None:
         view._dossier.set(str(dest or self.root_dir / "ma-collab"))
@@ -92,15 +95,10 @@ class TestTheDemandeIsAlwaysVisible(CreationCase):
 
 
 class TestTheCorpusBlock(CreationCase):
-    def test_the_corpus_block_is_hidden_for_conception(self) -> None:
-        """AC-08 : le corpus n'apparaît qu'en recherche."""
-        view = self.view()
-        self.assertEqual(view._corpus_frame.winfo_manager(), "")
-
-    def test_the_corpus_block_appears_for_recherche(self) -> None:
-        view = self.view()
-        view._kind.set("Recherche")
-        view._toggle_kind()
+    def test_research_is_the_default_and_the_corpus_block_is_always_shown(self) -> None:
+        """`TYPES_DE_MISSION.md` D1 : le corpus sert aux deux types (exigé en conception)."""
+        view = CreationView(_ROOT, self.controller)
+        self.assertEqual(view._kind.get(), "Recherche")
         self.assertEqual(view._corpus_frame.winfo_manager(), "pack")
 
 

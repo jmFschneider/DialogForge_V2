@@ -530,7 +530,8 @@ class TestTheCommandLine(WorkflowCase):
 
     def new(self) -> None:
         code, _, _ = self.run_cli(
-            "new", str(self.collab), "--demande", str(self.demande), "--kind", "conception",
+            "new", str(self.collab), "--demande", str(self.demande),
+            "--kind", "recherche", "--web-access",
             "--reviewer-access", "consult", "--agent-a", "fake-a", "--agent-b", "fake-b",
             "--max-revisions", "0",
         )

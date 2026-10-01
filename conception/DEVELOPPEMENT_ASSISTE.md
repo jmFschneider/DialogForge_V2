@@ -99,6 +99,10 @@ dialogforge new <collaboration-revue> \
   --web-access-ou-no-web-access
 ```
 
+> **Amendement du 2026-10-01 (PO, `TYPES_DE_MISSION.md` D5)** : la collaboration de revue est de
+> type `--kind recherche` — elle établit des faits sourcés dans le paquet. Le texte ci-dessus est
+> celui du livrable accepté, laissé tel quel.
+
 Puis :
 
 ```text

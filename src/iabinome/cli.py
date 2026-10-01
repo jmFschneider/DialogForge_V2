@@ -559,7 +559,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_new.add_argument("--effort-cadrage", help=_EFFORT_HELP.format("l'agent de cadrage"))
     p_new.add_argument("--config", help=_CONFIG_HELP)
     p_new.add_argument(
-        "--kind", choices=sorted(_KIND), help="genre de livrable (une recherche exige un corpus)"
+        "--kind", choices=sorted(_KIND),
+        help="recherche (web ou corpus) puis conception (corpus exigé)",
     )
     p_new.add_argument(
         "--reviewer-access", choices=sorted(_ACCESS),

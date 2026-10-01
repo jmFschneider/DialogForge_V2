@@ -127,9 +127,11 @@ def main(argv: list[str]) -> int:
         mock.patch.object(cli, "ADAPTERS", {"fake-a": agent_a, "fake-b": agent_b}),
         mock.patch.object(settings, "SEARCH_PATHS", ()),
     ):
+        exemples = Path(__file__).resolve().parent.parent / "exemples"
         code = cli.main([
             "new", str(collab), "--demande", str(demande),
             "--kind", "conception", "--reviewer-access", "consult",
+            "--source-root", str(exemples), "--source-list", str(exemples / "corpus.txt"),
             "--agent-a", "fake-a", "--agent-b", "fake-b", "--max-revisions", "1",
         ])
         if code != 0:

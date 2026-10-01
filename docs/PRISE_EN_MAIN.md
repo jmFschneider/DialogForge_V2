@@ -28,7 +28,8 @@ Six sections en titres `##`, dans l'ordre que vous voulez :
 C'est un repère, pas une porte : une demande libre est acceptée, `new` signale les sections
 absentes, et A pose une question si le manque change le résultat.
 
-Un exemple complet : [`exemples/demande-conception.md`](../exemples/demande-conception.md).
+Deux exemples complets, qui s'enchaînent : [`exemples/demande-recherche.md`](../exemples/demande-recherche.md)
+puis [`exemples/demande-conception.md`](../exemples/demande-conception.md).
 
 **Pas de fichier prêt ?** `--cadrer` remplace `--demande` par un questionnaire de terminal, une
 réponse par section, fermée par une ligne vide. Il n'appelle aucun modèle et n'écrit rien si vous
@@ -37,15 +38,21 @@ l'interrompez.
 ## 2. Créer la collaboration
 
 ```
-dialogforge new ./essai --demande ./exemples/demande-conception.md --kind conception --reviewer-access consult --agent-a codex --agent-b claude --max-revisions 1
+dialogforge new ./essai --demande ./exemples/demande-recherche.md --kind recherche --reviewer-access consult --agent-a codex --agent-b claude --source-root ./exemples --source-list ./exemples/corpus.txt --max-revisions 1
 ```
 
 `new` ne consomme aucun quota : il crée le dossier `./essai`, qui ne doit pas exister, et fige les
 réglages dans `configuration.json`.
 
+DialogForge suit une chaîne **recherche → conception → développement**. Une **recherche** établit un
+dossier sourcé à partir d'une idée ou d'une question : elle exige au moins une source, l'accès web
+(`--web-access`) ou un corpus. Une **conception** tire de ce dossier le plan et les solutions qui
+mènent à la réalisation, juste avant le code : elle exige un corpus, son dossier d'entrée. Le
+[développement assisté](COMMANDES.md#dev-export) part ensuite d'une conception acceptée.
+
 | Réglage | Ce qu'il décide |
 |---|---|
-| `--kind` | `conception` ou `recherche`. Une recherche **exige** un corpus (voir plus bas). |
+| `--kind` | `recherche` ou `conception`, comme ci-dessus. |
 | `--agent-a`, `--agent-b` | Qui produit, qui critique : `claude` ou `codex`, dans l'ordre que vous voulez. |
 | `--reviewer-access` | `consult` laisse à B les outils de sa CLI ; `context-only` les lui retire. |
 | `--max-revisions` | Le nombre maximal de révisions. À `0`, B critique une fois et la proposition est livrée telle quelle. |
@@ -61,11 +68,11 @@ les valeurs par défaut, et `new` se réduit alors à un dossier et une demande.
 > introuvable, par exemple) ressemble à un incident du moteur alors que c'est seulement le mauvais
 > dossier.
 
-**Pour une recherche**, le corpus se déclare par un fichier qui liste des chemins, un par ligne,
-relatifs à `--source-root` :
+**Le corpus** se déclare par un fichier qui liste des chemins, un par ligne, relatifs à
+`--source-root`. La conception de l'exemple part du même dossier :
 
 ```
-dialogforge new ./etude --demande ./exemples/demande-recherche.md --kind recherche --reviewer-access consult --agent-a claude --agent-b codex --source-root ./exemples --source-list ./exemples/corpus.txt --max-revisions 1
+dialogforge new ./plan --demande ./exemples/demande-conception.md --kind conception --reviewer-access consult --agent-a claude --agent-b codex --source-root ./exemples --source-list ./exemples/corpus.txt --max-revisions 1
 ```
 
 Les fichiers sont **copiés octet pour octet** et hachés dans `corpus/manifeste.json`. Le corpus,
@@ -175,7 +182,7 @@ essai/
 ├── provenance_demande.json       d'où elle vient : fichier ou cadrage, et son empreinte
 ├── configuration.json            figé au `new` : outils, modèles, révisions
 ├── etat.json                     où en est le cycle, lisible à l'œil
-├── corpus/                       manifeste et copies des sources (recherche)
+├── corpus/                       manifeste et copies des sources (si corpus)
 ├── echanges/                     propositions de A, revues de B, réponses de A aux objections
 ├── appels/NNNN-<rôle>-<uuid>/    la preuve : prompt exact, flux bruts, résultat, incident
 ├── decisions.json                vos décisions, datées

@@ -2013,3 +2013,34 @@ modèles avait changé dans le panneau. Traité comme correctif, sans conception
 - Test `test_the_idea_is_the_only_input_until_the_draft_appears_below_it` ; contre-épreuve (éditeur
   jamais retiré) → 1 échec, rétablie. Écran de création capturé avant et après le brouillon.
 - Validation : ruff, mypy strict, **818 passés / 2 ignorés**, scénario rc=0. Façade + GUI 1 799 / 2 000.
+- Commité et poussé : `1da53b7`.
+
+## Session 2026-10-01 (suite) — types de mission, lot 1 (D1, D2, D3, D5, documentation)
+
+Note `conception/TYPES_DE_MISSION.md` écrite puis validée telle quelle par le PO (`84a8694`).
+
+- **D1** : `MissionKind.missing_source(corpus, web)`, seule règle, appelée par la façade (création
+  CLI et GUI, avant et après la copie du corpus) et par `framing.prepare` (qui reçoit désormais
+  `web_access`). Recherche : web ou corpus non vide. Conception : corpus non vide.
+- **D2** : `prompts._CONCEPTION` (4 lignes, texte de la note) pour la proposition et la révision de A
+  en conception ; une phrase ajoutée à la consigne de recherche (adresse et date d'une source web).
+- **D3** : contrôle du corpus au lancement retiré de `workflow` ; pas de migration.
+- **D5** : amendement daté sous la commande de `DEVELOPPEMENT_ASSISTE.md` §3.3, dont le texte, copie
+  conforme du livrable accepté, n'est pas réécrit.
+- **GUI, conséquence directe de D1** : type « Recherche » par défaut, case « Accès web pour A et B »
+  remontée des réglages avancés à la ligne du type, cadre du corpus toujours affiché (bascule
+  `_toggle_kind` supprimée, `creation.py` −4 lignes). L'accueil (D6) reste au lot 2.
+- **Documentation** : README, `COMMANDES.md`, `PRISE_EN_MAIN.md` (la chaîne expliquée, l'exemple de
+  recherche en premier), `CONFIGURATION.md`, `dialogforge.toml.exemple` (`kind = "recherche"`), aide
+  de `--kind`. L'exemple de conception part maintenant du corpus d'exemple, comme le scénario de
+  référence.
+- **Tests** : les helpers qui créaient une conception sans corpus créent une recherche web
+  (`new_args` ajoute `--web-access`, `bare_args` sans web). Nouveaux : refus d'une recherche sans
+  source, d'une conception sans dossier (CLI, façade, cadrage), lancement sans recontrôle, consigne
+  propre à chaque type. Contre-épreuves : consigne de conception remplacée par celle de recherche →
+  1 échec ; conception acceptée sans corpus → 3 échecs ; chacune rétablie.
+- **Erreur reproduite** : un script de remplacement passé en heredoc a transformé deux `\n` en vrais
+  sauts de ligne (règle de `RULES.md` déjà écrite) ; corrigé à l'outil d'édition, puis scripts écrits
+  par Write.
+- Validation : ruff, mypy strict, **821 passés / 2 ignorés**, scénario rc=0. `src/` : +16 lignes
+  effectives (6 397 → 6 413).

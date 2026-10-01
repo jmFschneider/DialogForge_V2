@@ -134,7 +134,9 @@ def begin(
     except model_catalog.ModelCatalogError as exc:
         raise framing.FramingError(str(exc)) from exc
     model, _ = framing.check_adapter(agent, ADAPTERS, chosen_model, effort)
-    root = framing.prepare(base.kind, base.source_root, base.source_list, base.source_label)
+    root = framing.prepare(
+        base.kind, base.source_root, base.source_list, base.source_label, base.web_access,
+    )
     spec = FramingSessionSpec(model, timeout, root / "travail", effort)
     return controller.open_framing(ADAPTERS[agent], spec, root, idea)
 

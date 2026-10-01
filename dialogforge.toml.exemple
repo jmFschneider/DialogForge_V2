@@ -57,9 +57,11 @@ max_revisions = 1
 timeout = 600
 
 # --- Defauts de mission ----------------------------------------------
-# "conception" ou "recherche". Une mission de recherche exige un corpus,
-# qui se declare sur la ligne de commande : aucun chemin ne se regle ici.
-kind = "conception"
+# "recherche" ou "conception" : recherche -> conception -> developpement.
+# Une recherche exige au moins une source : l'acces web, ou un corpus.
+# Une conception exige un corpus, son dossier d'entree. Un corpus se
+# declare sur la ligne de commande : aucun chemin ne se regle ici.
+kind = "recherche"
 
 # "consult" laisse a B les outils de sa CLI ; "context-only" les lui retire.
 reviewer_access = "consult"

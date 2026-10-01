@@ -60,8 +60,8 @@ class TestCreatedInTheGuiContinuesInTheCli(CompatibilityCase):
         collab = self.root_dir / "collab-gui"
         request = facade.CreationRequest(
             collab=collab, demande=facade.DemandeSource("Concevoir le cache.", "cadrage"),
-            kind=MissionKind.CONCEPTION, reviewer_access=ReviewerAccess.CONSULT,
-            agent_a="fake-a", agent_b="fake-b", max_revisions=2,
+            kind=MissionKind.RECHERCHE, reviewer_access=ReviewerAccess.CONSULT,
+            agent_a="fake-a", agent_b="fake-b", max_revisions=2, web_access=True,
         )
         facade.create_collaboration(request, adapters=self.fake_adapters)
         self.assertEqual(self.cli_run("run", str(collab)), 0)
@@ -79,7 +79,7 @@ class TestCreatedInTheCliContinuesInTheGui(CompatibilityCase):
         demande = self.root_dir / "demande.md"
         demande.write_text("Concevoir le cache.", encoding="utf-8")
         code = self.cli_run(
-            "new", str(collab), "--demande", str(demande), "--kind", "conception",
+            "new", str(collab), "--demande", str(demande), "--kind", "recherche", "--web-access",
             "--reviewer-access", "consult", "--agent-a", "fake-a", "--agent-b", "fake-b",
         )
         self.assertEqual(code, 0)

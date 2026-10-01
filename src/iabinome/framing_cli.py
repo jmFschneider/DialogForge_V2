@@ -34,7 +34,9 @@ def run(
             args.agent_cadrage, adapters, args.model_cadrage, args.effort_cadrage
         )
         timeout = settings.resolve_timeout(args.config, None).seconds
-        root = framing.prepare(base.kind, base.source_root, base.source_list, base.source_label)
+        root = framing.prepare(
+            base.kind, base.source_root, base.source_list, base.source_label, base.web_access,
+        )
     except (facade.CreationError, framing.FramingError, settings.SettingsError) as exc:
         return _fail(str(exc))
     try:

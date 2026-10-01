@@ -8,8 +8,9 @@ avec reprise après incident sans rejouer un appel ambigu.
 ## Next Step
 **Types de mission redéfinis — `conception/TYPES_DE_MISSION.md`, D1 à D6 validés par le PO le
 2026-10-01**, à implémenter **avant toute nouvelle phase de développement** (PO : « remettre le
-projet d'équerre »). Ordre : lot 1 = D1, D2, D3, D5 et documentation ; lot 2 = D6 (accueil, puis
-écran de création avec découpage) ; lot 3 = D4 (« Poursuivre en conception »). Remplace le point 1
+projet d'équerre »). Ordre : ~~lot 1 = D1, D2, D3, D5 et documentation~~ **fait le 2026-10-01** ;
+**prochain : lot 2** = D6 (accueil, puis écran de création avec découpage) ; lot 3 = D4
+(« Poursuivre en conception »). Remplace le point 1
 du retour d'usage du 2026-09-28 (recherche sans corpus local).
 
 **Dépôt publié le 2026-10-01** : `main` sur `origin` (`jmFschneider/DialogForge_V2`, public),

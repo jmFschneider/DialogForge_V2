@@ -303,10 +303,12 @@ class TestPreflight(WorkflowCase):
         with self.assertRaises(WorkflowError):
             self.run_engine(collab)
 
-    def test_research_without_corpus_refused(self) -> None:
+    def test_sources_are_not_rechecked_when_running(self) -> None:
+        """`TYPES_DE_MISSION.md` D3 : les sources se contrôlent à la création. Une
+        collaboration existante sans corpus reste reprenable, quel que soit son type."""
         collab = self.build(a=(_DOC,), b=(), mission_kind="RECHERCHE")
-        with self.assertRaises(WorkflowError):
-            self.run_engine(collab)
+        self.run_engine(collab)
+        self.assertEqual(self.a.calls, 1)
 
     def test_altered_corpus_manifest_refused(self) -> None:
         collab = self.build(a=(_DOC,), b=(), corpus_captured_at="2026-09-01")

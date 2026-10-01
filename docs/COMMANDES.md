@@ -35,7 +35,7 @@ vérifié avant toute écriture : un refus ne laisse rien derrière lui, un cadr
 | `--cadrer-avec-agent` | Construire la demande en conversation avec un agent de cadrage, **qui effectue des appels avant la création** ([détail](#cadrage-avec-agent)). Les trois voies s'excluent ; l'une est exigée. |
 | `--agent-cadrage` | L'outil qui mène le cadrage ; exigé avec `--cadrer-avec-agent`, refusé sans lui. |
 | `--model-cadrage`, `--effort-cadrage` | Modèle et effort de l'agent de cadrage ; mêmes règles que pour A et B. |
-| `--kind` | `conception` ou `recherche`. |
+| `--kind` | `recherche` ou `conception` : recherche → conception → développement ([détail](PRISE_EN_MAIN.md#2-créer-la-collaboration)). |
 | `--reviewer-access` | `consult` (B garde les outils de sa CLI) ou `context-only` (B n'en a aucun). |
 | `--agent-a`, `--agent-b` | Qui produit, qui critique : `claude` ou `codex`. |
 | `--source-root <dossier>` | Le dossier des sources. Va avec `--source-list`. |
@@ -48,13 +48,15 @@ vérifié avant toute écriture : un refus ne laisse rien derrière lui, un cadr
 | `--config <fichier>` | Fichier de réglages à utiliser ([détail](CONFIGURATION.md)). |
 
 `--kind`, `--reviewer-access`, `--agent-a` et `--agent-b` sont indispensables : sur la ligne de
-commande ou dans le fichier de réglages, sinon `new` refuse. Une mission de **recherche** exige un
-corpus, et un corpus vide est refusé.
+commande ou dans le fichier de réglages, sinon `new` refuse. Une **recherche** exige au moins une
+source : l'accès web (`--web-access`) ou un corpus. Une **conception** exige un corpus, son dossier
+d'entrée. Un corpus vide ne compte pas comme source. Les sources se contrôlent à la création
+seulement.
 
 ### Cadrage avec agent
 
 Avec `--cadrer-avec-agent`, un agent (F) lit une **copie** des sources données par `--source-root` /
-`--source-list` (facultatives en conception), puis vous pose ses questions une par une. Votre idée se
+`--source-list` (exigées en conception, facultatives en recherche web), puis vous pose ses questions une par une. Votre idée se
 saisit sur plusieurs lignes, close par une ligne ne contenant qu'un point ; vos réponses aussi. À
 tout moment : `/clore` (rédiger maintenant) ou `/annuler`. F propose la clôture au plus tard après
 trois réponses, puis toutes les deux ; vous choisissez de continuer, corriger un point, rédiger ou

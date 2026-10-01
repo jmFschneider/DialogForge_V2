@@ -9,7 +9,8 @@ Une note de conception d'une page : la politique de rotation retenue, ses param�
 qu'elle ne couvre pas.
 
 ## Sources
-Aucune : la note part de cette demande seule.
+Le dossier fourni en corpus : `politique-retention.md` et `incident-disque.md`. Dans la chaîne
+complète, ce dossier est la synthèse acceptée de la recherche (`demande-recherche.md`).
 
 ## Contraintes
 - Aucune dépendance nouvelle : bibliothèque standard uniquement.

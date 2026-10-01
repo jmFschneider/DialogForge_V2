@@ -426,10 +426,11 @@ def check_creation(request: CreationRequest, *, adapters: Mapping[str, AgentAdap
     framed_corpus = request.framing is not None and (
         request.framing.root / "corpus" / "manifeste.json"
     ).is_file()
-    if request.kind is MissionKind.RECHERCHE and not (request.source_root or framed_corpus):
-        raise CreationError(
-            "mission de recherche sans corpus (--source-root et --source-list requis)"
-        )
+    problem = request.kind.missing_source(
+        corpus=bool(request.source_root) or framed_corpus, web=request.web_access,
+    )
+    if problem:
+        raise CreationError(problem)
     for who, adapter_id, effort in (
         ("A", request.agent_a, request.effort_a), ("B", request.agent_b, request.effort_b),
     ):
@@ -463,8 +464,9 @@ def _write_collaboration(
             request.source_root, request.source_list, tmp / "corpus",
             request.source_label or request.source_root.name,
         )
-        if not manifest.entries and request.kind is MissionKind.RECHERCHE:
-            raise ValueError("corpus vide pour une mission de recherche")
+        problem = request.kind.missing_source(corpus=bool(manifest.entries), web=request.web_access)
+        if problem:
+            raise ValueError(f"corpus vide — {problem}")
         manifest_text, _ = storage.read_text(tmp / "corpus" / "manifeste.json")
         corpus_sha = contracts.normalize(manifest_text).sha256
     agent_a, agent_b = adapters[request.agent_a], adapters[request.agent_b]
