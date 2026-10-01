@@ -77,7 +77,7 @@ Toute demande qui commence par « et si on ajoutait un petit contrôle pour… �
   de `POURQUOI.md` (l'outil ne dépasse pas le projet servi) reste tenue et **reste la métrique** :
   c'est elle qu'on mesure, pas le chiffre de 1 500.
 - Claude produit. Construire l'outil avec son propre protocole est la démonstration qu'il n'a jamais eu besoin de machinerie.
-- **La relecture Codex palier par palier est suspendue depuis le 2026-09-03** — décision du PO : la conception est assez précise pour s'en passer. Portée et condition de réouverture dans `project/RULES.md`.
+- **La relecture Codex palier par palier** : suspendue le 2026-09-03 (PO), **rouverte le 2026-09-05** quand sa condition de réouverture s'est réalisée. Règle applicable et motif : `project/RULES.md`.
 
 ## 4. Sources — en lecture seule
 

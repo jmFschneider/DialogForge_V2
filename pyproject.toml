@@ -1,6 +1,6 @@
 [project]
 name = "dialogforge"
-version = "0.1.0"
+version = "0.2.0"
 description = "Deux agents IA en CLI : l'un produit, l'autre critique, l'humain arbitre."
 requires-python = ">=3.12"
 dependencies = []

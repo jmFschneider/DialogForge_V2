@@ -173,7 +173,8 @@ class TestWhatWasReceivedWhatWasNotLaunchedWhatIsUnknown(IncidentCase):
         self.assertIn("Payé ? : oui", text)
         action = decisions.next_action(collab, self.state(collab))
         self.assertLess(action.index("--reprocess"), action.index("--retry-call"))
-        self.assertIn("sans appel", action)
+        self.assertIn("Sans la repayer", action)
+        self.assertIn("peut appeler l'agent suivant", action)  # F03 : la suite peut appeler
 
     def test_a_tool_with_no_output_says_so(self) -> None:
         collab = self.build(a=("",), b=())

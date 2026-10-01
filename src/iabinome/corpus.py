@@ -139,6 +139,7 @@ def build_from(
         entries=tuple(entries),
     )
     payload = json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2) + "\n"
+    destination.mkdir(parents=True, exist_ok=True)  # une liste vide n'a rien copié qui l'ait créé
     storage.write_atomic_text(destination / "manifeste.json", payload)
     return manifest
 

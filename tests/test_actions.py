@@ -128,11 +128,12 @@ _GOLDEN: dict[str, str] = {
     "ready_paused": "lancer `run <dossier>`",
     "running": (
         "un appel est en cours, ou le processus s'est arrêté en cours d'appel :"
-        " `run <dossier>` reprend localement, sans repayer d'appel"
+        " `run <dossier>` reprend sans repayer cet appel, puis le cycle appelle"
+        " l'agent suivant"
     ),
     "question": (
         "lire la question de A (`echanges/0001-question-A.md`), puis `resume --answer <fichier>`"
-        " (complète la demande) ou `decide <dossier> --stop`"
+        " (complète la demande, puis rappelle A) ou `decide <dossier> --stop`"
     ),
     "open_blocking": (
         "B a accepté malgré une objection bloquante restée ouverte : lire"
@@ -149,8 +150,9 @@ _GOLDEN: dict[str, str] = {
     ),
     "contract_error": (
         "CONTRACT_ERROR (appel `{call}`) : la réponse brute est conservée dans `appels/`."
-        " Gratuit et local : `resume <dossier> --reprocess <id> --reason-file <fichier>` (relit"
-        " la réponse conservée, sans appel — utile si la lecture a été corrigée) ;"
+        " Sans la repayer : `resume <dossier> --reprocess <id> --reason-file <fichier>` (relit"
+        " la réponse conservée — utile si la lecture a été corrigée —, puis le cycle reprend et"
+        " peut appeler l'agent suivant) ;"
         f" ou {_RETRY} ; ou `decide <dossier> --stop`"
     ),
     "awaiting": _DECIDE,

@@ -6,6 +6,21 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
+**État au 2026-10-01.** `main` publié sur `origin` (`jmFschneider/DialogForge_V2`, public, licence
+MIT) ; dernière étiquette `v0.2.0` (2026-10-01). Types de mission redéfinis et implémentés
+(`conception/TYPES_DE_MISSION.md`, trois lots) ; retour d'usage du 2026-09-28 clos ; partie 2 du
+plan de finalisation : 2.1 (F03), 2.2 (F04) et 2.3 (corpus vide) faits.
+
+**Prochaine action** : la **mesure d'utilité (2.4)** (étiquette `v0.2.0` posée le 2026-10-01)
+— deux ou trois tâches réelles enchaînant recherche puis conception, GUI comprise, lancées par le
+PO. Ses résultats choisissent la prochaine phase.
+
+**Limites en vigueur** : façade + GUI ≤ 2 000 lignes effectives (1 897) ; une vue ≤ 400 (plus
+grande : `creation.py`, 378) ; aucun appel fournisseur par l'assistant ; commit et push sur demande
+du PO seulement ; relecture palier par palier : voir `project/RULES.md` (rouverte le 2026-09-05).
+
+## Historique des étapes (anciens « Next Step », datés, conservés tels quels)
+
 **Types de mission redéfinis — `conception/TYPES_DE_MISSION.md`, D1 à D6 validés par le PO le
 2026-10-01**, à implémenter **avant toute nouvelle phase de développement** (PO : « remettre le
 projet d'équerre »). **Les trois lots sont faits le 2026-10-01** (D1 à D6). Le projet est
@@ -75,8 +90,9 @@ conditionné à une décision explicite du PO, et une éventuelle recherche exte
   vide ne crée pas son dossier avant d'y écrire le manifeste (lot 4, voir Errors Encountered) ; le
   plafond de 1 200 lignes logiques (façade + `gui/`) est à **1 195** après le lot 5 — non dépassé,
   mais tout ajout futur à cette surface (au-delà d'un correctif) le dépassera presque certainement.
+  *(2026-10-01 : corpus vide corrigé, point 2.3 ; plafond façade + GUI porté à 2 000 depuis.)*
 - `iabinome/gui/views/creation.py` reste à 320 lignes effectives, sous le plafond de vue à 400,
-  sans marge confortable si un futur lot y ajoute un champ.
+  sans marge confortable si un futur lot y ajoute un champ. *(2026-10-01 : 378, après découpage.)*
 
 - **Lot 6** (2026-09-23, non commité) : recette. `tests/test_gui_recette.py` — une collaboration
   créée par `facade.create_collaboration` (chemin GUI) menée à terme et acceptée par `cli.main`
@@ -308,9 +324,9 @@ Lancer les sessions de développement par `.\tools\claude-pwf.ps1` : c'est la se
 l'injection automatique du plan est qualifiée.
 
 ## Current Phase
-Phase 7 (finalisation, partie 1) — ouverte le 2026-09-25 ; ce qui est engagé est fait, 1.3 attend une
-décision du PO. Phase 6 (cadrage avec agent F) — complète le 2026-09-26 (recette 6.6). Phase 5 (GUI V1) complète et commitée
-(`581cbb3`). Phase 4 complète (J3, `v0.1.0`).
+Phase 7 (finalisation) — partie 1 complète (2026-09-27) ; types de mission (7.3) et consolidation de
+la partie 2 (7.4 : 2.1 à 2.3) faits le 2026-10-01 ; 7.5 (mesure d'utilité, 2.4) ouverte. Phases 1 à 6
+complètes.
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -482,7 +498,13 @@ ci-dessus ; le point 1.3 reste conditionnel (§ Extension identifiée). Parties 
       `b20bc318…`, tête `f5383e8`, et le dépôt principal reprend aussi la dernière précision
       éditoriale « présentes dans le registre ». Code du lot : +472 lignes effectives dans `src/`,
       sous la cible de 500 ; suite complète : 786 passés, 8 ignorés, 613 sous-tests.
-- **Status:** complete — partie 1 de la finalisation terminée (2026-09-27)
+- [x] 7.3 Types de mission redéfinis : recherche → conception → développement
+      *(2026-10-01, `conception/TYPES_DE_MISSION.md` D1 à D6 : `cd36f7b`, `73b6a62`, `680caa3`)*
+- [x] 7.4 Partie 2, consolidation : 2.1 F03 (chaque action qui peut appeler l'annonce), 2.2 F04
+      (Next Step court, rappels périmés annotés, règle de relecture unifiée), 2.3 corpus vide
+      *(2026-10-01)*
+- [ ] 7.5 Partie 2, mesure d'utilité (2.4) : tâches réelles, lancées par le PO
+- **Status:** in_progress — partie 1 terminée (2026-09-27) ; partie 2 : 2.4 restant
 
 ## Extension identifiée (hors phases)
 
@@ -558,4 +580,4 @@ légère est engagée depuis le 2026-09-23 : phase 5.)
 | Error | Resolution |
 |-------|------------|
 | `DECODE_FAILED` sur une réponse accentuée du faux agent | Le faux agent écrit dans l'encodage local (cp1252) d'un tube Windows, les adaptateurs décodent en UTF-8. Propriété du faux agent, pas du moteur : le scénario fixe `PYTHONIOENCODING=utf-8` |
-| **Trouvé au lot 4, non corrigé** : `corpus.build()` avec une liste source vide ne crée jamais le dossier `corpus/`, alors qu'il tente ensuite d'y écrire `manifeste.json` — `FileNotFoundError`, jamais le `ValueError("corpus vide pour une mission de recherche")` que le code semble promettre juste après. Branche morte préexistante (avant le lot 4), repérée en écrivant `tests/test_facade_creation.py` avec une assertion sur le message exact ; le comportement observable (refus, rien de créé) reste correct, donc non corrigé dans ce lot — signalé pour décision séparée, pas pour un correctif hors sujet |
+| **Trouvé au lot 4, corrigé le 2026-10-01 (2.3)** — le dossier est créé avant le manifeste, et un corpus déclaré vide est refusé explicitement. Texte d'origine : `corpus.build()` avec une liste source vide ne crée jamais le dossier `corpus/`, alors qu'il tente ensuite d'y écrire `manifeste.json` — `FileNotFoundError`, jamais le `ValueError("corpus vide pour une mission de recherche")` que le code semble promettre juste après. Branche morte préexistante (avant le lot 4), repérée en écrivant `tests/test_facade_creation.py` avec une assertion sur le message exact ; le comportement observable (refus, rien de créé) reste correct, donc non corrigé dans ce lot — signalé pour décision séparée, pas pour un correctif hors sujet |

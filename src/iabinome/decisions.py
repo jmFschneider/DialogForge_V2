@@ -282,7 +282,8 @@ def next_action(collab: Path, state: State) -> str:
         if resume.local_step:
             return (
                 "un appel est en cours, ou le processus s'est arrêté en cours d'appel :"
-                " `run <dossier>` reprend localement, sans repayer d'appel"
+                " `run <dossier>` reprend sans repayer cet appel, puis le cycle appelle"
+                " l'agent suivant"
             )
         return "lancer `run <dossier>`"
     if ActionId.ANSWER_AND_RESUME in offered:
@@ -312,9 +313,10 @@ def _after_incident(collab: Path, state: State, allowed: set[ActionId]) -> str:
     )
     if ActionId.REPROCESS_AND_RESUME in allowed:
         return (
-            f"{name}{who} : la réponse brute est conservée dans `appels/`. Gratuit et local :"
+            f"{name}{who} : la réponse brute est conservée dans `appels/`. Sans la repayer :"
             " `resume <dossier> --reprocess <id> --reason-file <fichier>` (relit la réponse"
-            f" conservée, sans appel — utile si la lecture a été corrigée) ; ou {retry} ; ou {stop}"
+            " conservée — utile si la lecture a été corrigée —, puis le cycle reprend et peut"
+            f" appeler l'agent suivant) ; ou {retry} ; ou {stop}"
         )
     if name == "SOURCES_MODIFIED":
         return (
@@ -352,7 +354,8 @@ def _waiting_human(collab: Path, state: State) -> str:
     else:
         source = f"la revue qui bloque (`{state.latest_review}`)"
     return (
-        f"lire {source}, puis `resume --answer <fichier>` (complète la demande)"
+        f"lire {source}, puis `resume --answer <fichier>` (complète la demande, puis"
+        " rappelle A)"
         " ou `decide <dossier> --stop`"
     )
 

@@ -2085,3 +2085,28 @@ Note `conception/TYPES_DE_MISSION.md` écrite puis validée telle quelle par le 
   capturés.
 - Validation : ruff, mypy strict, **835 passés / 2 ignorés**, scénario rc=0. `src/` +95 (6 423 →
   6 518) ; façade + GUI **1 897 / 2 000**.
+- Commité et poussé : `680caa3`.
+
+## Session 2026-10-01 (suite) — consolidation, partie 2 du plan de finalisation (2.1 à 2.3)
+
+- **2.1 F03** : les conseils qui présentaient une reprise comme « gratuite », « locale » ou « sans
+  appel » disent désormais que la suite peut appeler. Ça concerne `RUNNING` (`run` reprend sans
+  repayer, puis le cycle appelle l'agent suivant), `--reprocess` (sans la repayer, puis le cycle
+  reprend et peut appeler), `--answer` (puis A est rappelé), ainsi que l'aide de `resume`, de
+  `--reprocess` et de `--answer` et la table des statuts et `--reprocess` de `COMMANDES.md`.
+  `may_call` était déjà juste (la GUI confirmait) : seuls les textes mentaient par omission.
+  `new --cadrer-avec-agent` annonçait déjà ses appels.
+- **2.3** : `corpus.build_from` crée le dossier avant d'écrire le manifeste ; la façade refuse
+  explicitement un corpus déclaré vide, avec ou sans web (« corpus déclaré mais vide »), au lieu
+  de la `FileNotFoundError`. Contre-épreuve (dossier non créé) → 1 échec. Le diagnostic ponctuel
+  de `status` pendant un remplacement Windows n'a pas été repris : aucune reproduction ciblée ne
+  montre d'impact utilisateur (condition du plan).
+- **2.2 F04** : `## Next Step` réduit à l'état, la prochaine action et les limites en vigueur ;
+  l'ancien contenu est conservé daté sous « Historique des étapes ». Les repères périmés sont
+  annotés sans être réécrits (corpus vide, plafond 1 200, taille de `creation.py`, ligne d'erreur
+  du lot 4). Current Phase et phase 7 sont à jour (7.3, 7.4 faits ; 7.5 = 2.4 ouverte).
+  **Conflit de règle résolu** : `CLAUDE.md` §3 disait la relecture palier par palier « suspendue
+  depuis le 2026-09-03 », alors que `RULES.md` la dit **rouverte le 2026-09-05** (condition
+  réalisée). `CLAUDE.md` renvoie désormais à la décision la plus récente, celle de `RULES.md`.
+- Validation : ruff, mypy strict, **835 passés / 2 ignorés**, scénario rc=0 (A=2, B=2, inchangé).
+  `src/` +4.

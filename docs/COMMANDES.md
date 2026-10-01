@@ -99,7 +99,7 @@ reprend le cycle. Sans option, il se comporte comme `run`.
 |---|---|
 | `--answer <fichier>` | Répond à une question de A ou à une revue incohérente (`WAITING_HUMAN`). Le fichier **complète** la demande, il ne la remplace pas. |
 | `--retry-call <uuid>` | Relance l'appel interrompu : **nouvel appel payant**. Exige `--reason-file`. |
-| `--reprocess <uuid>` | Relit **localement** la réponse déjà reçue et conservée, sans appel. Exige `--reason-file`. |
+| `--reprocess <uuid>` | Relit **localement** la réponse déjà reçue et conservée, sans la repayer ; la reprise qui suit peut ensuite appeler l'agent suivant. Exige `--reason-file`. |
 | `--reason-file <fichier>` | Le motif, écrit par vous. Exigé avec `--retry-call` et `--reprocess`, refusé sans. |
 | `--timeout`, `--config` | Comme pour `run`. |
 
@@ -279,7 +279,7 @@ changer de mode ou quitter l'écran ferme la session et efface ses traces tempor
 | Statut | Ce que ça veut dire | Ce que vous faites |
 |---|---|---|
 | `READY` | Le cycle est prêt, ou une pause a été demandée. | `run <dossier>` |
-| `RUNNING` | Un appel est en cours — ou le processus s'est arrêté en pleine exécution. | `run <dossier>` reprend localement, sans repayer d'appel |
+| `RUNNING` | Un appel est en cours — ou le processus s'est arrêté en pleine exécution. | `run <dossier>` reprend sans repayer cet appel, puis le cycle appelle l'agent suivant |
 | `AWAITING_APPROVAL` | Le cycle est allé à son terme. **Pas accepté.** | `show`, puis `decide` |
 | `WAITING_HUMAN` | A a posé une question, ou une revue est incohérente. | `resume --answer <fichier>`, ou `decide --stop` |
 | `INTERRUPTED` | L'appel n'a pas abouti : délai, quota, arrêt brutal. | `resume --retry-call <uuid> --reason-file <fichier>`, ou `decide --stop` |

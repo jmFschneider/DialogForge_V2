@@ -528,9 +528,10 @@ def _write_collaboration(
             request.source_root, request.source_list, tmp / "corpus",
             request.source_label or request.source_root.name,
         )
-        problem = request.kind.missing_source(corpus=bool(manifest.entries), web=request.web_access)
-        if problem:
-            raise ValueError(f"corpus vide — {problem}")
+        if not manifest.entries:
+            raise ValueError(
+                "corpus déclaré mais vide : lister au moins un fichier, ou n'en déclarer aucun"
+            )
         manifest_text, _ = storage.read_text(tmp / "corpus" / "manifeste.json")
         corpus_sha = contracts.normalize(manifest_text).sha256
     if request.from_research is not None:

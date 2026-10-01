@@ -601,20 +601,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.set_defaults(func=cmd_run)
 
     p_resume = sub.add_parser(
-        "resume", help="sortir d'un arrêt : répondre à une question, relancer, retraiter"
+        "resume",
+        help="sortir d'un arrêt : répondre, relancer, retraiter — la reprise peut appeler",
     )
     p_resume.add_argument("collab", help="dossier de la collaboration")
     p_resume.add_argument("--config", help=_CONFIG_HELP)
     p_resume.add_argument("--timeout", type=_timeout, help=_TIMEOUT_HELP)
     p_resume.add_argument(
-        "--answer", help="fichier qui complète la demande (statut WAITING_HUMAN)"
+        "--answer", help="fichier qui complète la demande (WAITING_HUMAN), puis A est rappelé"
     )
     p_resume.add_argument(
         "--retry-call", help="identifiant de l'appel à relancer : nouvel appel payant"
     )
     p_resume.add_argument(
         "--reprocess", metavar="UUID",
-        help="identifiant de l'appel dont la réponse conservée est relue en local, sans appel",
+        help="identifiant de l'appel dont la réponse conservée est relue sans être repayée ;"
+        " la reprise qui suit peut appeler l'agent suivant",
     )
     p_resume.add_argument(
         "--reason-file", help="fichier qui dit pourquoi ; exigé avec --retry-call et --reprocess"

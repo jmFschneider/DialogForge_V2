@@ -66,18 +66,18 @@ class TestRefusalsLeaveNothingBehind(CreationCase):
         self.assertFalse((self.root / "collab").exists())
 
     def test_research_with_an_empty_corpus_is_refused(self) -> None:
-        """Comme `tests/test_cli.py::TestNewCorpus` : le refus est mesuré, pas
-        son message. `corpus.build` échoue en écrivant `manifeste.json` avant
-        que le contrôle explicite « corpus vide » ne soit atteint — branche
-        morte préexistante (aucun fichier à copier ne crée jamais le dossier
-        `corpus/`), à signaler séparément plutôt qu'à corriger ici."""
+        """Plan de finalisation 2.3 : un refus explicite, plus une `FileNotFoundError` tombée
+        en écrivant `manifeste.json` (aucun fichier copié ne créait le dossier `corpus/`).
+        Le web ouvert n'y change rien : un corpus déclaré vide est une erreur de saisie."""
         src = self.root / "src"
         src.mkdir()
         listing = self.root / "vide.txt"
         listing.write_text("", encoding="utf-8")
-        self.refused(
-            kind=MissionKind.RECHERCHE, source_root=src, source_list=listing, web_access=False,
-        )
+        for web in (False, True):
+            refusal = self.refused(
+                kind=MissionKind.RECHERCHE, source_root=src, source_list=listing, web_access=web,
+            )
+            self.assertIn("corpus déclaré mais vide", refusal)
         self.assertFalse((self.root / "collab").exists())
         self.assertEqual(list(self.root.glob(".new-*")), [], "un dossier temporaire est resté")
 
