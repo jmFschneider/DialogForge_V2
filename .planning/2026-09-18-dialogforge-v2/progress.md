@@ -1967,4 +1967,4 @@ phrase de documentation.
   mot de passe). Seuls l'e-mail du PO (déjà dans les métadonnées des commits) et les chemins
   `C:\Users\schne\…` figurent dans 4 fichiers. Pas de réécriture d'historique.
 - `.gitignore` corrigé, `docs/DEVELOPPEMENT.md` et ce plan mis à jour (branche, remote), tag `v0.1.0`
-  poussé. Aucun code touché. Licence en attente de décision du PO.
+  poussé. Aucun code touché. Licence MIT ajoutée après validation du PO.

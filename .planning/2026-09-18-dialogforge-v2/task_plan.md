@@ -8,7 +8,7 @@ avec reprise après incident sans rejouer un appel ambigu.
 ## Next Step
 **Dépôt publié le 2026-10-01** : `main` sur `origin` (`jmFschneider/DialogForge_V2`, public),
 tag `v0.1.0` poussé. On travaille désormais sur `main` ; `v2-socle` reste locale, sans push.
-Licence encore à choisir par le PO (MIT proposée).
+Licence MIT, validée par le PO le 2026-10-01 (`LICENSE`).
 
 Retour GUI du 2026-09-28 sur la liste d'accueil et le répertoire des collaborations :
 correctif local réalisé et validé (détail dans `progress.md`). Reste à intégrer selon le
