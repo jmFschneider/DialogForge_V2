@@ -75,4 +75,6 @@ qui apparaît sous le cadrage avec le titre « Demande rédigée par F — à re
 avant de créer ». Revenir à « Saisir » ou « Importer » rétablit l'éditeur. Le choix du mode
 se lit « Cadrer avec un agent (une idée suffit) ».
 
-Reste ouvert : 1 (recherche web sans corpus local, à concevoir avant tout code).
+**2026-10-01 — point 1 résolu par la redéfinition des types de mission**
+(`conception/TYPES_DE_MISSION.md`) : une recherche part du web seul, sans corpus local. Tous les
+points de ce relevé sont clos.

@@ -8,9 +8,10 @@ avec reprise après incident sans rejouer un appel ambigu.
 ## Next Step
 **Types de mission redéfinis — `conception/TYPES_DE_MISSION.md`, D1 à D6 validés par le PO le
 2026-10-01**, à implémenter **avant toute nouvelle phase de développement** (PO : « remettre le
-projet d'équerre »). Ordre : ~~lot 1 = D1, D2, D3, D5 et documentation~~ **fait le 2026-10-01** ;
-**prochain : lot 2** = D6 (accueil, puis écran de création avec découpage) ; lot 3 = D4
-(« Poursuivre en conception »). Remplace le point 1
+projet d'équerre »). Ordre : ~~lot 1 = D1, D2, D3, D5 et documentation~~ et ~~lot 2 = D6
+(accueil, écran de création avec découpage)~~ **faits le 2026-10-01** ; **prochain : lot 3** = D4
+(« Poursuivre en conception »), à faire avant toute nouvelle phase. Toutes les vues sont sous 400
+lignes (`creation.py` 397) ; façade + GUI 1 809 / 2 000. Remplace le point 1
 du retour d'usage du 2026-09-28 (recherche sans corpus local).
 
 **Dépôt publié le 2026-10-01** : `main` sur `origin` (`jmFschneider/DialogForge_V2`, public),
@@ -20,11 +21,8 @@ Licence MIT, validée par le PO le 2026-10-01 (`LICENSE`).
 Retour d'usage du 2026-09-28 (`project/retour_essais_2026-09-28.md`) : **points 4, 5 et 6
 engagés par le PO et faits le 2026-10-01** (diagnostic des appels inaboutis, visibilité du
 dossier, progression A/B), puis **point 2** le même jour, comme correctif (parcours de
-cadrage). Point 3 et correctif d'accueil déjà intégrés. **Reste ouvert, à arbitrer** : 1
-(recherche web sans corpus local, à concevoir avant tout code). Façade + GUI : 1 799 lignes
-effectives sur 2 000. `creation.py` : 423 lignes, au-dessus du plafond de vue de 400 depuis
-le catalogue de modèles du 2026-09-28 — tout ajout futur à cet écran passe par `cadrage.py`
-ou un découpage.
+cadrage). Point 3 et correctif d'accueil déjà intégrés. Le point 1 (recherche web sans corpus
+local) est résolu par la redéfinition des types (lot 1 ci-dessus). Les cinq points sont clos.
 
 **Partie 1 du plan de finalisation, engagée par le PO le 2026-09-25** (voir Decisions Made).
 Proposition de classement : `reference/astra_finalisation/PLAN_TRAVAIL.md` — une proposition, pas un

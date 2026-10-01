@@ -2044,3 +2044,17 @@ Note `conception/TYPES_DE_MISSION.md` écrite puis validée telle quelle par le 
   par Write.
 - Validation : ruff, mypy strict, **821 passés / 2 ignorés**, scénario rc=0. `src/` : +16 lignes
   effectives (6 397 → 6 413).
+- Commité et poussé : `cd36f7b`.
+
+## Session 2026-10-01 (suite) — types de mission, lot 2 (D6)
+
+- **Accueil** : « Recherche → Conception → Développement » en titre, puis la phrase d'introduction
+  de la note, à la place de « A produit · B critique · vous décidez » (repris dans la phrase).
+- **Création** : une ligne sous le type dit ce qu'il attend, et suit le choix (`trace_add`).
+- **Découpage** : `gui/widgets.py` (nouveau, 24 lignes) reçoit la section repliable et le
+  « Choisir… » d'un champ de chemin ; trois méthodes de choix de fichier et une copie du calcul du
+  délai retirées de `creation.py`, qui passe de 419 à **397** lignes (plafond de vue : 400).
+- Tests : bandeau de l'accueil, ligne du type qui suit le choix (contre-épreuve : ligne figée →
+  1 échec, rétablie). Accueil et création capturés à l'écran.
+- Validation : ruff, mypy strict, **823 passés / 2 ignorés**, scénario rc=0. `src/` +7 ; façade +
+  GUI 1 809 / 2 000 ; toutes les vues sous 400 lignes.

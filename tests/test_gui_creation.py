@@ -18,7 +18,7 @@ from iabinome.gui.controller import Controller
 from iabinome.gui.views.creation import CreationView
 from iabinome.gui.views.suivi import SuiviView
 from tests import fakes
-from tests.test_gui_views import _ROOT, _find_button, collect_tk_garbage
+from tests.test_gui_views import _ROOT, _find_button, collect_tk_garbage, label_texts
 
 _ADAPTERS = {"fake-a": fakes.FakeAdapter("fake-a", ()), "fake-b": fakes.FakeAdapter("fake-b", ())}
 
@@ -100,6 +100,14 @@ class TestTheCorpusBlock(CreationCase):
         view = CreationView(_ROOT, self.controller)
         self.assertEqual(view._kind.get(), "Recherche")
         self.assertEqual(view._corpus_frame.winfo_manager(), "pack")
+
+    def test_the_line_under_the_type_says_what_the_chosen_type_expects(self) -> None:
+        view = CreationView(_ROOT, self.controller)
+        self.assertTrue(any("web ou corpus" in text for text in label_texts(view)))
+        view._kind.set("Conception")
+        texts = label_texts(view)
+        self.assertTrue(any(text.endswith("corpus exigé.") for text in texts))
+        self.assertFalse(any(text.startswith("Établir un dossier") for text in texts))
 
 
 class TestModelLists(CreationCase):

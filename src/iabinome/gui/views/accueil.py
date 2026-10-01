@@ -16,6 +16,11 @@ from ... import facade
 if TYPE_CHECKING:
     from ..controller import Controller
 
+_PITCH = (
+    "Partez d'une idée. Une recherche l'éclaire avec des sources, une conception en tire un plan"
+    " prêt à coder, puis le code passe à son tour en revue. À chaque étape, A produit, B critique,"
+    " et c'est vous qui décidez."
+)
 _COLUMNS = ("nom", "situation", "mise_a_jour")
 _HEADINGS = ("Nom", "Situation", "Mise à jour")
 _MONTHS = (
@@ -53,8 +58,12 @@ class AccueilView(ttk.Frame):
         ttk.Label(self, text="DialogForge", font=("", 14, "bold")).pack(
             anchor="w", padx=16, pady=(16, 0)
         )
-        ttk.Label(self, text="A produit · B critique · vous décidez").pack(
-            anchor="w", padx=16, pady=(0, 8)
+        # Le rappel de la chaîne (`conception/TYPES_DE_MISSION.md` D6).
+        ttk.Label(self, text="Recherche → Conception → Développement", font=("", 11, "bold")).pack(
+            anchor="w", padx=16, pady=(4, 0)
+        )
+        ttk.Label(self, text=_PITCH, wraplength=640, justify="left").pack(
+            anchor="w", padx=16, pady=(2, 8)
         )
 
         actions = ttk.Frame(self)

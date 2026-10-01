@@ -8,7 +8,6 @@ une `CreationRequest` et affiche le refus tel quel si la façade en rend un.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from tkinter import BooleanVar, Misc, StringVar, filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
@@ -17,7 +16,7 @@ from typing import TYPE_CHECKING
 from ... import facade, framing, model_catalog, settings, storage
 from ...models import MissionKind, ReviewerAccess
 from ...registry import ADAPTERS
-from .. import dialogs
+from .. import dialogs, widgets
 from . import cadrage
 
 if TYPE_CHECKING:
@@ -26,6 +25,10 @@ if TYPE_CHECKING:
 _KIND = {"Recherche": MissionKind.RECHERCHE, "Conception": MissionKind.CONCEPTION}
 _ACCESS = {"Consultation": ReviewerAccess.CONSULT, "Contexte seul": ReviewerAccess.CONTEXT_ONLY}
 _NON_SPECIFIE = "(non spécifié)"
+_KIND_HINT = {
+    "Recherche": "Établir un dossier sourcé à partir d'une idée — une source : web ou corpus.",
+    "Conception": "Tirer d'un dossier le plan et les solutions, avant le code — corpus exigé.",
+}
 
 
 class CreationView(ttk.Frame):
@@ -83,8 +86,8 @@ class CreationView(ttk.Frame):
         self._build_corpus(self._corpus_frame)
         self._corpus_frame.pack(fill="x")
 
-        self._build_disclosure(body, "Réglages avancés de la collaboration", self._build_advanced)
-        self._build_disclosure(body, "Réglages du prochain lancement", self._build_launch)
+        widgets.disclosure(body, "Réglages avancés de la collaboration", self._build_advanced)
+        widgets.disclosure(body, "Réglages du prochain lancement", self._build_launch)
 
         self._error = ttk.Label(self, foreground="#a33", wraplength=560, justify="left")
         self._error.pack(anchor="w", padx=16, pady=(4, 0))
@@ -138,6 +141,9 @@ class CreationView(ttk.Frame):
         ttk.Checkbutton(
             row, text="Accès web pour A et B", variable=self._web_access,
         ).pack(side="left", padx=(16, 0))
+        hint = ttk.Label(parent, text=_KIND_HINT[self._kind.get()], foreground="#555")
+        hint.pack(anchor="w")
+        self._kind.trace_add("write", lambda *_: hint.configure(text=_KIND_HINT[self._kind.get()]))
         agents = ttk.Frame(parent)
         agents.pack(fill="x", pady=(8, 0))
         ttk.Label(agents, text="Agent A").pack(side="left")
@@ -160,8 +166,9 @@ class CreationView(ttk.Frame):
             parent, text="Corpus local — exigé en conception ; en recherche, si le web est fermé",
         ).pack(anchor="w", pady=(12, 0))
         for label, var, browse in (
-            ("Racine", self._source_root, self._choose_source_root),
-            ("Liste", self._source_list, self._choose_source_list),
+            ("Racine", self._source_root,
+             widgets.browse(self._source_root, "Racine du corpus", folder=True)),
+            ("Liste", self._source_list, widgets.browse(self._source_list, "Liste du corpus")),
         ):
             row = ttk.Frame(parent)
             row.pack(fill="x")
@@ -208,7 +215,9 @@ class CreationView(ttk.Frame):
         row.pack(fill="x")
         ttk.Label(row, text="Fichier de réglages").pack(side="left")
         ttk.Entry(row, textvariable=self._config_path).pack(side="left", fill="x", expand=True)
-        ttk.Button(row, text="Choisir…", command=self._choose_config).pack(side="left")
+        ttk.Button(
+            row, text="Choisir…", command=widgets.browse(self._config_path, "Fichier de réglages"),
+        ).pack(side="left")
         timeout_row = ttk.Frame(parent)
         timeout_row.pack(fill="x", pady=(4, 0))
         ttk.Label(timeout_row, text="Délai (secondes, surcharge)").pack(side="left")
@@ -218,24 +227,6 @@ class CreationView(ttk.Frame):
         self._launch_origin = ttk.Label(parent, text="")
         self._launch_origin.pack(anchor="w", pady=(4, 0))
         ttk.Button(parent, text="Résoudre", command=self._show_resolved_timeout).pack(anchor="w")
-
-    def _build_disclosure(
-        self, parent: ttk.Frame, title: str, fill: Callable[[ttk.Frame], None],
-    ) -> None:
-        content = ttk.Frame(parent)
-        state = {"open": False}
-
-        def toggle() -> None:
-            state["open"] = not state["open"]
-            button.configure(text=f"{'▾' if state['open'] else '▸'} {title}")
-            if state["open"]:
-                content.pack(fill="x", padx=(12, 0), pady=(0, 8))
-            else:
-                content.pack_forget()
-
-        button = ttk.Button(parent, text=f"▸ {title}", command=toggle)
-        button.pack(anchor="w", pady=(8, 0))
-        fill(content)
 
     # -- Provenance et lecture de la demande (§6.2) --
 
@@ -321,31 +312,12 @@ class CreationView(ttk.Frame):
             name = current.name if current else "nouvelle-collaboration"
             self._dossier.set(str(Path(chosen) / name))
 
-    def _choose_source_root(self) -> None:
-        chosen = filedialog.askdirectory(title="Racine du corpus")
-        if chosen:
-            self._source_root.set(chosen)
-
-    def _choose_source_list(self) -> None:
-        chosen = filedialog.askopenfilename(title="Liste du corpus")
-        if chosen:
-            self._source_list.set(chosen)
-
-    def _choose_config(self) -> None:
-        chosen = filedialog.askopenfilename(title="Fichier de réglages")
-        if chosen:
-            self._config_path.set(chosen)
-
     # -- Validation locale et résolution du délai (§6.4, §6.5 niveau 1) --
 
     def _show_resolved_timeout(self) -> None:
         dest = Path(self._dossier.get()) if self._dossier.get() else Path.cwd()
         try:
-            resolved = settings.resolve_timeout(
-                self._config_path.get() or None,
-                float(self._timeout_override.get()) if self._timeout_override.get() else None,
-                base=dest.parent,
-            )
+            resolved = self._resolved_timeout(dest)
         except (settings.SettingsError, ValueError) as exc:
             self._launch_origin.configure(text=f"Délai : refusé — {exc}")
             return

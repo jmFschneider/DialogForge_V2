@@ -54,6 +54,16 @@ def _find_button(widget: tk.Misc, text: str) -> ttk.Button:
     raise LookupError(f"bouton introuvable : {text!r}")
 
 
+def label_texts(widget: tk.Misc) -> list[str]:
+    """Les textes de toutes les étiquettes sous `widget`, dans l'ordre de l'arbre."""
+    found = []
+    for child in widget.winfo_children():
+        if isinstance(child, ttk.Label):
+            found.append(str(child.cget("text")))
+        found += label_texts(child)
+    return found
+
+
 class ViewCase(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = TemporaryDirectory()
@@ -76,6 +86,12 @@ class ViewCase(unittest.TestCase):
 
 
 class TestAccueilView(ViewCase):
+    def test_the_home_recalls_the_chain_and_who_decides(self) -> None:
+        """`conception/TYPES_DE_MISSION.md` D6 : le rappel en tête de la GUI."""
+        texts = label_texts(AccueilView(_ROOT, self.controller))
+        self.assertIn("Recherche → Conception → Développement", texts)
+        self.assertTrue(any("c'est vous qui décidez" in text for text in texts))
+
     def test_selected_root_lists_existing_collaborations_without_opening_them(self) -> None:
         directory = self.root_dir / "mes-collaborations"
         directory.mkdir()
