@@ -99,7 +99,10 @@ def incident(collab: Path, state: State) -> dict[str, Any] | None:
 
 def _tool_message(collab: Path, state: State) -> list[str]:
     """Le message de l'outil, **tel quel** : c'est lui qui dit, s'il le dit, ce qu'il
-    en est du quota ou de la configuration. Le programme n'en tire rien."""
+    en est du quota ou de la configuration. Le programme n'en tire rien.
+
+    L'extrait est pris à la **fin** du flux : une CLI peut ouvrir le sien par une
+    bannière et l'écho du prompt, et finir par l'erreur (mesuré le 2026-09-28)."""
     if state.current_call is None:
         return []
     lines = []
@@ -108,10 +111,29 @@ def _tool_message(collab: Path, state: State) -> list[str]:
         if path.is_file():
             text = path.read_bytes().decode("utf-8", errors="replace").strip()
             if text:
-                shown = " ".join(text[:_EXCERPT_CHARS].split())
-                more = "…" if len(text) > _EXCERPT_CHARS else ""
-                lines.append(f"  {name} de l'outil : « {shown}{more} »")
+                shown = " ".join(text[-_EXCERPT_CHARS:].split())
+                cut = len(text) > _EXCERPT_CHARS
+                where = ", fin" if cut else ""
+                lines.append(f"  {name} de l'outil{where} : « {'…' if cut else ''}{shown} »")
     return lines
+
+
+def _same_call_again(collab: Path, state: State) -> list[str]:
+    """Une relance repart avec l'outil et le modèle figés à la création : le dire,
+    pour qu'une erreur de modèle ou d'accès ne soit pas rejouée à l'aveugle."""
+    if state.current_call is None:
+        return []
+    path = collab / state.current_call.call_dir / "intention.json"
+    try:
+        intention = json.loads(storage.read_text(path)[0])
+    except (OSError, ValueError):
+        return []
+    return [
+        f"  Appel : {intention.get('role')} · {intention.get('adapter_id')}"
+        f" ({intention.get('model')}). Une relance reprend cet outil et ce modèle, fixés à la"
+        " création : si le message met en cause le modèle ou l'accès, corriger l'accès,"
+        " ou recréer la collaboration pour changer de modèle.",
+    ]
 
 
 def explain(collab: Path, state: State) -> list[str]:
@@ -127,6 +149,7 @@ def explain(collab: Path, state: State) -> list[str]:
     if found["kind"] == "CLI_FAILED":
         lines += _tool_message(collab, state) or ["  (l'outil n'a rien écrit)"]
         lines.append("  Aucun coût ni aucune heure de reprise n'est déduit de ce code.")
+        lines += _same_call_again(collab, state)
     return lines
 
 

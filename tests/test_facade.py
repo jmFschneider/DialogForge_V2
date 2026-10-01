@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from iabinome import decisions, facade
+from iabinome import decisions, facade, workflow
 from iabinome.models import Status
 from tests import fakes
 from tests.test_actions import ActionsCase
@@ -97,18 +97,40 @@ class TestInspectionMatchesTheEngine(ActionsCase):
         self.assertTrue(snapshot.runtime_resolution.origin)
 
 
-class TestPhaseSteps(PromotionCase):
-    def steps(self, collab: Path) -> dict[str, str]:
-        snapshot = facade.inspect_collaboration(collab)
-        return {label: symbol for symbol, label in snapshot.presentation.phase_steps}
+class TestProgress(PromotionCase):
+    """Retour d'usage du 2026-09-28 : agent actif, étape courante, étapes faites,
+    numéro de révision et attente humaine — lisibles quel que soit l'outil."""
 
-    def test_an_immediate_acceptance_never_runs_a_revision(self) -> None:
+    def progress(self, collab: Path) -> facade.Progress:
+        return facade.inspect_collaboration(collab).presentation.progress
+
+    def grid(self, collab: Path) -> list[tuple[str, str]]:
+        return [
+            (f"{a.symbol} {a.label}", f"{b.symbol} {b.label}")
+            for a, b in self.progress(collab).rounds
+        ]
+
+    def test_an_immediate_acceptance_shows_one_round_and_waits_for_the_human(self) -> None:
         collab = self.cycle((_DOC,), (fakes.review("ACCEPTER"),))
-        steps = self.steps(collab)
-        self.assertEqual(steps["Proposition A"], "✓")
-        self.assertEqual(steps["Critique B"], "✓")
-        self.assertEqual(steps["Révision A"], "—")
-        self.assertEqual(steps["Clôture"], "✓")
+        progress = self.progress(collab)
+        self.assertEqual(self.grid(collab), [("✓ Proposition", "✓ Critique")])
+        self.assertEqual(progress.human, facade.Step("●", "Décision : à prendre"))
+        self.assertTrue(progress.now.startswith("À vous"))
+
+    def test_each_column_names_its_role_tool_and_model(self) -> None:
+        progress = self.progress(self.build(a=(_DOC,), b=()))
+        config = facade.inspect_collaboration(self.build(a=(), b=())).configuration
+        self.assertEqual(
+            progress.agent_a, f"A · {config.agent_a.adapter_id} ({config.agent_a.model})",
+        )
+        self.assertTrue(progress.agent_b.startswith("B · "))
+
+    def test_an_acceptance_closes_the_human_step(self) -> None:
+        collab = self.cycle((_DOC,), (fakes.review("ACCEPTER"),))
+        workflow.decide(collab, decisions.ACCEPTED)
+        progress = self.progress(collab)
+        self.assertEqual(progress.human.symbol, "✓")
+        self.assertEqual(progress.now, "Terminé : version acceptée.")
 
     def test_a_revision_that_ran_is_marked_done_once_closed(self) -> None:
         resolved = ({
@@ -117,15 +139,41 @@ class TestPhaseSteps(PromotionCase):
         collab = self.cycle(
             (_DOC, _DOC2), (fakes.review("REVISER"), fakes.review("ACCEPTER", findings=resolved)),
         )
-        steps = self.steps(collab)
-        self.assertEqual(steps["Révision A"], "✓")
+        self.assertEqual(
+            self.grid(collab),
+            [("✓ Proposition", "✓ Critique"), ("✓ Révision 1", "✓ Relecture 1")],
+        )
 
-    def test_the_current_phase_of_a_running_cycle_is_marked_current(self) -> None:
+    def test_a_fresh_collaboration_announces_conditional_revisions_up_to_the_cap(self) -> None:
         collab = self.build(a=(_DOC,), b=())
-        by_label = self.steps(collab)
-        self.assertEqual(by_label["Proposition A"], "●")
-        self.assertEqual(by_label["Critique B"], "○")
+        cap = facade.inspect_collaboration(collab).configuration.max_revisions
+        grid = self.grid(collab)
+        self.assertEqual(len(grid), cap + 1)
+        self.assertEqual(grid[0], ("● Proposition", "○ Critique"))
+        self.assertEqual(grid[1], ("○ Révision 1 (si B la demande)", "○ Relecture 1"))
+        self.assertTrue(self.progress(collab).now.startswith("Prête : au démarrage, Proposition"))
 
-    def test_a_blocked_current_phase_is_marked_stopped(self) -> None:
+    def test_a_question_marks_the_current_step_and_says_who_waits(self) -> None:
         collab = self.cycle(("IABINOME:QUESTION\nQuel est le critere de fin ?",), ())
-        self.assertEqual(self.steps(collab)["Proposition A"], "!")
+        progress = self.progress(collab)
+        self.assertEqual(progress.rounds[0][0], facade.Step("!", "Proposition"))
+        self.assertEqual(progress.now, "À vous : A pose une question (Proposition).")
+
+    def test_a_failed_call_points_to_its_trace_and_names_the_tool(self) -> None:
+        collab = self.build(a=("ERROR: modele inconnu",), b=())
+        self.a.exit_codes = [1]
+        self.run_engine(collab)
+        snapshot = facade.inspect_collaboration(collab)
+        trace = snapshot.presentation.trace_dir
+        self.assertIsNotNone(trace)
+        self.assertIn(f"{trace}/stdout.txt", snapshot.presentation.readable_documents)
+        self.assertNotIn(f"{trace}/stderr.txt", snapshot.presentation.readable_documents)
+        self.assertEqual(snapshot.presentation.progress.rounds[0][0].symbol, "!")
+        self.assertIn("n'a pas abouti (Proposition)", snapshot.presentation.progress.now)
+
+    def test_no_trace_is_offered_when_nothing_failed(self) -> None:
+        snapshot = facade.inspect_collaboration(self.cycle((_DOC,), (fakes.review("ACCEPTER"),)))
+        self.assertIsNone(snapshot.presentation.trace_dir)
+        self.assertFalse(
+            [d for d in snapshot.presentation.readable_documents if d.startswith("appels/")]
+        )

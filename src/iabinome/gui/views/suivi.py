@@ -50,7 +50,22 @@ class SuiviView(ttk.Frame):
         self._title.pack(anchor="w")
         self._subtitle = ttk.Label(header)
         self._subtitle.pack(anchor="w")
+        # Le dossier se voit dès l'ouverture, incident compris (retour d'usage du 2026-09-28).
+        folder = ttk.Frame(header)
+        folder.pack(fill="x", pady=(4, 0))
+        ttk.Label(folder, text="Dossier :").pack(side="left")
+        path_field = ttk.Entry(folder)
+        path_field.insert(0, str(self._path))
+        path_field.configure(state="readonly")
+        path_field.pack(side="left", fill="x", expand=True, padx=(4, 4))
+        ttk.Button(folder, text="Ouvrir le dossier", command=self._reveal).pack(side="left")
+        self._trace_button = ttk.Button(
+            folder, text="Ouvrir la trace de l'appel", command=self._reveal_trace,
+        )
+        self._trace: str | None = None
 
+        self._now = ttk.Label(self, font=("", 11, "bold"), justify="left", wraplength=560)
+        self._now.pack(anchor="w", padx=16, pady=(8, 0))
         self._progression = ttk.Frame(self)
         self._progression.pack(fill="x", padx=16, pady=8)
 
@@ -77,10 +92,7 @@ class SuiviView(ttk.Frame):
 
         footer = ttk.Frame(self)
         footer.pack(fill="x", padx=16, pady=(0, 16))
-        ttk.Button(
-            footer, text="Ouvrir le dossier", command=self._reveal,
-        ).pack(side="left")
-        ttk.Button(footer, text="Actualiser", command=self._refresh).pack(side="left", padx=(8, 0))
+        ttk.Button(footer, text="Actualiser", command=self._refresh).pack(side="left")
         ttk.Button(
             footer, text="Retour à l'accueil", command=self._controller.show_accueil,
         ).pack(side="right")
@@ -108,10 +120,12 @@ class SuiviView(ttk.Frame):
         self._subtitle.configure(
             text=f"{snapshot.presentation.phase_label} · {snapshot.presentation.activity_label}"
         )
-        for child in self._progression.winfo_children():
-            child.destroy()
-        for symbol, label in snapshot.presentation.phase_steps:
-            ttk.Label(self._progression, text=f"{symbol} {label}").pack(side="left", padx=(0, 12))
+        self._show_progress(snapshot.presentation.progress)
+        self._trace = snapshot.presentation.trace_dir
+        if self._trace:
+            self._trace_button.pack(side="left", padx=(4, 0))
+        else:
+            self._trace_button.pack_forget()
         self._activity.configure(text=self._activity_text(snapshot))
         self._result.configure(text=self._result_text(snapshot))
         for child in self._actions_row.winfo_children():
@@ -124,12 +138,38 @@ class SuiviView(ttk.Frame):
         for child in self._documents_row.winfo_children():
             child.destroy()
         for document in snapshot.presentation.readable_documents:
+            name = Path(document).name
             ttk.Button(
-                self._documents_row, text=Path(document).name,
+                self._documents_row,
+                text=f"{name} de l'appel" if document.startswith("appels/") else name,
                 command=self._document_handler(document),
             ).pack(side="left", padx=(0, 4))
         if running:
             self._after_id = self.after(_POLL_MS, self._refresh)
+
+    def _show_progress(self, progress: facade.Progress) -> None:
+        """Une grille : un tour par ligne, A puis B, puis la décision humaine.
+        L'étape courante est en gras ; le texte vient de la façade (§15.1)."""
+        grid = self._progression
+        for child in grid.winfo_children():
+            child.destroy()
+        self._now.configure(text=progress.now)
+        ttk.Label(grid, text=progress.agent_a).grid(row=0, column=1, sticky="w", padx=(0, 24))
+        ttk.Label(grid, text=progress.agent_b).grid(row=0, column=2, sticky="w")
+        for row, steps in enumerate(progress.rounds, start=1):
+            tour = ttk.Label(grid, text=f"Tour {row - 1}")
+            tour.grid(row=row, column=0, sticky="w", padx=(0, 12))
+            for column, step in enumerate(steps, start=1):
+                self._step_label(step).grid(row=row, column=column, sticky="w", padx=(0, 24))
+        last = len(progress.rounds) + 1
+        ttk.Label(grid, text="Vous").grid(row=last, column=0, sticky="w", padx=(0, 12))
+        self._step_label(progress.human).grid(row=last, column=1, columnspan=2, sticky="w")
+
+    def _step_label(self, step: facade.Step) -> ttk.Label:
+        label = ttk.Label(self._progression, text=f"{step.symbol} {step.label}")
+        if step.symbol in ("●", "!"):
+            label.configure(font=("", 10, "bold"))
+        return label
 
     def _activity_text(self, snapshot: facade.CollaborationSnapshot) -> str:
         lines = [f"Dernier état du dossier : {snapshot.state.updated_at}"]
@@ -172,6 +212,12 @@ class SuiviView(ttk.Frame):
         except OSError as exc:
             text = f"Lecture impossible : {exc}"
         self._set_viewer(text)
+        if relative.startswith("appels/"):
+            self._viewer.see("end")  # la cause est en fin de sortie, après la bannière
+
+    def _reveal_trace(self) -> None:
+        if self._trace and hasattr(os, "startfile"):
+            os.startfile(self._path / self._trace)
 
     def _set_viewer(self, text: str) -> None:
         self._viewer.configure(state="normal")

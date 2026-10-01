@@ -143,6 +143,28 @@ class TestWhatWasReceivedWhatWasNotLaunchedWhatIsUnknown(IncidentCase):
         program = [ln for ln in lines if "de l'outil" not in ln]
         self.assertNotIn("14h", "\n".join(program))
 
+    def test_the_excerpt_is_the_end_of_a_long_output_where_the_error_is(self) -> None:
+        """Mesuré le 2026-09-28 : une CLI ouvre sa sortie par une bannière et l'écho du
+        prompt, puis finit par l'erreur. Le début de la sortie ne disait rien."""
+        long = "debut-de-banniere " + "prompt " * 200 + "ERROR: le modele GPT-6-Sol est inconnu"
+        collab = self.build(a=(long,), b=())
+        self.a.exit_codes = [1]
+        self.run_engine(collab)
+        text = self.explained(collab)
+        self.assertIn("stdout de l'outil, fin : « …", text)
+        self.assertIn("ERROR: le modele GPT-6-Sol est inconnu »", text)
+        self.assertNotIn("debut-de-banniere", text)
+
+    def test_a_failed_call_names_the_tool_and_model_a_retry_would_reuse(self) -> None:
+        collab = self.build(a=("Modele refuse.",), b=())
+        self.a.exit_codes = [1]
+        self.run_engine(collab)
+        config = json.loads((collab / "configuration.json").read_text(encoding="utf-8"))
+        agent = config["agent_a"]
+        text = self.explained(collab)
+        self.assertIn(f"Appel : A · {agent['adapter_id']} ({agent['model']})", text)
+        self.assertIn("recréer la collaboration pour changer de modèle", text)
+
     def test_a_refused_answer_was_received_and_paid_and_offers_the_local_way_first(self) -> None:
         collab = self.build(a=("Bonjour, voici mon document.",), b=())
         self.run_engine(collab)

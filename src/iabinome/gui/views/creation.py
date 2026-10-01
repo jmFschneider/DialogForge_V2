@@ -414,7 +414,9 @@ class CreationView(ttk.Frame):
             return
         self._controller.record_created(result.path)
         messagebox.showinfo(
-            "Collaboration créée", "Collaboration créée — aucun appel fournisseur effectué.",
+            "Collaboration créée",
+            "Collaboration créée — aucun appel fournisseur effectué.\n\n"
+            f"Dossier : {result.path}",
         )
         self._controller.show_suivi(result.path)
 

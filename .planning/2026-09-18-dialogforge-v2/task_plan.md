@@ -10,13 +10,11 @@ avec reprise après incident sans rejouer un appel ambigu.
 tag `v0.1.0` poussé. On travaille désormais sur `main` ; `v2-socle` reste locale, sans push.
 Licence MIT, validée par le PO le 2026-10-01 (`LICENSE`).
 
-Retour GUI du 2026-09-28 sur la liste d'accueil et le répertoire des collaborations :
-correctif local réalisé et validé (détail dans `progress.md`). Reste à intégrer selon le
-processus de finalisation du plan ; les autres points de retour d'usage restent ouverts.
-
-Retour d'usage du 2026-09-28 : voir `project/retour_essais_2026-09-28.md` pour les
-améliorations relevées sur deux essais GUI à agents inversés, dont la progression
-visuelle A/B. Relevé seulement : périmètre et priorité à arbitrer avant engagement.
+Retour d'usage du 2026-09-28 (`project/retour_essais_2026-09-28.md`) : **points 4, 5 et 6
+engagés par le PO et faits le 2026-10-01** (diagnostic des appels inaboutis, visibilité du
+dossier, progression A/B). Points 3 et correctif d'accueil déjà intégrés. **Restent ouverts,
+à arbitrer** : 1 (recherche web sans corpus local, à concevoir avant tout code) et 2
+(parcours de cadrage). Façade + GUI : 1 773 lignes effectives sur 2 000.
 
 **Partie 1 du plan de finalisation, engagée par le PO le 2026-09-25** (voir Decisions Made).
 Proposition de classement : `reference/astra_finalisation/PLAN_TRAVAIL.md` — une proposition, pas un
@@ -62,8 +60,9 @@ Reste hors de ce plan, non engagé : le lot « Développement assisté » (§ Ex
 conditionné à une décision explicite du PO, et une éventuelle recherche externe, même condition.
 
 **Repère laissé pour la prochaine session** :
-- L'acceptation formelle de la conception GUI V1 elle-même (`decide … --accept` sur la collaboration
-  `C:\Projets\essais-3-1\gui-v1\collab`) reste au PO — rappelée depuis le lot 1, jamais faite.
+- L'acceptation formelle de la conception GUI V1 : **faite** — `decisions.json` de
+  `C:\Projets\essais-3-1\gui-v1\collab` la porte depuis le 2026-09-23T13:36:45Z ; le PO l'a
+  confirmée le 2026-10-01. Le rappel ci-dessous et dans la phase 5 était périmé.
 - Deux trouvailles non corrigées, à décision séparée du PO : `corpus.build()` avec une liste source
   vide ne crée pas son dossier avant d'y écrire le manifeste (lot 4, voir Errors Encountered) ; le
   plafond de 1 200 lignes logiques (façade + `gui/`) est à **1 195** après le lot 5 — non dépassé,

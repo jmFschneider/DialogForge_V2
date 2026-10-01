@@ -53,4 +53,20 @@ améliorations à étudier ; il ne vaut ni décision de conception ni lancement 
 ## Suite
 
 Faire arbitrer le périmètre et l'ordre de ces améliorations avant une nouvelle
-implémentation. Les points 1, 2, 4, 5 et 6 restent ouverts ; le point 3 est intégré.
+implémentation. Le point 3 est intégré.
+
+**2026-10-01 — points 4, 5 et 6 engagés par le PO et intégrés :**
+
+- 4 : l'extrait du message de l'outil est pris en fin de sortie, où l'erreur se trouve
+  (la sortie Codex commence par une bannière et l'écho du prompt). L'incident nomme
+  l'outil et le modèle de l'appel, et dit qu'une relance les reprend. Les sorties
+  brutes non vides de l'appel sont lisibles depuis l'écran de suivi, qui s'ouvre en
+  fin de texte. Un bouton ouvre le dossier de l'appel. Le changement vaut aussi pour la CLI.
+- 5 : le chemin complet et « Ouvrir le dossier » sont en tête de l'écran de suivi, y
+  compris pour un dossier illisible. Le message de création donne le chemin.
+- 6 : progression en grille, un tour par ligne, A à gauche et B à droite, chaque
+  colonne nommant son outil et son modèle. L'étape courante est en gras, les révisions
+  encore possibles sont marquées « si B la demande », une ligne « Vous » porte la
+  décision, et une phrase dit qui agit ou ce qui vous attend.
+
+Restent ouverts : 1 (recherche web sans corpus) et 2 (parcours de cadrage).

@@ -1968,3 +1968,31 @@ phrase de documentation.
   `C:\Users\schne\…` figurent dans 4 fichiers. Pas de réécriture d'historique.
 - `.gitignore` corrigé, `docs/DEVELOPPEMENT.md` et ce plan mis à jour (branche, remote), tag `v0.1.0`
   poussé. Aucun code touché. Licence MIT ajoutée après validation du PO.
+
+## Session 2026-10-01 (suite) — retour d'usage, points 4, 5 et 6
+
+Engagés par le PO (« attaques et finalises 4, 5 et 6 »). Le PO valide aussi la conception GUI V1 :
+déjà acceptée dans sa collaboration le 2026-09-23, le rappel du plan était périmé.
+
+- **Cause du point 4, mesurée sur une trace réelle** : la sortie de Codex commence par une bannière
+  (version, dossier, modèle…) puis l'écho complet du prompt. Les 300 premiers caractères cités par
+  `incidents._tool_message` ne contenaient donc jamais l'erreur. L'extrait est désormais pris en fin
+  de flux (« stdout de l'outil, fin : « … » ») ; une sortie courte reste citée entière, comme avant.
+  `incidents.explain` ajoute, pour `CLI_FAILED`, l'outil et le modèle lus dans `intention.json`, et
+  le fait qu'une relance les reprend (modèle figé à la création).
+- `facade.Presentation` : `phase_steps` remplacé par `progress` (`Progress`/`Step` : un tour par
+  ligne, A et B nommés avec outil et modèle, ligne humaine, phrase « maintenant ») et `trace_dir`.
+  Les sorties brutes non vides d'un appel inabouti s'ajoutent aux documents lisibles.
+- `views/suivi.py` : chemin en champ lecture seule avec « Ouvrir le dossier » en en-tête, bouton
+  « Ouvrir la trace de l'appel » sur incident, grille de progression, sortie d'appel affichée en fin
+  de texte. `views/creation.py` : le message de création donne le chemin.
+- **Tests** : `TestProgress` (7 cas, remplace `TestPhaseSteps`), 2 tests d'incident. Contre-épreuves :
+  extrait repris en tête → 1 échec ; trace jamais proposée → 1 échec ; chacune rétablie.
+- **Vu en réel** : écran de suivi capturé dans trois états (frais, `CLI_FAILED` sur une sortie de
+  type Codex, `CONTRACT_ERROR` en révision 1) avec les faux agents ; l'erreur de fin de sortie
+  s'affiche, la grille marque l'étape arrêtée. Les premières captures montraient d'autres fenêtres
+  du poste (fenêtre de test passée derrière) : supprimées aussitôt, refaites au premier plan.
+- **Validation** : ruff, mypy strict (82 fichiers), **817 passés / 2 ignorés**, 622 sous-tests,
+  scénario rc=0. Taille : +119 lignes effectives dans `src/` (6 252 → 6 368 au compteur, qui
+  affiche aussi −3 sur `modeles.toml`, inchangé) ; façade + GUI 1 773 / 2 000.
+- `README.md` réécrit par le PO pendant la session et commité par lui (`a4d3c41`), hors de ce lot.

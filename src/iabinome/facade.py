@@ -65,8 +65,6 @@ _ACTIVITY_BY_STATUS = {
     Status.STOPPED: "Arrêt définitif",
 }
 
-_PHASE_ORDER = (Phase.PROPOSAL_A, Phase.REVIEW_B, Phase.REVISION_A, Phase.CLOSED)
-_PHASE_STEP_LABELS = ("Proposition A", "Critique B", "Révision A", "Clôture")
 _STOPPED_LOOKING = (Status.WAITING_HUMAN, Status.INTERRUPTED, Status.ERROR)
 
 
@@ -103,14 +101,37 @@ class RuntimeResolution:
 
 
 @dataclass(frozen=True)
+class Step:
+    """Une étape de la progression : `✓` faite, `●` courante, `!` courante mais
+    arrêtée (question, incident), `○` à venir, `—` sans objet."""
+
+    symbol: str
+    label: str
+
+
+@dataclass(frozen=True)
+class Progress:
+    """La progression A/B d'un coup d'œil : un tour par ligne, A à gauche, B à
+    droite, puis la décision humaine. Les rôles restent lisibles quel que soit
+    l'outil, parce que chaque colonne nomme le sien."""
+
+    agent_a: str
+    agent_b: str
+    rounds: tuple[tuple[Step, Step], ...]
+    human: Step
+    now: str
+
+
+@dataclass(frozen=True)
 class Presentation:
     status_label: str
     phase_label: str
     activity_label: str
     allowed_actions: tuple[AllowedAction, ...]
     readable_documents: tuple[str, ...]
-    phase_steps: tuple[tuple[str, str], ...]
+    progress: Progress
     next_action_text: str
+    trace_dir: str | None = None
 
 
 @dataclass(frozen=True)
@@ -150,8 +171,9 @@ def inspect_collaboration(
         activity_label=_activity_label(state, execution),
         allowed_actions=decisions.allowed_actions(path, state),
         readable_documents=_readable_documents(path, state),
-        phase_steps=_phase_steps(state),
+        progress=_progress(state, config, decision),
         next_action_text=decisions.next_action(path, state),
+        trace_dir=_trace_dir(state),
     )
     return CollaborationSnapshot(
         path=path, name=path.name, configuration=config, state=state,
@@ -221,39 +243,97 @@ def _activity_label(state: State, execution: ExecutionObservation) -> str:
     return _ACTIVITY_BY_STATUS[state.status]
 
 
-def _phase_steps(state: State) -> tuple[tuple[str, str], ...]:
-    """§7.1 : une marque par phase — faite (`✓`), courante (`●` ou `!` sous
-    intervention/incident), à venir (`○`), ou sans objet (`—`) — une révision
-    qui n'a jamais eu lieu, quand B a accepté d'emblée."""
-    current = _PHASE_ORDER.index(state.phase)
+def _progress(state: State, config: Configuration, decision: DecisionSummary) -> Progress:
+    """§7.1, étendu au retour d'usage du 2026-09-28 : un tour par ligne (proposition
+    puis critique, puis révision et relecture n), l'étape courante, ce qui est fait,
+    et ce qui attend l'humain. Une fois clos, seuls les tours joués restent ; avant,
+    les révisions possibles jusqu'au plafond sont annoncées comme conditionnelles."""
     closed = state.phase is Phase.CLOSED
-    steps: list[tuple[str, str]] = []
-    for index, phase in enumerate(_PHASE_ORDER):
-        if phase is Phase.REVISION_A and state.revision == 0 and closed:
-            symbol = "—"
-        elif index < current or (index == current and closed):
-            # Une fois clos, plus rien n'est « en cours » : la dernière phase
-            # atteinte se lit comme les précédentes, faite (§8.6, §8.7).
-            symbol = "✓"
-        elif index == current:
-            symbol = "!" if state.status in _STOPPED_LOOKING else "●"
-        else:
-            symbol = "○"
-        steps.append((symbol, _PHASE_STEP_LABELS[index]))
-    return tuple(steps)
+    stopped = state.status is Status.STOPPED
+    count = state.revision + 1 if closed else max(config.max_revisions, state.revision) + 1
+    cursor = None if closed else 2 * state.revision + (state.phase is Phase.REVIEW_B)
+
+    def mark(index: int) -> str:
+        if cursor is None or index < cursor:
+            return "✓"
+        if stopped:
+            return "—"
+        if index == cursor:
+            return "!" if state.status in _STOPPED_LOOKING else "●"
+        return "○"
+
+    rounds = []
+    for r in range(count):
+        a_label = "Proposition" if r == 0 else f"Révision {r}"
+        if not closed and r > state.revision:
+            a_label += " (si B la demande)"
+        b_label = "Critique" if r == 0 else f"Relecture {r}"
+        rounds.append((Step(mark(2 * r), a_label), Step(mark(2 * r + 1), b_label)))
+
+    accepted = {
+        decisions.ACCEPTED: "acceptée", decisions.ACCEPTED_WITH_RESERVES: "acceptée avec réserves",
+    }.get(decision.kind or "") if decision.applies_to_current_version else None
+    if stopped:
+        human, now = Step("—", "Arrêtée"), "Arrêtée par décision humaine."
+    elif state.status is Status.AWAITING_APPROVAL and accepted:
+        human, now = Step("✓", f"Décision : {accepted}"), f"Terminé : version {accepted}."
+    elif state.status is Status.AWAITING_APPROVAL:
+        human = Step("●", "Décision : à prendre")
+        now = "À vous : lire le bilan et décider sur la version relue par B."
+    else:
+        human, now = Step("○", "Décision"), _now_text(state, config, rounds, cursor)
+    return Progress(
+        agent_a=f"A · {config.agent_a.adapter_id} ({config.agent_a.model})",
+        agent_b=f"B · {config.agent_b.adapter_id} ({config.agent_b.model})",
+        rounds=tuple(rounds), human=human, now=now,
+    )
+
+
+def _now_text(
+    state: State, config: Configuration, rounds: list[tuple[Step, Step]], cursor: int | None,
+) -> str:
+    if cursor is None:
+        return "Cycle clos."
+    role = "AB"[cursor % 2]
+    spec = config.agent_a if role == "A" else config.agent_b
+    step = rounds[cursor // 2][cursor % 2].label
+    who = f"{role} · {spec.adapter_id}"
+    if state.status is Status.WAITING_HUMAN:
+        return f"À vous : {role} pose une question ({step})."
+    if state.status in (Status.INTERRUPTED, Status.ERROR):
+        return f"À vous : l'appel de {who} n'a pas abouti ({step})."
+    if state.status is Status.READY:
+        if state.current_document is None and state.latest_review is None:
+            return f"Prête : au démarrage, {step} par {who}."
+        return f"En pause : prochaine étape, {step} par {who}."
+    return f"Étape courante : {step} par {who}."
+
+
+def _trace_dir(state: State) -> str | None:
+    """Le dossier de l'appel qui n'a pas abouti — pour aller droit à sa trace."""
+    if state.status in (Status.INTERRUPTED, Status.ERROR) and state.current_call is not None:
+        return state.current_call.call_dir
+    return None
 
 
 def _readable_documents(path: Path, state: State) -> tuple[str, ...]:
     """Ce que l'écran de suivi propose à la lecture — seulement ce qui existe,
-    dans l'ordre où un humain les lirait (§7, §8.6)."""
-    candidates = (
+    dans l'ordre où un humain les lirait (§7, §8.6). Après un appel inabouti,
+    ses sorties brutes non vides s'y ajoutent : la cause y est, telle quelle."""
+    candidates = [
         "demande.md", state.current_document, state.latest_review,
         decisions.DELIVERED, "livrables/bilan.md",
-    )
+    ]
+    trace = _trace_dir(state)
+    if trace is not None:
+        candidates += [f"{trace}/stderr.txt", f"{trace}/stdout.txt"]
     seen: list[str] = []
     for candidate in candidates:
-        if candidate and candidate not in seen and (path / candidate).is_file():
-            seen.append(candidate)
+        if not candidate or candidate in seen or not (path / candidate).is_file():
+            continue
+        if candidate.startswith("appels/") and not (path / candidate).stat().st_size:
+            continue
+        seen.append(candidate)
     return tuple(seen)
 
 
