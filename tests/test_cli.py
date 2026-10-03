@@ -13,6 +13,7 @@ par `--config`.
 from __future__ import annotations
 
 import io
+import json
 import unittest
 from contextlib import redirect_stderr
 from pathlib import Path
@@ -104,9 +105,18 @@ class TestNewCorpus(CliCase):
         self.assertEqual(code, 1)
         self.assertFalse(self.collab.exists())
 
-    def test_conception_without_an_input_folder_is_refused_even_with_the_web(self) -> None:
-        code = cli.main(["new", *self.new_args(**{"--kind": "conception"})])
-        self.assertEqual(code, 1)
+    def test_conception_without_an_input_folder_is_created(self) -> None:
+        """AC01 — `PARCOURS_MISSION_CONCEPTION.md` §4.1 : la conception part d'une demande."""
+        code = cli.main(["new", *self.bare_args(**{"--kind": "conception"})])
+        self.assertEqual(code, 0)
+        config = json.loads((self.collab / "configuration.json").read_text(encoding="utf-8"))
+        self.assertIsNone(config["corpus_manifest_sha256"])
+        self.assertFalse((self.collab / "corpus").exists())
+
+    def test_a_request_is_required_unless_depuis_brings_its_mandate(self) -> None:
+        argv = ["new", str(self.collab), "--kind", "conception", "--reviewer-access", "consult",
+                "--agent-a", "fake-a", "--agent-b", "fake-b"]
+        self.assertEqual(cli.main(argv), 1)
         self.assertFalse(self.collab.exists())
 
     def test_research_with_empty_corpus_is_refused(self) -> None:

@@ -43,21 +43,22 @@ vérifié avant toute écriture : un refus ne laisse rien derrière lui, un cadr
 | `--source-label <nom>` | Nom du corpus ; défaut : le nom de `--source-root`. |
 | `--model-a`, `--model-b` | Modèle de chaque rôle ; défaut : celui de l'adaptateur. |
 | `--effort-a`, `--effort-b` | Effort de raisonnement, facultatif. Le vocabulaire est celui de l'outil ([détail](CONFIGURATION.md#effort-de-raisonnement)). |
-| `--depuis <recherche>` | Poursuivre une recherche **acceptée** en conception : son livrable, son bilan et sa décision deviennent le corpus, copiés et hachés ; le manifeste nomme la recherche d'origine. Avec `--kind conception`, sans autre corpus, sans cadrage par agent. |
+| `--depuis <recherche>` | Poursuivre une recherche **acceptée** en conception : sa demande, son livrable, son bilan et sa décision deviennent le corpus, copiés et hachés sous le verrou de la recherche ; le manifeste nomme la recherche d'origine, `provenance_transition.json` sa décision. Les réglages de la recherche (outils, modèles, révisions, accès web) sont repris sauf ceux que vous donnez, et affichés. Sans `--demande`, le **mandat de transition** généré sert de demande ; avec `--cadrer-avec-agent`, F le complète. Sans autre corpus. Si la recherche change avant la création, `new` refuse : recommencer. |
 | `--web-access` / `--no-web-access` | Autoriser ou non la recherche web, pour A et B ; fermé par défaut ([détail](CONFIGURATION.md#accès-web)). |
 | `--max-revisions <N>` | Nombre maximal de révisions ; entier positif ou nul. Défaut : 2. |
 | `--config <fichier>` | Fichier de réglages à utiliser ([détail](CONFIGURATION.md)). |
 
 `--kind`, `--reviewer-access`, `--agent-a` et `--agent-b` sont indispensables : sur la ligne de
 commande ou dans le fichier de réglages, sinon `new` refuse. Une **recherche** exige au moins une
-source : l'accès web (`--web-access`) ou un corpus. Une **conception** exige un corpus, son dossier
-d'entrée. Un corpus vide ne compte pas comme source. Les sources se contrôlent à la création
-seulement.
+source : l'accès web (`--web-access`) ou un corpus. Une **conception** n'exige rien de plus que la
+demande : un corpus est facultatif. Un corpus déclaré mais vide est une erreur. Les sources se
+contrôlent à la création seulement. Une demande (`--demande`, `--cadrer`, `--cadrer-avec-agent`) est
+exigée, sauf avec `--depuis`, qui apporte la sienne.
 
 ### Cadrage avec agent
 
 Avec `--cadrer-avec-agent`, un agent (F) lit une **copie** des sources données par `--source-root` /
-`--source-list` (exigées en conception, facultatives en recherche web), puis vous pose ses questions une par une. Votre idée se
+`--source-list` (facultatives, sauf en recherche sans web), puis vous pose ses questions une par une. Votre idée se
 saisit sur plusieurs lignes, close par une ligne ne contenant qu'un point ; vos réponses aussi. À
 tout moment : `/clore` (rédiger maintenant) ou `/annuler`. F propose la clôture au plus tard après
 trois réponses, puis toutes les deux ; vous choisissez de continuer, corriger un point, rédiger ou

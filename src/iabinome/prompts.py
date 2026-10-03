@@ -26,6 +26,9 @@ là pour ça. Proposer des modifications DANS le document est ce qu'on attend de
 pas les appliquer."""
 
 _RESEARCH = """\
+Étape : recherche. Ton livrable est une étude sourcée. Le résultat final du projet que la
+demande décrit, une application par exemple, est le but du projet : ce n'est pas ce que cette
+étape livre.
 Cite les sources localisables et leur niveau d'accès réellement vérifié. La source
 primaire prime ; qualifie résumé et reprise secondaire. Deux reprises d'une même
 origine ne font pas deux preuves. Distingue absent, nul, négatif, inconnu et non
@@ -35,12 +38,29 @@ Une source web se cite par son adresse et sa date de consultation.
 Si le critère de fin manque, rends QUESTION."""
 
 _CONCEPTION = """\
-Pars du dossier fourni : ses faits établis ne se rouvrent pas sans contre-preuve.
-Compare les options sérieuses et motive le choix retenu. Nomme risques, hypothèses
-et points ouverts. Termine par des étapes de réalisation vérifiables, assez précises
-pour être confiées au développement."""
+Étape : conception. Ton livrable est un plan de réalisation, pas le produit final : le
+résultat attendu du projet, une application jouable par exemple, est ce que ce plan doit
+permettre d'obtenir. Exploite les éléments fournis s'il y en a (dossier, recherche
+acceptée) : leurs faits établis ne se rouvrent pas sans contre-preuve. Sinon pars de la
+demande. Compare les options sérieuses et motive le choix retenu. Une hypothèse ou une
+réserve reste une hypothèse tant que l'humain ne l'a pas tranchée : garde-la nommée,
+confirme-la ou motive ton choix. Nomme risques et points ouverts. Termine par des étapes de
+réalisation vérifiables, assez précises pour être confiées au développement."""
 
 _KIND_BLOCK = {MissionKind.RECHERCHE: _RESEARCH, MissionKind.CONCEPTION: _CONCEPTION}
+
+_B_STEP = {
+    MissionKind.RECHERCHE: (
+        "Étape : recherche. Juge le document par rapport au livrable de cette étape, étude"
+        " sourcée ou rapport de revue selon la demande, pas par rapport au résultat final du"
+        " projet."
+    ),
+    MissionKind.CONCEPTION: (
+        "Étape : conception. Le livrable est un plan de réalisation vérifiable : l'absence de"
+        " code exécutable n'est pas un défaut. Juge s'il permet d'atteindre le résultat attendu"
+        " du projet. Une hypothèse présentée comme une décision de l'humain est un défaut."
+    ),
+}
 
 _B_REVIEW = """\
 Tu es B, contradicteur. Cherche omissions, contradictions, faits non établis,
@@ -111,10 +131,13 @@ def build_review(
     access: ReviewerAccess,
     corpus_date: str | None,
     targeted: bool = False,
+    kind: MissionKind | None = None,
 ) -> str:
     """`targeted` : la revue suit une correction de A (1.3), et se limite aux
-    objections traitées et aux régressions."""
+    objections traitées et aux régressions. `kind` : le livrable de l'étape à juger."""
     blocks = [_B_REVIEW]
+    if kind is not None:
+        blocks.append(_B_STEP[kind])
     if access is ReviewerAccess.CONTEXT_ONLY:
         blocks.append(_CONTEXT_ONLY)
         corpus_date = None
@@ -183,6 +206,25 @@ Le premier groupe admet au plus trois réponses humaines. Lorsque sa limite est
 atteinte, rends IABINOME:CADRAGE_PRET. Si l'idée suffit déjà, propose-la
 maintenant."""
 
+_F_STEP = {
+    MissionKind.RECHERCHE: (
+        "Cette demande ouvrira une recherche : son livrable est une étude sourcée. Le résultat"
+        " final du projet, s'il y en a un, reste le contexte de l'étude."
+    ),
+    MissionKind.CONCEPTION: (
+        "Cette demande ouvrira une conception, avec ou sans documentation : son livrable est un"
+        " plan de réalisation avant le code. Le résultat final du projet reste le but que ce"
+        " plan doit permettre d'atteindre ; la demande distingue les deux."
+    ),
+}
+
+_F_COMPLEMENT = (
+    "L'idée ci-dessous est un mandat déjà rédigé à partir d'une recherche acceptée, dont le"
+    " corpus est fourni. Précise seulement les arbitrages encore nécessaires à la conception ;"
+    " conserve le cadrage déjà présent. Les hypothèses et réserves de la recherche restent des"
+    " hypothèses : ne les convertis pas en décisions."
+)
+
 _F_CONTINUE = """\
 Continue le même cadrage en utilisant le contexte déjà conservé dans cette
 session.
@@ -207,6 +249,8 @@ N'invente aucune décision. Conserve explicitement les inconnues, limites et
 désaccords encore ouverts. Ne mentionne ni la conversation ni les agents.
 
 Commence par IABINOME:DEMANDE et ne rends ensuite que le Markdown.
+Le Livrable est celui de l'étape décrite au début de la session ; le résultat final du
+projet reste du contexte, dans l'Objectif.
 
 FORMAT
 # Demande
@@ -251,11 +295,21 @@ def _counters(group: int, answers: int, limit: int) -> dict[str, str]:
     }
 
 
-def build_framing_start(idea: str, *, draft: bool = False) -> str:
+def build_framing_start(
+    idea: str, *, draft: bool = False, kind: MissionKind | None = None,
+    complement: bool = False,
+) -> str:
     """Le seul envoi qui porte l'idée et la consultation du corpus (§6.2). `draft` :
-    `/clore` avant tout échange — la rédaction suit dans le même envoi (A2)."""
+    `/clore` avant tout échange — la rédaction suit dans le même envoi (A2). `kind` :
+    l'étape que la demande ouvrira ; `complement` : l'idée est un mandat de transition déjà
+    rempli, à compléter sans le recommencer."""
+    blocks = [_F_START]
+    if kind is not None:
+        blocks.append(_F_STEP[kind])
+    if complement:
+        blocks.append(_F_COMPLEMENT)
     text = _assemble(
-        [_F_START], None, {"IDEE": idea, **_counters(1, 0, 3), "CONTRATS": _F_CONTRACTS},
+        blocks, None, {"IDEE": idea, **_counters(1, 0, 3), "CONTRATS": _F_CONTRACTS},
     )
     return text + "\n" + _F_DRAFT + "\n" if draft else text
 

@@ -342,6 +342,15 @@ class TestReadResult(TransportCase):
         assert reread is not None
         self.assertIs(reread.outcome, Outcome.COMPLETED)
 
+    def test_a_child_that_left_without_reading_everything_makes_no_noise(self) -> None:
+        """Le vidage final de la fermeture échoue quand l'enfant n'a pas tout lu : le fil
+        d'écriture ne laisse pas l'exception mourir en bruit (prompts plus longs que le tube)."""
+        pipe = mock.Mock()
+        pipe.close.side_effect = OSError(22, "Invalid argument")
+        transport._feed(pipe, b"prompt")
+        pipe.write.assert_called_once_with(b"prompt")
+        pipe.close.assert_called_once_with()
+
 
 if __name__ == "__main__":
     unittest.main()

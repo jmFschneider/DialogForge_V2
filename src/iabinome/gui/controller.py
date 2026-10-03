@@ -19,6 +19,7 @@ from tkinter import Tk, messagebox, ttk
 
 from .. import facade, framing, workflow
 from ..adapters.base import AgentAdapter, FramingSessionSpec
+from ..models import MissionKind
 from ..registry import ADAPTERS
 from ..transport import ExecutionControl
 from . import recents
@@ -188,6 +189,7 @@ class Controller:
 
     def open_framing(
         self, adapter: AgentAdapter, spec: FramingSessionSpec, root: Path, idea: str,
+        kind: MissionKind | None = None, complement: bool = False,
     ) -> framing.Framing:
         """Le contrôleur possède la session entre deux tours : une seule à la fois,
         jamais une collaboration tant que la création n'a pas eu lieu. Ouvrir ne coûte
@@ -198,7 +200,7 @@ class Controller:
         session = framing.open_session(
             adapter, spec, others=others, control=self._framing_control,
         )
-        self.framing = framing.Framing(session, root, idea)
+        self.framing = framing.Framing(session, root, idea, kind=kind, complement=complement)
         return self.framing
 
     def framing_step(self, step: Callable[[], framing.Turn]) -> bool:

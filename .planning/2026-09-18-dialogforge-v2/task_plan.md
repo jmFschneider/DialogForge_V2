@@ -6,6 +6,29 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
+**Parcours de mission — lot 1 (contrat des étapes) implémenté le 2026-10-03, en attente de la
+revue Codex du lot.** Conception acceptée : `conception/PARCOURS_MISSION_CONCEPTION.md` (§11 :
+quatre lots). Lot 1 fait : conception sans corpus (D1 amendé), consignes F/A/B qui distinguent le
+résultat du projet et le livrable de l'étape, instantané de transition `facade.prepare_follow_up`
+(mandat complet, demande d'origine, livrable, bilan, décision, réglages hérités, revérification
+avant création), cadrage complémentaire F sur ce même instantané. 880 tests passés ; façade + GUI
+2 339 / 2 400, `creation.py` 379 / 400 (la part « transition » du formulaire vit dans
+`gui/views/transition.py`). **Prochaine étape : revue Codex du lot 1, puis lot 2 (mission et
+navigation, regroupement de Mastermind) — non commencé ; les missions réelles Mastermind et
+Mastermind-conception n'ont pas été touchées.** Reste hors lot 1 : `mission.json`, dossier de
+mission, `mission attach`, validations éditables, nouveau projet Runner, revue et intégration.
+
+**Analyse du parcours demandée le 2026-10-03 après Mastermind :** proposition dans
+`conception/PARCOURS_MISSION_2026-10-03.md`. Orientations acceptées par le PO : conception
+possible sans corpus, transmission complète du mandat, étapes dans le dossier de mission
+(exigence du PO : conception dans `Mastermind`), nouveau projet et reprise du Runner puis revue.
+Conception de mise en œuvre rédigée à sa demande dans
+`conception/PARCOURS_MISSION_CONCEPTION.md` (quatre lots, AC01 à AC16, reprise Mastermind).
+Prochaine étape : revue de cette conception avant implémentation. Aucune modification du code
+ni déplacement des missions pendant ces passes documentaires.
+La qualification du Runner ci-dessous reste acquise ; l'essai Mastermind a révélé les frictions
+du parcours amont. Tests ciblés : 47 passés, 26 sous-tests.
+
 **Priorité du PO : Runner V1 sur `feat/runner-v1`.** Socle `prepare`/`collect` et profil Claude WSL2 intégrés et testés sur dépôt jetable. Claude sur Windows avec Bash autorisé a modifié un témoin extérieur ; ce profil est rejeté. Codex CLI 0.159.3 sur Windows a respecté la frontière d'écriture mesurée pour l'agent et la validation. Claude Code sous Ubuntu WSL2, avec sandbox strict, a écrit dans son espace de travail sans modifier les témoins Linux/Windows ; une validation sous `srt` a eu le même résultat. Un programme Windows copié dans l'espace de travail a été bloqué par l'interopérabilité WSL (`socket failed 1`) dans l'appel Claude et sous `srt`, alors qu'il fonctionne hors sandbox. Détails : `reference/RUNNER_QUALIFICATION_2026-10-01.md`.
 
 **État au 2026-10-03 :** le profil `claude-wsl` est raccordé et éprouvé sur un dépôt Git jetable avec un appel Claude réel : commit local, validation sous `srt`, paquet au même `HEAD`, dépôt source et témoin extérieur inchangés. Un second appel a confirmé dans le vrai outil Bash que le jeton n'était pas visible et que le serveur TCP local n'était pas joignable. La GUI propose désormais le Runner après acceptation d'une conception, avec export, lancement, collecte et continuation explicite. Le pont Windows → WSL a été éprouvé sans nouvel appel payant. **Prochaine action : choisir un premier petit lot réel réversible, le lancer depuis la GUI et relire le paquet avant intégration.** Détails : `progress.md` et `docs/RUNNER.md`. La mesure d'utilité 2.4 reste ouverte après ce lot. Conception : `conception/DialogForge Runner V1 — conception simplifiée.md`.

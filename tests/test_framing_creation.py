@@ -107,6 +107,16 @@ class TestNominal(FramingCliCase):
         self.assertIsNotNone(self.read_json("configuration.json")["corpus_manifest_sha256"])
         self.assertEqual(len(self.f.framing_sessions), 1)
 
+    def test_a_conception_is_framed_and_created_without_any_corpus(self) -> None:
+        """AC01 : le cadrage dynamique sans documentation ; F reçoit l'étape, pas de corpus."""
+        rc = self.new(["Un jeu de Mastermind", ".", "r", "v"], READY_OUT, DRAFT_OUT,
+                      kind="conception")
+        self.assertEqual(rc, 0)
+        self.assertIsNone(self.read_json("configuration.json")["corpus_manifest_sha256"])
+        self.assertFalse((self.collab / "corpus").exists())
+        (history,) = self.f.framing_sessions.values()
+        self.assertIn("plan de réalisation avant le code", " ".join(history[0].split()))
+
     def test_no_absolute_source_path_and_no_leftover(self) -> None:
         """Test 7 et critère 7 ; test 51 côté création : le dossier jetable disparaît."""
         extra = self.sources()
@@ -196,7 +206,7 @@ class TestNothingCreated(FramingCliCase):
         ).capabilities
         self.assert_nothing(self.new([]))
         self.f.capabilities = fakes.FakeAdapter().capabilities
-        self.assert_nothing(self.new([], kind="conception"))
+        self.assert_nothing(self.new([], extra=("--no-web-access",)))
         self.collab.mkdir()
         with mock.patch("builtins.input", side_effect=AssertionError("aucune saisie")):
             self.assertEqual(self.new([]), 1)

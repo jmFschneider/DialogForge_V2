@@ -127,7 +127,7 @@ def begin(
         raise framing.FramingError("une exécution est active dans cette fenêtre")
     if not idea:
         raise framing.FramingError("décrivez votre idée, même incomplète")
-    facade.check_creation(base, adapters=ADAPTERS, framing_start=True)
+    facade.check_creation(base, adapters=ADAPTERS)
     agent, effort = panel.agent.get(), panel.chosen_effort()
     try:
         chosen_model = panel.chosen_model()
@@ -136,9 +136,12 @@ def begin(
     model, _ = framing.check_adapter(agent, ADAPTERS, chosen_model, effort)
     root = framing.prepare(
         base.kind, base.source_root, base.source_list, base.source_label, base.web_access,
+        preloaded=base.follow_up.corpus if base.follow_up else None,
     )
     spec = FramingSessionSpec(model, timeout, root / "travail", effort)
-    return controller.open_framing(ADAPTERS[agent], spec, root, idea)
+    return controller.open_framing(
+        ADAPTERS[agent], spec, root, idea, kind=base.kind, complement=base.follow_up is not None,
+    )
 
 
 def reviewed(

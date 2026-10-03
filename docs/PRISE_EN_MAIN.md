@@ -46,8 +46,10 @@ réglages dans `configuration.json`.
 
 DialogForge suit une chaîne **recherche → conception → développement**. Une **recherche** établit un
 dossier sourcé à partir d'une idée ou d'une question : elle exige au moins une source, l'accès web
-(`--web-access`) ou un corpus. Une **conception** tire de ce dossier le plan et les solutions qui
-mènent à la réalisation, juste avant le code : elle exige un corpus, son dossier d'entrée. Le
+(`--web-access`) ou un corpus. Une **conception** établit le plan de réalisation, juste avant le
+code : elle part de la demande, avec ou sans documentation, et reprend le résultat accepté d'une
+recherche quand il en existe une. Le résultat attendu du projet (par exemple une application jouable)
+reste visible ; ce que l'étape livre, c'est une étude ou un plan. Le
 [développement assisté](COMMANDES.md#dev-export) part ensuite d'une conception acceptée.
 
 | Réglage | Ce qu'il décide |
@@ -76,11 +78,14 @@ dialogforge new ./plan --demande ./exemples/demande-conception.md --kind concept
 ```
 
 Une fois une recherche **acceptée**, `--depuis <recherche>` en fait directement le dossier d'entrée
-d'une conception : son livrable, son bilan et sa décision deviennent le corpus. Dans la GUI, c'est le
-bouton « Poursuivre en conception » de l'écran de suivi.
+d'une conception : sa demande, son livrable, son bilan et sa décision deviennent le corpus, et un
+mandat complet tient lieu de demande si vous n'en fournissez pas (les hypothèses de la recherche y
+restent des hypothèses). Dans la GUI, c'est le bouton « Poursuivre en conception » de l'écran de
+suivi : le formulaire est prérempli, accès web hérité compris, et le cadrage par un agent reste
+possible.
 
 ```
-dialogforge new ./plan --demande ./demande-conception.md --kind conception --depuis ./essai --reviewer-access consult --agent-a claude --agent-b codex --max-revisions 1
+dialogforge new ./plan --kind conception --depuis ./essai --reviewer-access consult --agent-a claude --agent-b codex --max-revisions 1
 ```
 
 Les fichiers sont **copiés octet pour octet** et hachés dans `corpus/manifeste.json`. Le corpus,

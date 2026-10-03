@@ -318,7 +318,12 @@ def _feed(pipe: IO[bytes], data: bytes) -> None:
     except OSError:
         pass
     finally:
-        pipe.close()
+        # Un enfant qui sort sans avoir tout lu (un faux agent) fait échouer le vidage final
+        # de la fermeture : sans ce filet, l'exception meurt dans le fil, bruyamment.
+        try:
+            pipe.close()
+        except OSError:
+            pass
 
 
 def _terminate_tree(proc: subprocess.Popen[bytes]) -> None:

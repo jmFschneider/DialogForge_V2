@@ -17,17 +17,18 @@ from ... import facade, framing, model_catalog, settings, storage
 from ...models import MissionKind, ReviewerAccess
 from ...registry import ADAPTERS
 from .. import dialogs, widgets
-from . import cadrage, lancement
+from . import cadrage, lancement, transition
 
 if TYPE_CHECKING:
     from ..controller import Controller
 
-_KIND = {"Recherche": MissionKind.RECHERCHE, "Conception": MissionKind.CONCEPTION}
+_RESEARCH, _DESIGN = "Étudier une question", "Concevoir mon projet"
+_KIND = {_RESEARCH: MissionKind.RECHERCHE, _DESIGN: MissionKind.CONCEPTION}
 _ACCESS = {"Consultation": ReviewerAccess.CONSULT, "Contexte seul": ReviewerAccess.CONTEXT_ONLY}
 _NON_SPECIFIE = "(non spécifié)"
 _KIND_HINT = {
-    "Recherche": "Établir un dossier sourcé à partir d'une idée — une source : web ou corpus.",
-    "Conception": "Tirer d'un dossier le plan et les solutions, avant le code — corpus exigé.",
+    _RESEARCH: "Livrable : une étude sourcée — accès web ouvert, ou corpus à fournir.",
+    _DESIGN: "Livrable : un plan de réalisation avant le code — documentation facultative.",
 }
 
 
@@ -37,7 +38,7 @@ class CreationView(ttk.Frame):
     ) -> None:
         super().__init__(master)
         self._controller = controller
-        self._from_research = from_research
+        self._follow_up: facade.FollowUp | None = None
         self._catalog_error: str | None = None
         try:
             self._model_catalog = model_catalog.load()
@@ -47,7 +48,7 @@ class CreationView(ttk.Frame):
         self._imported_path: str | None = None
         self._imported_text: str | None = None
         self._mode = StringVar(value="saisir")
-        self._kind = StringVar(value="Recherche")
+        self._kind = StringVar(value=_RESEARCH)
         self._agent_a = StringVar(value=sorted(ADAPTERS)[0])
         self._agent_b = StringVar(value=sorted(ADAPTERS)[-1])
         self._revisions = StringVar(value="2")
@@ -62,17 +63,17 @@ class CreationView(ttk.Frame):
         self._reviewer = StringVar(value="Consultation")
         self._build()
         if from_research is not None:
-            self._follow_up(from_research)
+            self._open_follow_up(from_research)
 
-    def _follow_up(self, research: Path) -> None:
-        """`TYPES_DE_MISSION.md` D4 : la recherche acceptée remplace le corpus à déclarer."""
-        dest, text = facade.follow_up_defaults(research)
-        self._dossier.set(str(dest))
-        self._kind.set("Conception")
-        self._demande_text.insert("1.0", text)
-        for child in self._corpus_frame.winfo_children():
-            child.destroy()
-        ttk.Label(self._corpus_frame, text=facade.follow_up_label(research)).pack(anchor="w")
+    def _open_follow_up(self, research: Path) -> None:
+        """`TYPES_DE_MISSION.md` D4 : la recherche acceptée remplace le corpus à déclarer. Le
+        mandat et les réglages proposés viennent de l'instantané préparé, sans appel."""
+        try:
+            self._follow_up = facade.prepare_follow_up(research)
+        except facade.CreationError as exc:
+            self._error.configure(text=str(exc))
+            return
+        transition.fill(self, self._follow_up)
 
     # -- Construction --
 
@@ -176,7 +177,7 @@ class CreationView(ttk.Frame):
 
     def _build_corpus(self, parent: ttk.Frame) -> None:
         ttk.Label(
-            parent, text="Corpus local — exigé en conception ; en recherche, si le web est fermé",
+            parent, text="Corpus local — facultatif ; en recherche, exigé si le web est fermé",
         ).pack(anchor="w", pady=(12, 0))
         for label, var, browse in (
             ("Racine", self._source_root,
@@ -292,6 +293,7 @@ class CreationView(ttk.Frame):
     def _on_mode(self) -> None:
         """Quitter le mode agent termine le cadrage ; son brouillon reste dans l'éditeur."""
         if self._mode.get() == "agent":
+            transition.sync_idea(self)
             self._framing_panel.enter()
         else:
             self._controller.discard_framing()
@@ -351,7 +353,7 @@ class CreationView(ttk.Frame):
             source_list=Path(self._source_list.get()) if sources and self._source_list.get()
             else None,
             source_label=(self._source_label.get() or None) if sources else None,
-            framing=framed, from_research=self._from_research,
+            framing=framed, follow_up=self._follow_up,
         )
 
     def _effort(self, var: StringVar) -> str | None:

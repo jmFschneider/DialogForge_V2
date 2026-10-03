@@ -106,6 +106,7 @@ def _merge_settings(args: argparse.Namespace) -> str | None:
         if timeout.origin == str(found.path):
             applied.append("timeout")
     elif args.command == "new":
+        _inherit(args)
         found = settings.load(args.config)
         for key in _SETTABLE_NEW + (_FRAMING_NEW if args.cadrer_avec_agent else ()):
             if getattr(args, key) is not None:
@@ -124,6 +125,33 @@ def _merge_settings(args: argparse.Namespace) -> str | None:
     # L'ancien nom de fichier est lu, **et dit** : un réglage qui cesserait
     # d'agir en silence ferait chercher la panne ailleurs.
     return line if found.legacy_note is None else f"{found.legacy_note}\n{line}"
+
+
+def _inherit(args: argparse.Namespace) -> None:
+    """`--depuis` : les réglages de la recherche sont proposés **avant** le fichier de
+    configuration, après le drapeau CLI ; le programme dit ce qu'il en a pris, accès web
+    compris. Une recherche illisible n'est pas jugée ici : la création la refusera."""
+    if not args.depuis:
+        return
+    try:
+        config = facade.inspect_collaboration(Path(args.depuis)).configuration
+    except facade.InspectionError:
+        return
+    inherited: dict[str, Any] = {
+        "kind": "conception", "web_access": config.web_access,
+        "reviewer_access": next(k for k, v in _ACCESS.items() if v is config.reviewer_access),
+        "max_revisions": config.max_revisions,
+    }
+    # Le modèle et l'effort suivent l'outil : jamais ceux de la recherche sur un autre outil.
+    for role, spec in (("a", config.agent_a), ("b", config.agent_b)):
+        if getattr(args, f"agent_{role}") is None:
+            inherited |= {f"agent_{role}": spec.adapter_id, f"model_{role}": spec.model,
+                          f"effort_{role}": spec.effort}
+    taken = {k: v for k, v in inherited.items() if getattr(args, k) is None and v is not None}
+    for key, value in taken.items():
+        setattr(args, key, value)
+    shown = ", ".join(f"{k}={v}" for k, v in taken.items())
+    print(f"réglages hérités de la recherche : {shown}", file=sys.stderr)
 
 
 def _from_settings(path: Path | None, key: str, value: Any) -> Any:
@@ -150,23 +178,43 @@ def cmd_new(args: argparse.Namespace) -> int:
             " ou dans le fichier de configuration"
         )
     given = [f"--{key.replace('_', '-')}" for key in _FRAMING_NEW if getattr(args, key)]
-    if args.cadrer_avec_agent:
-        if args.agent_cadrage is None:
-            return _fail("--agent-cadrage absent — sur la ligne de commande ou dans le fichier")
-        return framing_cli.run(args, _request(args, facade.DemandeSource("", "cadrage")), ADAPTERS)
-    if given:
+    if not (args.demande or args.cadrer or args.cadrer_avec_agent or args.depuis):
+        return _fail("demande exigée : --demande, --cadrer, --cadrer-avec-agent ou --depuis")
+    if args.cadrer_avec_agent and args.agent_cadrage is None:
+        return _fail("--agent-cadrage absent — sur la ligne de commande ou dans le fichier")
+    if given and not args.cadrer_avec_agent:
         return _fail(f"{' '.join(given)} : réservé(s) à --cadrer-avec-agent")
-    # La demande est obtenue **avant** la création : un cadrage interrompu ne
-    # laisse rien derrière lui.
+    follow_up = None
+    if args.depuis:
+        try:
+            follow_up = facade.prepare_follow_up(Path(args.depuis))
+        except facade.CreationError as exc:
+            return _fail(str(exc))
     try:
-        demande_text, origin = _obtain_demande(args)
+        return _create(args, follow_up)
+    finally:
+        if follow_up is not None:
+            follow_up.discard()
+
+
+def _create(args: argparse.Namespace, follow_up: facade.FollowUp | None) -> int:
+    if args.cadrer_avec_agent:
+        empty = facade.DemandeSource("", "cadrage")
+        return framing_cli.run(args, _request(args, empty, follow_up), ADAPTERS)
+    # La demande est obtenue **avant** la création : un cadrage interrompu ne
+    # laisse rien derrière lui. Sans demande fournie, `--depuis` apporte son mandat.
+    try:
+        if follow_up is not None and not (args.demande or args.cadrer):
+            demande_text, origin = follow_up.mandate, {"source": "cadrage", "path": None}
+        else:
+            demande_text, origin = _obtain_demande(args)
     except EOFError:
         return _fail("cadrage interrompu : rien n'a été créé")
     except (OSError, ValueError) as exc:
         return _fail(str(exc))
     source = facade.DemandeSource(demande_text, str(origin["source"]), origin["path"])
     try:
-        result = facade.create_collaboration(_request(args, source), adapters=ADAPTERS)
+        result = facade.create_collaboration(_request(args, source, follow_up), adapters=ADAPTERS)
     except facade.CreationError as exc:
         return _fail(str(exc))
     print(f"collaboration creee : {result.path}")
@@ -179,7 +227,9 @@ def cmd_new(args: argparse.Namespace) -> int:
     return 0
 
 
-def _request(args: argparse.Namespace, source: facade.DemandeSource) -> facade.CreationRequest:
+def _request(
+    args: argparse.Namespace, source: facade.DemandeSource, follow_up: facade.FollowUp | None,
+) -> facade.CreationRequest:
     return facade.CreationRequest(
         collab=Path(args.collab), demande=source,
         kind=_KIND[args.kind], reviewer_access=_ACCESS[args.reviewer_access],
@@ -189,7 +239,7 @@ def _request(args: argparse.Namespace, source: facade.DemandeSource) -> facade.C
         source_root=Path(args.source_root) if args.source_root else None,
         source_list=Path(args.source_list) if args.source_list else None,
         source_label=args.source_label,
-        from_research=Path(args.depuis) if args.depuis else None,
+        follow_up=follow_up,
     )
 
 
@@ -539,7 +589,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_new.add_argument("collab", help="dossier de la collaboration, qui ne doit pas exister")
     # Un fichier de demande, ou le cadrage guidé : jamais les deux, jamais aucun.
-    source = p_new.add_mutually_exclusive_group(required=True)
+    source = p_new.add_mutually_exclusive_group()
     source.add_argument(
         "--demande", help="fichier texte qui contient votre demande ; aucun appel"
     )
@@ -561,7 +611,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_new.add_argument("--config", help=_CONFIG_HELP)
     p_new.add_argument(
         "--kind", choices=sorted(_KIND),
-        help="recherche (web ou corpus) puis conception (corpus exigé)",
+        help="recherche (étude sourcée : web ou corpus) ou conception (plan de réalisation,"
+        " corpus facultatif)",
     )
     p_new.add_argument(
         "--reviewer-access", choices=sorted(_ACCESS),
@@ -577,8 +628,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_new.add_argument("--source-label", help="nom du corpus (défaut : nom de --source-root)")
     p_new.add_argument(
         "--depuis", metavar="RECHERCHE",
-        help="poursuivre une recherche acceptée : son livrable devient le corpus"
-        " de la conception (avec --kind conception)",
+        help="poursuivre une recherche acceptée : sa demande, son livrable, son bilan et sa"
+        " décision deviennent le corpus de la conception, dont les réglages sont hérités ;"
+        " sans --demande, le mandat de transition généré sert de demande",
     )
     p_new.add_argument("--model-a", help="modèle de A (défaut : celui de l'adaptateur)")
     p_new.add_argument("--model-b", help="modèle de B (défaut : celui de l'adaptateur)")

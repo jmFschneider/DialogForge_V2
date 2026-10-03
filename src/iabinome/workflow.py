@@ -811,7 +811,7 @@ class _Engine:
             # Relecture **ciblée** dès qu'une correction a eu lieu (1.3).
             return prompts.build_review(
                 self.demande, document, prior, self.config.reviewer_access, date,
-                targeted=state.revision >= 1,
+                targeted=state.revision >= 1, kind=self.config.mission_kind,
             )
         review = self.read_relative(state.latest_review)
         return prompts.build_revision(

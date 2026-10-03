@@ -356,13 +356,21 @@ class TestSources(FramingCase):
         self.assertTrue(f.session.closed)
 
     def test_the_sources_required_by_the_kind_are_checked_before_any_session(self) -> None:
-        """Tests 11 et 12, redéfinis par `TYPES_DE_MISSION.md` D1 : une recherche web part
-        sans corpus ; sans web, elle en exige un ; une conception l'exige toujours."""
+        """Tests 11 et 12, redéfinis par `TYPES_DE_MISSION.md` D1 puis par
+        `PARCOURS_MISSION_CONCEPTION.md` §4.1 : une recherche web part sans corpus ; sans web,
+        elle en exige un ; une conception n'en exige aucun, mais un corpus déclaré vide est
+        refusé."""
         self.assertIsNone(self.framing(QUESTION_OUT).start().problem)
         with self.assertRaisesRegex(FramingError, "recherche sans source"):
             framing.prepare(MissionKind.RECHERCHE)
-        with self.assertRaisesRegex(FramingError, "conception sans dossier d'entrée"):
-            framing.prepare(MissionKind.CONCEPTION, web_access=True)
+        root = framing.prepare(MissionKind.CONCEPTION)
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        self.assertFalse((root / "corpus").exists())
+        source, empty = self.tmp / "vide", self.tmp / "vide.txt"
+        source.mkdir()
+        empty.write_text("", encoding="utf-8")
+        with self.assertRaisesRegex(FramingError, "corpus déclaré mais vide"):
+            framing.prepare(MissionKind.CONCEPTION, source, empty)
 
     def test_discarding_closes_then_removes_everything(self) -> None:
         """Tests 13, 35 et 51 : annulation — session fermée, dossier détruit."""

@@ -49,9 +49,9 @@ moment l'état et la prochaine action ; chaque arrêt indique la commande à uti
 
 | Besoin | Fonction |
 |---|---|
-| Enchaîner recherche → conception → développement | Une recherche établit un dossier sourcé (web ou corpus) ; une conception en tire le plan, juste avant le code. |
+| Enchaîner recherche → conception → développement | Une recherche établit un dossier sourcé (web ou corpus) ; une conception, avec ou sans elle, établit le plan, juste avant le code. |
 | Formuler la demande | Demande libre, questionnaire local ou cadrage avec un agent, puis cycle A/B. |
-| Travailler sur des sources locales | Un corpus déclaré est copié, haché et vérifié ; il est exigé en conception. |
+| Travailler sur des sources locales | Un corpus déclaré est copié, haché et vérifié ; il est facultatif en conception. |
 | Régler les rôles | Claude et Codex peuvent tenir A ou B ; modèles et effort sont réglables par rôle. |
 | Limiter les capacités du relecteur | `consult` conserve les outils de sa CLI ; `context-only` les lui retire. |
 | Choisir l'accès web | Fermé par défaut et figé lors de la création ; il peut être ouvert pour A et B. |

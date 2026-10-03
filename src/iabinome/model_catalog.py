@@ -11,6 +11,7 @@ class ModelCatalogError(ValueError):
 
 
 DEFAULT = "(par défaut)"
+INHERITED = " (hérité de la recherche)"
 
 
 def load(path: Path | None = None) -> dict[str, tuple[str, ...]]:
@@ -40,4 +41,16 @@ def selected(catalog: dict[str, tuple[str, ...]], agent: str, value: str) -> str
         return None
     if value not in catalog.get(agent, ()):
         raise ModelCatalogError(f"Modèle {value!r} absent de la liste de {agent}")
-    return value
+    return value.removesuffix(INHERITED)
+
+
+def inherit(
+    catalog: dict[str, tuple[str, ...]], agent: str, model: str,
+) -> tuple[dict[str, tuple[str, ...]], str]:
+    """Le modèle d'une recherche, valide pour la CLI, peut manquer au catalogue de la GUI : il
+    y est ajouté, étiqueté, plutôt que remplacé en silence. Rend le catalogue et la valeur
+    à afficher."""
+    known, label = catalog.get(agent, ()), model + INHERITED
+    if model in known or label in known:
+        return catalog, model if model in known else label
+    return {**catalog, agent: (*known, label)}, label

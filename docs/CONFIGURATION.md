@@ -56,7 +56,7 @@ Toutes sont facultatives. Une clé inconnue, un mauvais type ou un fichier illis
 | `model_cadrage` | texte | celui de l'adaptateur | `new --cadrer-avec-agent` | Modèle de l'agent de cadrage. |
 | `effort_cadrage` | texte | aucun | `new --cadrer-avec-agent` | Effort de l'agent de cadrage. |
 | `web_access` | booléen | `false` | `new` | Recherche web pour A et B ([voir plus bas](#accès-web)). |
-| `kind` | texte | — | `new` | `recherche` (au moins une source : web ou corpus) ou `conception` (corpus exigé). |
+| `kind` | texte | — | `new` | `recherche` (au moins une source : web ou corpus) ou `conception` (corpus facultatif). |
 | `reviewer_access` | texte | — | `new` | `consult` ou `context-only`. |
 | `max_revisions` | entier | `2` | `new` | Nombre maximal de révisions ; `0` : B critique une fois, sans révision. |
 | `timeout` | nombre | `1800` | `run`, `resume`, `decide`, `new --cadrer-avec-agent` | Délai dur par appel, en secondes. |

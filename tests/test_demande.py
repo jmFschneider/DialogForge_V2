@@ -179,18 +179,21 @@ class TestNewFromFile(CliCase):
         self.assertIn("erreur :", err)
         self.assertFalse(self.collab.exists())
 
-    def test_both_sources_or_none_is_a_usage_error(self) -> None:
-        for extra in (["--cadrer"], None):
-            with self.subTest(extra=extra):
-                argv = ["new", *self.new_args()]
-                if extra is None:
-                    argv = [a for a in argv if a not in ("--demande", str(self.demande))]
-                else:
-                    argv += extra
-                with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
-                    cli.main(argv)
-                self.assertEqual(caught.exception.code, 2)
-                self.assertFalse(self.collab.exists())
+    def test_both_sources_is_a_usage_error(self) -> None:
+        argv = ["new", *self.new_args(), "--cadrer"]
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+            cli.main(argv)
+        self.assertEqual(caught.exception.code, 2)
+        self.assertFalse(self.collab.exists())
+
+    def test_no_source_is_refused_before_any_mutation(self) -> None:
+        """Sans `--depuis`, une demande reste exigée ; refus normal du programme (code 1)."""
+        argv = [a for a in ["new", *self.new_args()] if a not in ("--demande", str(self.demande))]
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(cli.main(argv), 1)
+        self.assertIn("demande exigée", err.getvalue())
+        self.assertFalse(self.collab.exists())
 
 
 class TestNewGuided(CliCase):

@@ -13,7 +13,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from iabinome import facade
+from iabinome import facade, workflow
 from iabinome.models import MissionKind, ReviewerAccess
 from tests import fakes
 
@@ -60,9 +60,16 @@ class TestRefusalsLeaveNothingBehind(CreationCase):
         self.assertIn("recherche sans source", refusal)
         self.assertFalse((self.root / "collab").exists())
 
-    def test_conception_without_an_input_folder_is_refused_even_with_the_web(self) -> None:
-        refusal = self.refused(kind=MissionKind.CONCEPTION, web_access=True)
-        self.assertIn("conception sans dossier d'entrée", refusal)
+    def test_a_declared_corpus_that_is_empty_is_refused_in_conception_too(self) -> None:
+        """Une conception sans corpus est valide ; un corpus déclaré mais vide reste une erreur."""
+        src = self.root / "src"
+        src.mkdir()
+        listing = self.root / "vide.txt"
+        listing.write_text("", encoding="utf-8")
+        refusal = self.refused(
+            kind=MissionKind.CONCEPTION, source_root=src, source_list=listing,
+        )
+        self.assertIn("corpus déclaré mais vide", refusal)
         self.assertFalse((self.root / "collab").exists())
 
     def test_research_with_an_empty_corpus_is_refused(self) -> None:
@@ -106,6 +113,33 @@ class TestRefusalsLeaveNothingBehind(CreationCase):
 
 
 class TestASuccessfulCreation(CreationCase):
+    def test_a_conception_without_any_corpus_is_created_ready(self) -> None:
+        """AC01 : ni corpus ni web exigés — la demande suffit."""
+        result = facade.create_collaboration(
+            self.request(kind=MissionKind.CONCEPTION, web_access=False), adapters=self.adapters,
+        )
+        config = fakes.read_json(result.path / "configuration.json")
+        self.assertEqual(config["mission_kind"], "CONCEPTION")
+        self.assertIsNone(config["corpus_manifest_sha256"])
+        self.assertFalse((result.path / "corpus").exists())
+
+    def test_a_conception_without_any_corpus_runs_to_the_end(self) -> None:
+        """AC01 : le cycle A/B tourne sans corpus ; aucun prompt ne parle d'un corpus absent, et
+        chacun porte le livrable de l'étape."""
+        result = facade.create_collaboration(
+            self.request(kind=MissionKind.CONCEPTION, web_access=False), adapters=self.adapters,
+        )
+        a = fakes.FakeAdapter("fake-a", ("IABINOME:DOCUMENT\n# Plan\nÉtapes vérifiables.",))
+        b = fakes.FakeAdapter("fake-b", (fakes.review("ACCEPTER"),))
+        state = workflow.run(
+            result.path, adapters={"fake-a": a, "fake-b": b}, timeout_seconds=30.0,
+        )
+        self.assertEqual(state.status.value, "AWAITING_APPROVAL")
+        self.assertIn("Étape : conception", a.prompts[0])
+        self.assertIn("Étape : conception", b.prompts[0])
+        for prompt in (a.prompts[0], b.prompts[0]):
+            self.assertNotIn("corpus/fichiers", prompt)
+
     def test_a_conception_collaboration_is_created_ready(self) -> None:
         src = self.root / "src"
         src.mkdir()

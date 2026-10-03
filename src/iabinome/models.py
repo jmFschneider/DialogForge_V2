@@ -41,16 +41,13 @@ class MissionKind(Enum):
     RECHERCHE = "RECHERCHE"
 
     def missing_source(self, *, corpus: bool, web: bool) -> str | None:
-        """Le refus de création, ou `None` : contrôlé à la création seulement (D3)."""
+        """Le refus de création, ou `None` : contrôlé à la création seulement (D3). Seule la
+        recherche exige une source ; la conception part d'une demande, corpus facultatif
+        (`conception/PARCOURS_MISSION_CONCEPTION.md` §4.1, qui amende D1)."""
         if self is MissionKind.RECHERCHE and not (corpus or web):
             return (
                 "recherche sans source : ouvrir l'accès web, ou fournir un corpus"
                 " (--source-root et --source-list)"
-            )
-        if self is MissionKind.CONCEPTION and not corpus:
-            return (
-                "conception sans dossier d'entrée : fournir un corpus (--source-root et"
-                " --source-list), par exemple le livrable d'une recherche"
             )
         return None
 

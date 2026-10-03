@@ -13,7 +13,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from iabinome import model_catalog
+from iabinome import facade, model_catalog
 from iabinome.gui.controller import Controller
 from iabinome.gui.views.creation import CreationView
 from iabinome.gui.views.suivi import SuiviView
@@ -96,18 +96,31 @@ class TestTheDemandeIsAlwaysVisible(CreationCase):
 
 class TestTheCorpusBlock(CreationCase):
     def test_research_is_the_default_and_the_corpus_block_is_always_shown(self) -> None:
-        """`TYPES_DE_MISSION.md` D1 : le corpus sert aux deux types (exigé en conception)."""
+        """`TYPES_DE_MISSION.md` D1 : le corpus sert aux deux types."""
         view = CreationView(_ROOT, self.controller)
-        self.assertEqual(view._kind.get(), "Recherche")
+        self.assertEqual(view._kind.get(), "Étudier une question")
         self.assertEqual(view._corpus_frame.winfo_manager(), "pack")
 
-    def test_the_line_under_the_type_says_what_the_chosen_type_expects(self) -> None:
+    def test_the_line_under_the_type_says_the_deliverable_of_the_chosen_step(self) -> None:
         view = CreationView(_ROOT, self.controller)
-        self.assertTrue(any("web ou corpus" in text for text in label_texts(view)))
-        view._kind.set("Conception")
+        self.assertTrue(any("une étude sourcée" in text for text in label_texts(view)))
+        view._kind.set("Concevoir mon projet")
         texts = label_texts(view)
-        self.assertTrue(any(text.endswith("corpus exigé.") for text in texts))
-        self.assertFalse(any(text.startswith("Établir un dossier") for text in texts))
+        self.assertTrue(any("documentation facultative" in text for text in texts))
+        self.assertFalse(any("une étude sourcée" in text for text in texts))
+
+    def test_a_conception_without_corpus_is_created_from_the_form(self) -> None:
+        """AC01, côté GUI : la façade seule juge, et n'exige plus de corpus en conception."""
+        view = self.view()
+        self.fill_minimum(view)
+        view._kind.set("Concevoir mon projet")
+        view._web_access.set(False)
+        request = view._build_request()
+        assert request is not None
+        self.assertIsNone(request.source_root)
+        self.assertIsNone(request.follow_up)
+        result = facade.create_collaboration(request, adapters=_ADAPTERS)
+        self.assertTrue(result.path.is_dir())
 
 
 class TestModelLists(CreationCase):

@@ -29,6 +29,7 @@ import uuid
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -246,27 +247,33 @@ def parse_reply(text: str, expected: tuple[str, ...]) -> Reply:
 
 def prepare(
     kind: MissionKind, source_root: Path | None = None, source_list: Path | None = None,
-    source_label: str | None = None, web_access: bool = False,
+    source_label: str | None = None, web_access: bool = False, preloaded: Path | None = None,
 ) -> Path:
     """Le dossier jetable du cadrage (§5.1, §8.1), avant toute session. F travaille dans
     `travail/`, qui ne contient que la copie `corpus/fichiers/` ; manifeste, traces et
     transcription restent à côté, hors de sa racine. Les sources exigées par le type
-    sont celles de la création (`MissionKind.missing_source`)."""
+    sont celles de la création (`MissionKind.missing_source`). `preloaded` : le corpus d'un
+    instantané de transition, copié tel quel — jamais reconstruit depuis la recherche."""
     root = Path(tempfile.mkdtemp(prefix="framing-"))
     try:
         (root / "travail").mkdir()
         entries: tuple[corpus.ManifestEntry, ...] = ()
-        if source_root is not None:
+        if preloaded is not None:
+            shutil.copytree(preloaded, root / "corpus")
+            entries = corpus.read_manifest(root / "corpus" / "manifeste.json").entries
+        elif source_root is not None:
             if source_list is None:
                 raise FramingError("--source-root exige --source-list")
             (root / "corpus").mkdir()
             entries = corpus.build(
                 source_root, source_list, root / "corpus", source_label or source_root.name
             ).entries
-            if entries:
-                shutil.copytree(
-                    root / "corpus" / "fichiers", root / "travail" / "corpus" / "fichiers"
+            if not entries:
+                raise FramingError(
+                    "corpus déclaré mais vide : lister au moins un fichier, ou n'en déclarer aucun"
                 )
+        if entries:
+            shutil.copytree(root / "corpus" / "fichiers", root / "travail" / "corpus" / "fichiers")
         problem = kind.missing_source(corpus=bool(entries), web=web_access)
         if problem:
             raise FramingError(problem)
@@ -286,8 +293,12 @@ class Framing:
     brouillon (`draft`) n'existe qu'après une sortie `DEMANDE` conforme ; rien n'est
     jamais promu ni relancé d'ici (§2.6)."""
 
-    def __init__(self, session: FramingSession, root: Path, idea: str) -> None:
+    def __init__(
+        self, session: FramingSession, root: Path, idea: str, *,
+        kind: MissionKind | None = None, complement: bool = False,
+    ) -> None:
         self.session, self.root, self.idea = session, root, idea
+        self._start = partial(prompts.build_framing_start, kind=kind, complement=complement)
         self.group, self.answers = 1, 0
         self.draft: str | None = None
         self.last: Turn | None = None
@@ -311,7 +322,7 @@ class Framing:
         return 3 if self.group == 1 else 2
 
     def start(self) -> Turn:
-        return self._send(prompts.build_framing_start(self.idea), _CONVERSATION)
+        return self._send(self._start(self.idea), _CONVERSATION)
 
     def answer(self, text: str) -> Turn:
         """Répond à la question de F, dans le groupe courant."""
@@ -343,7 +354,7 @@ class Framing:
         self._closure = "AGENT_PROPOSED" if proposed else "USER_CLOSED"
         prompt = (
             prompts.build_framing_draft() if self._started
-            else prompts.build_framing_start(self.idea, draft=True)
+            else self._start(self.idea, draft=True)
         )
         return self._send(prompt, (DRAFT,))
 

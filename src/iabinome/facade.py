@@ -14,8 +14,11 @@ qu'une collaboration a le droit de contenir.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import shutil
+import tempfile
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -23,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import contracts, corpus, decisions, incidents, settings, storage
+from . import contracts, corpus, decisions, incidents, lock, settings, storage
 from . import demande as demande_module
 from .adapters.base import AgentAdapter
 from .decisions import AllowedAction
@@ -394,8 +397,9 @@ class CreationRequest:
     # Cadrage avec agent F (`conception/CADRAGE_AGENT.md` §10) : le brouillon de F, sa
     # provenance, et le corpus déjà préparé — jamais relu depuis le projet d'origine.
     framing: FramingArtifacts | None = None
-    # Poursuite d'une recherche acceptée (D4) : son livrable devient le dossier d'entrée.
-    from_research: Path | None = None
+    # Poursuite d'une recherche acceptée (D4) : l'instantané pris par `prepare_follow_up`,
+    # que la création consomme sans reconstruire de second corpus.
+    follow_up: FollowUp | None = None
 
 
 @dataclass(frozen=True)
@@ -404,10 +408,38 @@ class CreationResult:
     missing_sections: tuple[str, ...]
 
 
-FOLLOW_UP_FILES = (decisions.DELIVERED, "livrables/bilan.md", decisions.DECISIONS)
-"""Le dossier d'entrée d'une conception qui poursuit une recherche : le livrable accepté, son
-bilan, et la décision, qui porte les réserves éventuelles. Le manifeste en garde les empreintes
-et nomme la recherche d'origine : c'est la provenance."""
+FOLLOW_UP_FILES = ("demande.md", decisions.DELIVERED, "livrables/bilan.md", decisions.DECISIONS)
+"""Le dossier d'entrée d'une conception qui poursuit une recherche : la demande d'origine, le
+livrable accepté, son bilan, et la décision, qui porte les réserves éventuelles. Le manifeste en
+garde les empreintes et nomme la recherche d'origine : c'est la provenance."""
+
+TRANSITION = "provenance_transition.json"
+
+
+@dataclass(frozen=True)
+class FollowUp:
+    """L'instantané d'une transition recherche → conception, pris sous le verrou de la
+    recherche, avant tout cadrage ou toute création : `root/corpus` (lu par F, copié tel quel
+    par la création), le mandat construit sans appel, la décision acceptée et la configuration
+    source, dont les réglages sont proposés. Dossier jetable : `discard()` quand l'écran n'en a
+    plus besoin."""
+
+    root: Path
+    research: Path
+    mandate: str
+    decision: dict[str, Any]
+    config: Configuration
+
+    @property
+    def corpus(self) -> Path:
+        return self.root / "corpus"
+
+    @property
+    def default_dest(self) -> Path:
+        return self.research.parent / f"{self.research.name}-conception"
+
+    def discard(self) -> None:
+        shutil.rmtree(self.root, ignore_errors=True)
 
 
 class CreationError(RuntimeError):
@@ -440,14 +472,11 @@ def create_collaboration(
 
 def check_creation(
     request: CreationRequest, *, adapters: Mapping[str, AgentAdapter],
-    framing_start: bool = False,
 ) -> None:
     """Les refus de `create_collaboration`, sans rien écrire : le cadrage avec agent
     les passe **avant** d'ouvrir la session de F (§3.2), pour qu'aucun appel ne soit
     payé au profit d'une création qui serait refusée ensuite."""
     dest = request.collab
-    if framing_start and request.from_research is not None:
-        raise CreationError("--depuis ne se combine pas avec le cadrage par un agent")
     if dest.exists():
         raise CreationError(f"{dest} existe deja")
     if bool(request.source_root) != bool(request.source_list):
@@ -457,10 +486,10 @@ def check_creation(
     framed_corpus = request.framing is not None and (
         request.framing.root / "corpus" / "manifeste.json"
     ).is_file()
-    if request.from_research is not None:
+    if request.follow_up is not None:
         _check_follow_up(request)
     problem = request.kind.missing_source(
-        corpus=bool(request.source_root) or framed_corpus or request.from_research is not None,
+        corpus=bool(request.source_root) or framed_corpus or request.follow_up is not None,
         web=request.web_access,
     )
     if problem:
@@ -479,41 +508,108 @@ def check_creation(
             )
 
 
-def follow_up_defaults(research: Path) -> tuple[Path, str]:
-    """Ce que l'écran de création propose pour poursuivre une recherche : un dossier voisin,
-    et une demande dont seule la section Sources est écrite — le reste revient à l'humain."""
-    text = (
-        "# Demande\n\n## Objectif\n\n## Livrable\n\n## Sources\n"
-        f"Le livrable accepté de la recherche « {research.name} », son bilan et sa décision,"
-        " fournis en corpus.\n\n## Contraintes\n\n## Non-objectifs\n\n## Critères de fin\n"
-    )
-    return research.parent / f"{research.name}-conception", text
+def prepare_follow_up(research: Path) -> FollowUp:
+    """Copie et vérifie la version acceptée **sous le verrou de la recherche** : une acceptation
+    et des documents modifiés pendant la préparation ne se mélangent pas. Aucun appel."""
+    root = Path(tempfile.mkdtemp(prefix="followup-"))
+    try:
+        with lock.acquire(research / "verrou.json", "poursuivre"):
+            config, decision = _check_research(research)
+            corpus.build_from(
+                research, list(FOLLOW_UP_FILES), root / "corpus", f"recherche {research.name}",
+            )
+            demande = storage.read_text(research / "demande.md")[0]
+    except CreationError:
+        shutil.rmtree(root, ignore_errors=True)
+        raise
+    except (lock.LockError, corpus.CorpusError, OSError) as exc:
+        shutil.rmtree(root, ignore_errors=True)
+        raise CreationError(f"{research} : {exc}") from exc
+    return FollowUp(root, research, _mandate(research.name, demande), decision, config)
 
 
-def follow_up_label(research: Path) -> str:
+def follow_up_label(follow_up: FollowUp) -> str:
+    web = "ouvert" if follow_up.config.web_access else "fermé"
     return (
-        f"Dossier d'entrée : la recherche acceptée « {research.name} »"
-        " (livrable, bilan, décision)"
+        f"Dossier d'entrée : la recherche acceptée « {follow_up.research.name} » (demande,"
+        f" livrable, bilan, décision). Accès web hérité de la recherche : {web}."
     )
 
 
-def _check_follow_up(request: CreationRequest) -> None:
-    research = request.from_research
-    assert research is not None
-    if request.kind is not MissionKind.CONCEPTION:
-        raise CreationError("--depuis ne vaut qu'en conception (--kind conception)")
-    if request.source_root or request.framing is not None:
-        raise CreationError("--depuis fournit déjà le dossier d'entrée : pas d'autre corpus")
+def _mandate(name: str, demande: str) -> str:
+    """Le mandat de transition (`PARCOURS_MISSION_CONCEPTION.md` §4.2). La demande d'origine y
+    est citée en entier, ligne à ligne : ses titres ne deviennent jamais des sections de ce
+    mandat, et aucune analyse de son format n'est tentée."""
+    quoted = "\n".join(f"> {line}".rstrip() for line in demande.strip().splitlines())
+    return (
+        f"# Conception du projet {name}\n\n"
+        "## Objectif\nTransformer la recherche acceptée en plan de réalisation du projet"
+        " décrit ci-dessous.\n\n"
+        "## Livrable\nUne conception autonome : choix motivés, structure, étapes de réalisation,"
+        " validations et prérequis nécessaires au développement.\n\n"
+        "## Sources\nDemande d'origine, livrable accepté, bilan et décision de la recherche,"
+        " fournis en corpus.\n\n"
+        "## Contraintes\nConserver les contraintes du projet. Distinguer les décisions exprimées"
+        " des hypothèses proposées dans la recherche : celles-ci restent des hypothèses, à"
+        " confirmer ou à motiver. Signaler les arbitrages indispensables encore ouverts.\n\n"
+        "## Non-objectifs\nConserver les exclusions du projet. Cette étape livre un plan avant"
+        " l'écriture du code.\n\n"
+        "## Critères de fin\nLe plan permet de développer et vérifier le résultat attendu sans"
+        " reconstituer la recherche.\n\n"
+        "## Contexte du projet — demande d'origine\n"
+        "Provenance : demande de la recherche, exacte dans corpus/fichiers/demande.md. Ses"
+        " attentes de produit final appartiennent au projet ; les critères de cette étape sont"
+        f" ceux du mandat ci-dessus.\n\n{quoted}\n"
+    )
+
+
+def _check_research(research: Path) -> tuple[Configuration, dict[str, Any]]:
     try:
         snapshot = inspect_collaboration(research)
     except InspectionError as exc:
         raise CreationError(f"recherche illisible : {exc}") from exc
     if snapshot.configuration.mission_kind is not MissionKind.RECHERCHE:
         raise CreationError(f"{research} n'est pas une recherche")
-    if not snapshot.presentation.can_follow_up:
+    decision = decisions.latest(research)
+    if decision is None or not snapshot.presentation.can_follow_up:
         raise CreationError(
             f"{research} : recherche non acceptée dans sa version actuelle — décider d'abord"
         )
+    return snapshot.configuration, decision
+
+
+def _check_follow_up(request: CreationRequest) -> None:
+    """La source et l'acceptation sont revérifiées avant création : si l'une a changé depuis
+    la préparation, on le dit — les sources ne sont jamais remplacées sous un cadrage."""
+    follow_up = request.follow_up
+    assert follow_up is not None
+    if request.kind is not MissionKind.CONCEPTION:
+        raise CreationError("--depuis ne vaut qu'en conception (--kind conception)")
+    if request.source_root:
+        raise CreationError("--depuis fournit déjà le dossier d'entrée : pas d'autre corpus")
+    _, decision = _check_research(follow_up.research)
+    manifest = follow_up.root / "corpus" / "manifeste.json"
+    try:
+        unchanged = decision == follow_up.decision and all(
+            hashlib.sha256((follow_up.research / e.logical_path).read_bytes()).hexdigest()
+            == e.sha256 for e in corpus.read_manifest(manifest).entries
+        )
+    except OSError:
+        unchanged = False
+    if not unchanged:
+        raise CreationError(
+            f"{follow_up.research} a changé depuis la préparation : préparer de nouveau la"
+            " transition"
+        )
+    if request.framing is not None and _manifest_sha(request.framing.root / "corpus") != (
+        _manifest_sha(follow_up.root / "corpus")
+    ):
+        raise CreationError("le cadrage n'a pas lu l'instantané de transition préparé")
+
+
+def _manifest_sha(directory: Path) -> str | None:
+    path = directory / "manifeste.json"
+    return contracts.normalize(storage.read_text(path)[0]).sha256 if path.is_file() else None
 
 
 def _write_collaboration(
@@ -541,13 +637,15 @@ def _write_collaboration(
             )
         manifest_text, _ = storage.read_text(tmp / "corpus" / "manifeste.json")
         corpus_sha = contracts.normalize(manifest_text).sha256
-    if request.from_research is not None:
-        research = request.from_research.resolve()
-        corpus.build_from(
-            research, list(FOLLOW_UP_FILES), tmp / "corpus", f"recherche {research.name}",
-        )
-        manifest_text, _ = storage.read_text(tmp / "corpus" / "manifeste.json")
-        corpus_sha = contracts.normalize(manifest_text).sha256
+    if request.follow_up is not None:
+        if request.framing is None:
+            shutil.copytree(request.follow_up.root / "corpus", tmp / "corpus")
+            corpus_sha = _manifest_sha(tmp / "corpus")
+        _write_json(tmp / TRANSITION, {
+            "schema_version": 1, "source": request.follow_up.research.name,
+            "source_path": _relative(request.follow_up.research, dest.parent),
+            "decision": request.follow_up.decision, "corpus_manifest_sha256": corpus_sha,
+        })
     agent_a, agent_b = adapters[request.agent_a], adapters[request.agent_b]
     config = Configuration(
         schema_version=SCHEMA_VERSION, collaboration_id=dest.name, mission_kind=request.kind,
@@ -596,6 +694,13 @@ def _write_framing(
         "framing_provenance": "cadrage/provenance.json", "agent_draft_sha256": draft_sha,
         "human_edited": edited,
     }, corpus_sha
+
+
+def _relative(path: Path, start: Path) -> str | None:
+    try:
+        return Path(os.path.relpath(path.resolve(), start.resolve())).as_posix()
+    except ValueError:  # un autre volume : aucun chemin relatif n'existe
+        return None
 
 
 def _now() -> str:

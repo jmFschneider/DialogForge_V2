@@ -87,6 +87,16 @@ Les trois lots sont faits. Un écart par rapport à D4 : le corpus d'une concept
 recherche comprend aussi `decisions.json`, seul fichier qui porte les réserves d'une acceptation.
 Le cadrage par un agent ne se combine pas encore avec `--depuis` : refusé avant tout appel.
 
+## Amendement du 2026-10-03 (PO) — lot 1 du parcours de mission
+
+`conception/PARCOURS_MISSION_CONCEPTION.md` remplace D1 sur un point : **une conception n'exige plus
+de corpus**. Elle part de la demande, avec ou sans documentation, avec ou sans cadrage ; la recherche
+reste obligatoirement sourcée (web ou corpus). Un corpus *déclaré* mais vide reste une erreur. Il
+précise aussi D4 : `--depuis` prépare un **instantané** (demande d'origine, livrable, bilan,
+décision, mandat complet, réglages proposés) pris sous le verrou de la recherche, que la création
+consomme sans le reconstruire ; le cadrage par un agent s'y combine désormais, F lisant ce même
+instantané. Le texte ci-dessus reste daté : il décrit l'état du 2026-10-01.
+
 ## Ordre proposé
 
 1. D1, D2, D3, D5 et la documentation : un lot.

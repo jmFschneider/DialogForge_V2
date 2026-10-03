@@ -29,25 +29,28 @@ def run(
     adapters: Mapping[str, AgentAdapter],
 ) -> int:
     try:
-        facade.check_creation(base, adapters=adapters, framing_start=True)
+        facade.check_creation(base, adapters=adapters)
         model, _ = framing.check_adapter(
             args.agent_cadrage, adapters, args.model_cadrage, args.effort_cadrage
         )
         timeout = settings.resolve_timeout(args.config, None).seconds
         root = framing.prepare(
             base.kind, base.source_root, base.source_list, base.source_label, base.web_access,
+            preloaded=base.follow_up.corpus if base.follow_up else None,
         )
     except (facade.CreationError, framing.FramingError, settings.SettingsError) as exc:
         return _fail(str(exc))
     try:
-        idea = _block("Décrivez votre idée, même incomplète.")
+        idea = base.follow_up.mandate if base.follow_up else _block(
+            "Décrivez votre idée, même incomplète."
+        )
     except (EOFError, KeyboardInterrupt):
         shutil.rmtree(root, ignore_errors=True)
         return _fail("cadrage interrompu : rien n'a été créé")
     spec = FramingSessionSpec(model, timeout, root / "travail", args.effort_cadrage)
     others = [a.env for key, a in adapters.items() if key != args.agent_cadrage]
     session = framing.open_session(adapters[args.agent_cadrage], spec, others=others)
-    f = Framing(session, root, idea)
+    f = Framing(session, root, idea, kind=base.kind, complement=base.follow_up is not None)
     try:
         return _converse(f, base, adapters)
     except (EOFError, KeyboardInterrupt, framing.FramingError) as exc:

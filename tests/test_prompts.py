@@ -208,11 +208,55 @@ class TestEachKindCarriesItsOwnInstruction(unittest.TestCase):
             self.assertIn("adresse et sa date de consultation", prompt)
             self.assertNotIn("Pars du dossier fourni", prompt)
 
-    def test_design_starts_from_the_folder_and_ends_with_steps_for_development(self) -> None:
-        for prompt in self.prompts_of_a(MissionKind.CONCEPTION):
-            self.assertIn("Pars du dossier fourni", prompt)
+    def test_design_starts_from_what_is_provided_and_ends_with_steps_for_development(self) -> None:
+        for prompt in map(flat, self.prompts_of_a(MissionKind.CONCEPTION)):
+            self.assertIn("Exploite les éléments fournis s'il y en a", prompt)
+            self.assertIn("Sinon pars de la demande", prompt)
             self.assertIn("étapes de réalisation vérifiables", prompt)
             self.assertNotIn("date de consultation", prompt)
+
+
+def flat(text: str) -> str:
+    return " ".join(text.split())
+
+
+class TestTheProjectOutcomeIsNotTheStepDeliverable(unittest.TestCase):
+    """AC06 (`PARCOURS_MISSION_CONCEPTION.md` §4.1) : F, A et B savent que « application
+    jouable » est le but du projet, et que l'étape livre une étude ou un plan. Un faux agent ne
+    prouve pas la qualité réelle des réponses : ces tests fixent le contrat du texte seulement."""
+
+    def test_a_is_told_what_each_step_delivers(self) -> None:
+        research = flat(prompts.build_proposal("D", MissionKind.RECHERCHE, None))
+        design = flat(prompts.build_proposal("D", MissionKind.CONCEPTION, None))
+        self.assertIn("Ton livrable est une étude sourcée", research)
+        self.assertIn("ce n'est pas ce que cette étape livre", research)
+        self.assertIn("Ton livrable est un plan de réalisation, pas le produit final", design)
+        self.assertIn("reste une hypothèse tant que l'humain ne l'a pas tranchée", design)
+
+    def test_b_judges_the_step_deliverable_not_the_final_product(self) -> None:
+        args = ("D", "# Doc", "Aucun.", ReviewerAccess.CONSULT, None)
+        design = flat(prompts.build_review(*args, kind=MissionKind.CONCEPTION))
+        research = flat(prompts.build_review(*args, kind=MissionKind.RECHERCHE))
+        self.assertIn("l'absence de code exécutable n'est pas un défaut", design)
+        self.assertIn("hypothèse présentée comme une décision de l'humain est un défaut", design)
+        self.assertIn("pas par rapport au résultat final du projet", research)
+        self.assertNotIn("Étape :", prompts.build_review(*args))
+
+    def test_f_receives_the_step_and_the_transition_complement_only_when_asked(self) -> None:
+        plain = flat(prompts.build_framing_start("Un jeu", kind=MissionKind.CONCEPTION))
+        self.assertIn("son livrable est un plan de réalisation avant le code", plain)
+        self.assertNotIn("mandat déjà rédigé", plain)
+        complement = flat(prompts.build_framing_start(
+            "Mandat", kind=MissionKind.CONCEPTION, complement=True,
+        ))
+        self.assertIn(
+            "Précise seulement les arbitrages encore nécessaires à la conception ; conserve le"
+            " cadrage déjà présent.", complement,
+        )
+        self.assertIn("ne les convertis pas en décisions", complement)
+        self.assertIn(
+            "le résultat final du projet reste du contexte", flat(prompts.build_framing_draft()),
+        )
 
 
 if __name__ == "__main__":
