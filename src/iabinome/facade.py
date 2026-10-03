@@ -133,6 +133,7 @@ class Presentation:
     next_action_text: str
     trace_dir: str | None = None
     can_follow_up: bool = False
+    can_start_runner: bool = False
 
 
 @dataclass(frozen=True)
@@ -176,6 +177,12 @@ def inspect_collaboration(
         next_action_text=decisions.next_action(path, state),
         trace_dir=_trace_dir(state),
         can_follow_up=_accepted_research(config, decision),
+        can_start_runner=(
+            state.status is Status.AWAITING_APPROVAL
+            and config.mission_kind is MissionKind.CONCEPTION
+            and decision.applies_to_current_version
+            and decision.kind in (decisions.ACCEPTED, decisions.ACCEPTED_WITH_RESERVES)
+        ),
     )
     return CollaborationSnapshot(
         path=path, name=path.name, configuration=config, state=state,

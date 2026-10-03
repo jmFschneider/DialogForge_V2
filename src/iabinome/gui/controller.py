@@ -22,6 +22,7 @@ from ..adapters.base import AgentAdapter, FramingSessionSpec
 from ..registry import ADAPTERS
 from ..transport import ExecutionControl
 from . import recents
+from .runner_session import RunnerRequest, RunnerSession
 
 
 class Controller:
@@ -33,6 +34,7 @@ class Controller:
         self._run_thread: threading.Thread | None = None
         self._run_control: ExecutionControl | None = None
         self._run_error: str | None = None
+        self._runner_session: RunnerSession | None = None
         self.framing: framing.Framing | None = None
         self._framing_control: ExecutionControl | None = None
         self._framing_outcome: framing.Turn | Exception | None = None
@@ -61,6 +63,11 @@ class Controller:
         from .views.creation import CreationView
 
         self._swap(lambda: CreationView(self.root, self, from_research=from_research))
+
+    def show_runner(self, path: Path) -> None:
+        from .views.runner import RunnerView
+
+        self._swap(lambda: RunnerView(self.root, self, path))
 
     def collaborations_root(self) -> Path | None:
         return recents.load_root(self.recents_path)
@@ -144,6 +151,7 @@ class Controller:
         `workflow.run`, exactement comme pour « créer et démarrer »."""
         if self.has_active_run():
             return
+        self._runner_session = None
         control = ExecutionControl()
         self._run_error = None
 
@@ -165,10 +173,15 @@ class Controller:
     def has_active_run(self) -> bool:
         return self._run_thread is not None and self._run_thread.is_alive()
 
+    def has_active_runner(self) -> bool:
+        return self._runner_session is not None and self.has_active_run()
+
     def interrupt_active_run(self) -> None:
         """§9.3, branche « Interrompre maintenant » : l'appel en cours a pu être
         payé — c'est le transport, pas ce contrôleur, qui termine l'arbre."""
-        if self._run_control is not None:
+        if self._runner_session is not None and self.has_active_run():
+            self._runner_session.signal("interrupt")
+        elif self._run_control is not None:
             self._run_control.interrupt_requested.set()
 
     # -- Cadrage avec agent F : la session et ses tours (`CADRAGE_AGENT.md` §4.2, §4.3) --
@@ -195,6 +208,7 @@ class Controller:
         par `take_framing_outcome()`."""
         if self.has_active_run():
             return False
+        self._runner_session = None
         self._framing_outcome = None
 
         def worker() -> None:
@@ -228,5 +242,19 @@ class Controller:
         """§9.3, branche « Terminer l'appel courant, mettre en pause, puis
         fermer » : rien n'est perdu, le moteur s'arrête à la frontière d'appel
         (READY) — à l'appelant d'attendre `has_active_run()` avant de fermer."""
-        if self._run_control is not None:
+        if self._runner_session is not None and self.has_active_run():
+            self._runner_session.signal("pause")
+        elif self._run_control is not None:
             self._run_control.pause_requested.set()
+
+    def start_runner(self, request: RunnerRequest) -> RunnerSession | None:
+        """Même limite d'un seul fil actif que le cycle A/B et le cadrage."""
+        if self.has_active_run():
+            return None
+        session = RunnerSession(request)
+        self._runner_session = session
+        self._run_path, self._run_thread, self._run_control = (
+            request.collaboration, session.thread, None,
+        )
+        session.start()
+        return session

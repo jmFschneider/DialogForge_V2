@@ -49,7 +49,10 @@ def _on_close(root: tk.Tk, controller: Controller) -> None:
         return
     if choice == _INTERRUPT:
         controller.interrupt_active_run()
-        _destroy(root, controller)
+        if controller.has_active_runner():
+            _wait_then_close(root, controller)
+        else:
+            _destroy(root, controller)
         return
     controller.pause_active_run()
     _wait_then_close(root, controller)

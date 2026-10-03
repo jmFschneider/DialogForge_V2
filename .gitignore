@@ -13,6 +13,9 @@ iabinome.toml
 .venv/
 .pytest_cache/
 
+# Témoins locaux du protocole de qualification du Runner (rapport dans reference/).
+.runner-qualification/
+
 # Copie locale complète de PWF : reconstruite depuis le commit épinglé, jamais
 # modifiée ni versionnée avec le code du produit.
 tools/planning-with-files/

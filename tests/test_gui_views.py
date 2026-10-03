@@ -21,6 +21,7 @@ from iabinome.gui import recents
 from iabinome.gui.controller import Controller
 from iabinome.gui.views.accueil import AccueilView
 from iabinome.gui.views.creation import CreationView
+from iabinome.gui.views.runner import RunnerView
 from iabinome.gui.views.suivi import SuiviView
 from tests import fakes
 
@@ -185,6 +186,18 @@ class TestAccueilView(ViewCase):
 
 
 class TestSuiviView(ViewCase):
+    def test_runner_opens_only_for_the_current_accepted_conception(self) -> None:
+        collab = self.accepted_collaboration()
+        view = SuiviView(_ROOT, self.controller, collab)
+        _find_button(view, "Développer avec le Runner").invoke()
+        self.assertIsInstance(self.controller._frame, RunnerView)
+        self.controller.show_suivi(collab)
+        demande = collab / "demande.md"
+        demande.write_bytes(demande.read_bytes() + b"\nVersion changed.\n")
+        stale = SuiviView(_ROOT, self.controller, collab)
+        self.assertFalse(self.controller.inspect(collab).presentation.can_start_runner)
+        self.assertEqual(stale._runner.winfo_manager(), "")
+
     def test_it_shows_the_accepted_substate_and_lists_documents(self) -> None:
         collab = self.accepted_collaboration()
         view = SuiviView(_ROOT, self.controller, collab)

@@ -61,11 +61,11 @@ Ce sont les cinq choses qui ont fait exploser le prédécesseur. Aucune ne rentr
 
 | Interdit | Pourquoi |
 |---|---|
-| **Pas d'exécution autonome** | Le livrable est un **document**, exécuté ensuite à la main. C'est la partie qui n'a jamais abouti. |
+| **Pas d'exécution autonome dans le moteur documentaire** | Le livrable A/B est un **document**. Exception engagée par le PO le 2026-10-01 : Runner V1 séparé, sur clone distinct, selon `conception/DialogForge Runner V1 — conception simplifiée.md`. Il prépare un candidat pour revue ; il ne l'intègre pas. |
 | **Pas de base de données** | Fichiers sur disque, `etat.json` lisible à l'œil. |
 | **Pas de worker, bail, ni tâche planifiée** | On lance, ça tourne, on ferme le terminal. |
 | **Pas de budget, réservation ni quota interne** | Les plafonds fournisseur suffisent. |
-| **Pas de GUI** — *levé le 2026-09-23 par le PO, pour la seule GUI V1* | Tkinter local, mono-exécution, bornée par `conception/GUI_V1.md` (§11 plafonds, §13 non-objectifs). Rien au-delà sans nouvelle décision. |
+| **Pas de GUI** — *levé le 2026-09-23 par le PO, puis étendu le 2026-10-03* | Tkinter local, mono-exécution. La GUI V1 suit `conception/GUI_V1.md` ; la demande du PO du 2026-10-03 ajoute l'écran Runner après acceptation d'une conception, selon `docs/RUNNER.md`. |
 
 Toute demande qui commence par « et si on ajoutait un petit contrôle pour… » **doit** être opposée à ce tableau avant d'être implémentée.
 

@@ -196,6 +196,11 @@ def _export(files: dict[str, bytes]) -> None:
         raise ValueError("export.md modifié")
 
 
+def validate_export(path: Path) -> None:
+    """Vérifie un export existant avant son passage à un développeur extérieur."""
+    _export(_tree(path))
+
+
 def _git(repo: Path, *args: str, optional: bool = False) -> bytes:
     # Ne pas hériter d'un GIT_DIR, GIT_WORK_TREE ou d'options injectées par l'hôte.
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}

@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-09-25 (vide explicite dans une sortie d'agent ; rejouer une correction sur traces réelles ; heredoc)
+> Dernière mise à jour : 2026-10-02 (preuve d'exécution d'un test de confinement)
 
 ## Index
 
@@ -63,6 +63,11 @@
 ## Travail avec les agents
 
 **Développement assisté (PO, 2026-09-26 ; acceptation déléguée le 27) : Git peut être lu sur deux commits, jamais écrit par DialogForge.** Le développeur extérieur écrit le code et exécute ses tests. Les paquets figent code et résultats déclarés ; une modification impose un nouveau paquet et une collaboration ordinaire. Aucun second moteur d'appels. Conception : `conception/DEVELOPPEMENT_ASSISTE.md`.
+
+**Runner V1 engagé par le PO le 2026-10-01 : exception séparée au développement assisté documentaire.** Sur `feat/runner-v1`, le Runner peut préparer un clone indépendant, appeler un agent développeur et recueillir ses commits locaux ; il ne modifie ni le dépôt source ni le cycle A/B, et remet un paquet à la revue existante. La conception de référence est `conception/DialogForge Runner V1 — conception simplifiée.md`. Les limites réelles de l'environnement d'écriture et des validations sont à qualifier avant un lancement sans surveillance.
+*Motif : automatiser le passage entre `dev-export` et `dev-package` sans réintroduire l'orchestration des tâches dans `workflow.py`. Cette exception ne change pas la règle de lecture seule de `development.py` pour le moteur documentaire.*
+
+**Extension GUI demandée par le PO le 2026-10-03 :** après l'acceptation de la version actuelle d'une conception, l'écran de suivi propose l'export et le lancement du Runner dans Ubuntu WSL2. Une seule exécution active, paquet livré pour revue, aucune intégration automatique. Cette extension porte le plafond façade + GUI à **2 400 lignes effectives** (2 216 mesurées), tout en gardant une vue à 400 lignes maximum. Le plafond propre à la GUI V1 reste historique ; le parcours Runner est décrit dans `docs/RUNNER.md`.
 
 **Taille de ce lot : ajout net dans `src/` strictement inférieur à 1 000 lignes effectives depuis 5 618 ; cible ≤ 500.** Cette décision du PO remplace pour ce lot la marge restante de 164 lignes. La limite façade/GUI n'est pas modifiée.
 
@@ -329,6 +334,9 @@
 
 **Une protection dit ce qu'elle obtient, ce qu'elle constate seulement, et ce qui n'est pas mesuré.**
 *Motif (2.2) : les drapeaux d'argv (`--restricted`, `--sandbox read-only`, `--ephemeral`…) sont lus dans `--help`, jamais éprouvés sur un appel réel ; `Capabilities` dit ce que l'adaptateur **demande**, pas ce que la CLI **fait**. Un chemin absolu n'est arrêté que par l'outil : le corpus modifié est donc constaté après l'appel (`SOURCES_MODIFIED`), pas empêché. Écrire « garanti » avant le lot 3 serait la promesse que ce projet s'interdit — voir `reference/FRONTIERE_ROLES.md`.*
+
+**Qualifier un confinement sur la trace de l'appel réellement exécuté et sur des témoins relus hors sandbox, jamais sur le seul code de sortie de la CLI.**
+*Motif mesuré le 2026-10-02 (Runner V1) : Claude a rendu le code 0 et les témoins sont restés intacts lors de deux essais, alors qu'un classificateur avait interrompu un appel et que les commandes suivantes n'avaient pas été exécutées. Un test séparé, limité à une commande de lecture, a enfin montré l'appel `Bash`, son erreur WSL `socket failed 1` et l'absence du marqueur attendu. Rapport : `reference/RUNNER_QUALIFICATION_2026-10-01.md`.*
 
 **Avant d'ajouter un garde-fou, vérifier qu'il compense un défaut encore réel.**
 *Motif : l'échafaudage compense la faiblesse des modèles ; les modèles récents en demandent moins, pas plus.*

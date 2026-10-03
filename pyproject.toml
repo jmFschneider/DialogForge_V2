@@ -11,6 +11,7 @@ dependencies = []
 # continue de fonctionner, sans être documenté.
 [project.scripts]
 dialogforge = "iabinome.cli:main"
+dialogforge-run = "dialogforge_runner.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]

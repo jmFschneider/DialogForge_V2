@@ -6,6 +6,10 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
+**Priorité du PO : Runner V1 sur `feat/runner-v1`.** Socle `prepare`/`collect` et profil Claude WSL2 intégrés et testés sur dépôt jetable. Claude sur Windows avec Bash autorisé a modifié un témoin extérieur ; ce profil est rejeté. Codex CLI 0.159.3 sur Windows a respecté la frontière d'écriture mesurée pour l'agent et la validation. Claude Code sous Ubuntu WSL2, avec sandbox strict, a écrit dans son espace de travail sans modifier les témoins Linux/Windows ; une validation sous `srt` a eu le même résultat. Un programme Windows copié dans l'espace de travail a été bloqué par l'interopérabilité WSL (`socket failed 1`) dans l'appel Claude et sous `srt`, alors qu'il fonctionne hors sandbox. Détails : `reference/RUNNER_QUALIFICATION_2026-10-01.md`.
+
+**État au 2026-10-03 :** le profil `claude-wsl` est raccordé et éprouvé sur un dépôt Git jetable avec un appel Claude réel : commit local, validation sous `srt`, paquet au même `HEAD`, dépôt source et témoin extérieur inchangés. Un second appel a confirmé dans le vrai outil Bash que le jeton n'était pas visible et que le serveur TCP local n'était pas joignable. La GUI propose désormais le Runner après acceptation d'une conception, avec export, lancement, collecte et continuation explicite. Le pont Windows → WSL a été éprouvé sans nouvel appel payant. **Prochaine action : choisir un premier petit lot réel réversible, le lancer depuis la GUI et relire le paquet avant intégration.** Détails : `progress.md` et `docs/RUNNER.md`. La mesure d'utilité 2.4 reste ouverte après ce lot. Conception : `conception/DialogForge Runner V1 — conception simplifiée.md`.
+
 **État au 2026-10-01.** `main` publié sur `origin` (`jmFschneider/DialogForge_V2`, public, licence
 MIT) ; dernière étiquette `v0.2.0` (2026-10-01). Types de mission redéfinis et implémentés
 (`conception/TYPES_DE_MISSION.md`, trois lots) ; retour d'usage du 2026-09-28 clos ; partie 2 du
@@ -15,8 +19,7 @@ plan de finalisation : 2.1 (F03), 2.2 (F04) et 2.3 (corpus vide) faits.
 — deux ou trois tâches réelles enchaînant recherche puis conception, GUI comprise, lancées par le
 PO. Ses résultats choisissent la prochaine phase.
 
-**Limites en vigueur** : façade + GUI ≤ 2 000 lignes effectives (1 897) ; une vue ≤ 400 (plus
-grande : `creation.py`, 378) ; aucun appel fournisseur par l'assistant ; commit et push sur demande
+**Limites en vigueur** : façade + GUI ≤ 2 400 lignes effectives (2 216 avec l'écran Runner) ; une vue ≤ 400 ; aucun appel fournisseur par l'assistant ; commit et push sur demande
 du PO seulement ; relecture palier par palier : voir `project/RULES.md` (rouverte le 2026-09-05).
 
 ## Historique des étapes (anciens « Next Step », datés, conservés tels quels)

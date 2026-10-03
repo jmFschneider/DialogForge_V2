@@ -97,6 +97,10 @@ class SuiviView(ttk.Frame):
             footer, text="Poursuivre en conception",
             command=lambda: self._controller.show_creation(from_research=self._path),
         )
+        self._runner = ttk.Button(
+            footer, text="Développer avec le Runner",
+            command=lambda: self._controller.show_runner(self._path),
+        )
         ttk.Button(
             footer, text="Retour à l'accueil", command=self._controller.show_accueil,
         ).pack(side="right")
@@ -135,6 +139,10 @@ class SuiviView(ttk.Frame):
             self._follow_up.pack(side="left", padx=(8, 0))
         else:
             self._follow_up.pack_forget()
+        if snapshot.presentation.can_start_runner:
+            self._runner.pack(side="left", padx=(8, 0))
+        else:
+            self._runner.pack_forget()
         self._result.configure(text=self._result_text(snapshot))
         for child in self._actions_row.winfo_children():
             child.destroy()

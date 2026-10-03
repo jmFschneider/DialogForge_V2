@@ -150,10 +150,23 @@ class TestCloseGuard(unittest.TestCase):
     def test_interrupting_now_stops_and_destroys_right_away(self) -> None:
         root, controller = mock.Mock(), mock.Mock()
         controller.has_active_run.return_value = True
+        controller.has_active_runner.return_value = False
         with mock.patch("iabinome.gui.app.dialogs.choose", return_value=app._INTERRUPT):
             app._on_close(root, controller)
         controller.interrupt_active_run.assert_called_once()
         controller.pause_active_run.assert_not_called()
+        root.destroy.assert_called_once()
+
+    def test_interrupting_runner_waits_for_wsl_cleanup(self) -> None:
+        root, controller = mock.Mock(), mock.Mock()
+        controller.has_active_run.side_effect = [True, True, False]
+        controller.has_active_runner.return_value = True
+        with mock.patch("iabinome.gui.app.dialogs.choose", return_value=app._INTERRUPT):
+            app._on_close(root, controller)
+        controller.interrupt_active_run.assert_called_once()
+        root.destroy.assert_not_called()
+        (_, callback), _ = root.after.call_args
+        callback()
         root.destroy.assert_called_once()
 
     def test_pause_then_close_waits_for_the_thread_before_destroying(self) -> None:
