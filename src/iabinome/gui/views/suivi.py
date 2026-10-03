@@ -13,7 +13,7 @@ from tkinter import Misc, ttk
 from tkinter.scrolledtext import ScrolledText
 from typing import TYPE_CHECKING
 
-from ... import facade, storage
+from ... import facade, mission, storage
 from ...decisions import AllowedAction
 from . import intervention
 
@@ -50,6 +50,8 @@ class SuiviView(ttk.Frame):
         self._title.pack(anchor="w")
         self._subtitle = ttk.Label(header)
         self._subtitle.pack(anchor="w")
+        self._steps = ttk.Frame(header)  # l'en-tête de la mission, quand il y en a une
+        self._steps.pack(fill="x", pady=(4, 0))
         # Le dossier se voit dès l'ouverture, incident compris (retour d'usage du 2026-09-28).
         folder = ttk.Frame(header)
         folder.pack(fill="x", pady=(4, 0))
@@ -93,10 +95,8 @@ class SuiviView(ttk.Frame):
         footer = ttk.Frame(self)
         footer.pack(fill="x", padx=16, pady=(0, 16))
         ttk.Button(footer, text="Actualiser", command=self._refresh).pack(side="left")
-        self._follow_up = ttk.Button(
-            footer, text="Poursuivre en conception",
-            command=lambda: self._controller.show_creation(from_research=self._path),
-        )
+        self._follow_up = ttk.Frame(footer)  # poursuivre, ou rouvrir, la conception
+        self._follow_up.pack(side="left")
         self._runner = ttk.Button(
             footer, text="Développer avec le Runner",
             command=lambda: self._controller.show_runner(self._path),
@@ -135,10 +135,9 @@ class SuiviView(ttk.Frame):
         else:
             self._trace_button.pack_forget()
         self._activity.configure(text=self._activity_text(snapshot))
-        if snapshot.presentation.can_follow_up:
-            self._follow_up.pack(side="left", padx=(8, 0))
-        else:
-            self._follow_up.pack_forget()
+        if not running:
+            self._show_mission()
+        self._show_follow_up(snapshot.presentation.can_follow_up)
         if snapshot.presentation.can_start_runner:
             self._runner.pack(side="left", padx=(8, 0))
         else:
@@ -162,6 +161,50 @@ class SuiviView(ttk.Frame):
             ).pack(side="left", padx=(0, 4))
         if running:
             self._after_id = self.after(_POLL_MS, self._refresh)
+
+    def _show_mission(self) -> None:
+        """La mission et ses étapes, lues du registre et des dossiers : naviguer ne change aucun
+        état, et n'indique jamais quelle étape peut tourner."""
+        for child in self._steps.winfo_children():
+            child.destroy()
+        try:
+            summary = mission.overview(self._path)
+        except mission.MissionError as exc:
+            ttk.Label(self._steps, text=f"Mission illisible : {exc}").pack(side="left")
+            return
+        if summary is None:
+            return
+        ttk.Label(self._steps, text=f"Mission {summary.mission.name} :").pack(side="left")
+        for view in summary.steps:
+            ttk.Button(
+                self._steps, text=f"{view.step.role.capitalize()} — {view.label}",
+                state="disabled" if view.path.resolve() == self._path.resolve() else "normal",
+                command=self._step_handler(summary.mission.root, view.step.path),
+            ).pack(side="left", padx=(4, 0))
+
+    def _step_handler(self, root: Path, step: str) -> Callable[[], None]:
+        """Un objet par étape, comme `_document_handler` : jamais la variable de boucle."""
+        return lambda: self._controller.open_collaboration(root, step)
+
+    def _show_follow_up(self, allowed: bool) -> None:
+        """Une conception déjà créée se rouvre ; une nouvelle version est une action à part."""
+        for child in self._follow_up.winfo_children():
+            child.destroy()
+        if not allowed:
+            return
+        controller, research = self._controller, self._path
+        done = mission.continuations(research)
+        if done:
+            choices: list[tuple[str, Callable[[], None]]] = [
+                ("Reprendre la conception", lambda: controller.open_collaboration(done[-1])),
+                ("Nouvelle version de conception",
+                 lambda: controller.show_creation(from_research=research, new_version=True)),
+            ]
+        else:
+            choices = [("Poursuivre en conception",
+                        lambda: controller.show_creation(from_research=research))]
+        for text, command in choices:
+            ttk.Button(self._follow_up, text=text, command=command).pack(side="left", padx=(8, 0))
 
     def _show_progress(self, progress: facade.Progress) -> None:
         """Une grille : un tour par ligne, A puis B, puis la décision humaine.

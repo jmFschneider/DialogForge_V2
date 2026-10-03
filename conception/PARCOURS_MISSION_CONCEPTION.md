@@ -427,6 +427,17 @@ accepter le plan, préparer le projet neuf, lancer le Runner, ouvrir et accepter
 intégrer explicitement. Lancer le jeu selon la conception et vérifier une victoire, une défaite,
 les réglages et les cas de doublons retenus. Le PO déclenche les appels réels.
 
+## Écarts de mise en œuvre du lot 2 (2026-10-03)
+
+Décidés à l'implémentation, sans changer le contrat ci-dessus :
+
+- `mission adopt` n'existe pas au §5 : la procédure Mastermind exige une **copie vérifiée** d'un dossier extérieur, que `mission attach` (sur place seulement) ne fait pas. L'original reste la sauvegarde. `show --etape` lit une étape précise d'une racine de mission, dont la collaboration historique située à la racine (`.`).
+- Le registre est strict (clés exactes, chemins sûrs, sources antérieures). `attach` seul peut inscrire une collaboration historique à la racine ; une création n'en fabrique jamais le registre.
+- `CreationError` descend dans `models.py` pour que `MissionError` en hérite : la CLI et la GUI affichent déjà ces refus. La façade la réexporte.
+- Les chemins du registre sont relatifs à la mission ; `source_path` de la transition l'est au dossier qui contient la conception, soit la racine de la mission pour toute étape directe.
+- Non fait au lot 2 : création d'une **nouvelle mission** depuis la GUI (la CLI `new --mission` la crée) ; la conception d'une recherche rattachée se range, elle, dans la mission. Ligne « Développement » de l'en-tête : lots 3 et 4.
+- La conception réelle `Mastermind-conception` n'a pas de `provenance_transition.json` (créée avant le lot 1) : voir `reference/REGROUPEMENT_MASTERMIND.md`.
+
 ## 12. Taille, documentation et sortie
 
 Le relevé précédent est de 2 216 lignes effectives pour façade + GUI, sur un plafond de 2 400 ;

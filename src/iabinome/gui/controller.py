@@ -14,10 +14,11 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from tkinter import Tk, messagebox, ttk
 
-from .. import facade, framing, workflow
+from .. import facade, framing, mission, workflow
 from ..adapters.base import AgentAdapter, FramingSessionSpec
 from ..models import MissionKind
 from ..registry import ADAPTERS
@@ -60,10 +61,14 @@ class Controller:
 
         self._swap(lambda: SuiviView(self.root, self, path))
 
-    def show_creation(self, *, from_research: Path | None = None) -> None:
+    def show_creation(
+        self, *, from_research: Path | None = None, new_version: bool = False,
+    ) -> None:
         from .views.creation import CreationView
 
-        self._swap(lambda: CreationView(self.root, self, from_research=from_research))
+        self._swap(lambda: CreationView(
+            self.root, self, from_research=from_research, new_version=new_version,
+        ))
 
     def show_runner(self, path: Path) -> None:
         from .views.runner import RunnerView
@@ -87,18 +92,28 @@ class Controller:
                 recents.save_root(path.parent, self.recents_path)
             except OSError:
                 pass  # Une préférence inaccessible ne doit pas annuler la création.
-        recents.record_opened(path, self.recents_path)
+        try:
+            target = mission.resolve(path)
+        except mission.MissionError:
+            target = mission.Target(None, None, path)
+        recents.record_opened(target.root or path, self.recents_path, last_step=target.step)
 
     # -- Ouverture, strictement en lecture (§5.1, AC-02) --
 
-    def open_collaboration(self, path: Path) -> None:
+    def open_collaboration(self, path: Path, step: str | None = None) -> None:
+        """Un dossier de mission ouvre son étape préférée (la dernière consultée) ; la mission
+        et ses étapes se naviguent depuis l'écran de suivi. Une collaboration indépendante
+        s'ouvre telle quelle."""
         try:
-            self.inspect(path)
-        except facade.InspectionError as exc:
+            remembered = next((r.last_step for r in recents.load(self.recents_path)
+                               if r.path == path.resolve()), None)
+            target = mission.resolve(path, step or remembered)
+            self.inspect(target.collab)
+        except (facade.InspectionError, mission.MissionError) as exc:
             messagebox.showerror("Dossier introuvable ou invalide", str(exc))
             return
-        recents.record_opened(path, self.recents_path)
-        self.show_suivi(path)
+        recents.record_opened(target.root or path, self.recents_path, last_step=target.step)
+        self.show_suivi(target.collab)
 
     def inspect(
         self, path: Path, *, owned_by_this_gui: bool = False,
@@ -106,19 +121,21 @@ class Controller:
         return facade.inspect_collaboration(path, owned_by_this_gui=owned_by_this_gui)
 
     def recent_entries(self) -> tuple[recents.Recent, ...]:
-        entries = list(recents.load(self.recents_path))
-        known = {entry.path for entry in entries}
+        entries: dict[Path, recents.Recent] = {}
+        for entry in recents.load(self.recents_path):  # une entrée par mission
+            (top,) = mission.fold([entry.path])
+            entries.setdefault(top, replace(entry, path=top))
         root = self.collaborations_root()
         if root is not None and root.is_dir():
             try:
                 for folder in sorted(root.iterdir(), key=lambda p: p.name.casefold()):
-                    if folder.is_dir() and folder.resolve() not in known and (
-                        folder / "etat.json"
-                    ).is_file():
-                        entries.append(recents.Recent(folder.resolve(), ""))
+                    if folder.is_dir() and folder.resolve() not in entries and (
+                        (folder / "etat.json").is_file() or (folder / mission.REGISTRY).is_file()
+                    ):
+                        entries[folder.resolve()] = recents.Recent(folder.resolve(), "")
             except OSError:
                 pass
-        return tuple(entries)
+        return tuple(entries.values())
 
     # -- Exécution : un fil au plus (§3.1, §10.4) --
 

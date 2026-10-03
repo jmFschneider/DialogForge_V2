@@ -51,6 +51,9 @@ demande.md → A produit → B critique → A révise → B relit → (N fois ma
 **Il n'y a pas d'appel de finalisation** : le livrable est la version que B vient d'examiner, promue
 octet pour octet (décision 1.3). Un `FINAL_A` qui réécrivait après la dernière revue a été supprimé.
 
+**Dossier de mission (2026-10-03, lot 2)** : `mission.json` rattache les étapes d'un projet (recherche,
+conception, revues) pour naviguer ; il ne porte aucun état. Détail dans `project/RULES.md`.
+
 **État : voir le plan PWF** (`## Next Step` de `.planning/2026-09-18-dialogforge-v2/task_plan.md`) — cette page ne le suit pas.
 L'enchaînement d'origine était **récolte → spécification → implémentation**, avec arbitrage humain entre chaque :
 les deux premières étapes sont faites (`conception/`), le développement V2 avance lot par lot dans le plan.

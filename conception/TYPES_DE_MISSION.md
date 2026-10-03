@@ -97,6 +97,10 @@ décision, mandat complet, réglages proposés) pris sous le verrou de la recher
 consomme sans le reconstruire ; le cadrage par un agent s'y combine désormais, F lisant ce même
 instantané. Le texte ci-dessus reste daté : il décrit l'état du 2026-10-01.
 
+## Amendement du 2026-10-03 (PO) — lot 2 du parcours de mission
+
+Les étapes d'un projet se rangent dans un **dossier de mission** : `mission.json` rattache la recherche (éventuellement à la racine), la conception et les revues, sans porter d'état (voir `PARCOURS_MISSION_CONCEPTION.md` §3). D4 s'en trouve précisé : la conception qui poursuit une recherche rattachée se range sous la mission, une seule par défaut ; une nouvelle version est une action explicite. Une recherche indépendante garde le voisin `<recherche>-conception` d'origine.
+
 ## Ordre proposé
 
 1. D1, D2, D3, D5 et la documentation : un lot.

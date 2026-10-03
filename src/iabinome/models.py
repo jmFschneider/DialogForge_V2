@@ -23,6 +23,12 @@ class SchemaError(ValueError):
     """Schéma invalide : refus avant toute mutation."""
 
 
+class CreationError(RuntimeError):
+    """Refus avant toute écriture (§6.5) : rien n'est créé, l'écran qui a
+    appelé reste tel quel — formulaire intact, ligne de commande inchangée.
+    Au niveau des modèles : la façade et le dossier de mission la lèvent tous deux."""
+
+
 class IntegrityError(RuntimeError):
     """Un artefact du disque **contredit** l'empreinte que l'état lui associe.
 

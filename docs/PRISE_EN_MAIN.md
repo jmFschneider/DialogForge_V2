@@ -88,6 +88,16 @@ possible.
 dialogforge new ./plan --kind conception --depuis ./essai --reviewer-access consult --agent-a claude --agent-b codex --max-revisions 1
 ```
 
+**Une mission** regroupe les étapes d'un projet dans un seul dossier : `mission.json` les rattache
+et fait naviguer, sans porter aucun état (chaque étape reste une collaboration ordinaire).
+`new <dossier> --mission <racine> …` crée l'étape et l'inscrit ; une seconde conception est refusée —
+on rouvre celle qui existe — sauf `--nouvelle-version`, qui crée explicitement `conception-002`.
+`show <racine>` et `list` affichent la mission ; `mission attach` rattache une collaboration déjà
+située dedans, `mission adopt` en copie une extérieure ([détail](COMMANDES.md#mission)). Dans la GUI,
+l'accueil montre une ligne par mission et l'écran de suivi en présente les étapes : « Poursuivre en
+conception » devient « Reprendre la conception » dès qu'elle existe, « Nouvelle version de
+conception » étant une action à part.
+
 Les fichiers sont **copiés octet pour octet** et hachés dans `corpus/manifeste.json`. Le corpus,
 c'est exactement ce que le manifeste énumère : ajouter un fichier au dossier après coup ne l'y fait
 pas entrer, et en retirer un fait échouer la vérification.

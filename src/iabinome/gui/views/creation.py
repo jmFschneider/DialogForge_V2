@@ -13,7 +13,7 @@ from tkinter import BooleanVar, Misc, StringVar, filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 from typing import TYPE_CHECKING
 
-from ... import facade, framing, model_catalog, settings, storage
+from ... import facade, framing, mission, model_catalog, settings, storage
 from ...models import MissionKind, ReviewerAccess
 from ...registry import ADAPTERS
 from .. import dialogs, widgets
@@ -35,9 +35,12 @@ _KIND_HINT = {
 class CreationView(ttk.Frame):
     def __init__(
         self, master: Misc, controller: Controller, *, from_research: Path | None = None,
+        new_version: bool = False,
     ) -> None:
         super().__init__(master)
         self._controller = controller
+        self._mission: Path | None = None  # la mission qui reçoit l'étape, s'il y en a une
+        self._new_version = new_version
         self._follow_up: facade.FollowUp | None = None
         self._catalog_error: str | None = None
         try:
@@ -69,11 +72,13 @@ class CreationView(ttk.Frame):
         """`TYPES_DE_MISSION.md` D4 : la recherche acceptée remplace le corpus à déclarer. Le
         mandat et les réglages proposés viennent de l'instantané préparé, sans appel."""
         try:
+            self._mission, dest = mission.default_dest(research, self._new_version)
             self._follow_up = facade.prepare_follow_up(research)
-        except facade.CreationError as exc:
+        except (facade.CreationError, mission.MissionError) as exc:
             self._error.configure(text=str(exc))
             return
         transition.fill(self, self._follow_up)
+        self._dossier.set(str(dest))
 
     # -- Construction --
 
@@ -353,7 +358,8 @@ class CreationView(ttk.Frame):
             source_list=Path(self._source_list.get()) if sources and self._source_list.get()
             else None,
             source_label=(self._source_label.get() or None) if sources else None,
-            framing=framed, follow_up=self._follow_up,
+            framing=framed, follow_up=self._follow_up, mission=self._mission,
+            new_version=self._new_version,
         )
 
     def _effort(self, var: StringVar) -> str | None:

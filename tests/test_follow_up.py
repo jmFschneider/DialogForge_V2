@@ -463,5 +463,5 @@ class TestTheGui(FollowUpCase):
 
     def test_no_follow_up_button_before_acceptance(self) -> None:
         suivi = SuiviView(_ROOT, self.controller, self.research(accept=False))
-        button = _find_button(suivi, "Poursuivre en conception")
-        self.assertEqual(button.winfo_manager(), "")
+        with self.assertRaises(LookupError):  # aucun bouton : la poursuite n'est pas permise
+            _find_button(suivi, "Poursuivre en conception")

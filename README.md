@@ -51,6 +51,7 @@ moment l'état et la prochaine action ; chaque arrêt indique la commande à uti
 |---|---|
 | Enchaîner recherche → conception → développement | Une recherche établit un dossier sourcé (web ou corpus) ; une conception, avec ou sans elle, établit le plan, juste avant le code. |
 | Formuler la demande | Demande libre, questionnaire local ou cadrage avec un agent, puis cycle A/B. |
+| Regrouper les étapes d'un projet | Un dossier de mission (`mission.json`) rattache recherche, conception et revues sans porter d'état ; `show`, `list` et la GUI le présentent, une étape existante se rouvre au lieu d'être doublée. |
 | Travailler sur des sources locales | Un corpus déclaré est copié, haché et vérifié ; il est facultatif en conception. |
 | Régler les rôles | Claude et Codex peuvent tenir A ou B ; modèles et effort sont réglables par rôle. |
 | Limiter les capacités du relecteur | `consult` conserve les outils de sa CLI ; `context-only` les lui retire. |

@@ -11,7 +11,7 @@ from pathlib import Path
 from tkinter import Misc, filedialog, ttk
 from typing import TYPE_CHECKING
 
-from ... import facade
+from ... import facade, mission
 
 if TYPE_CHECKING:
     from ..controller import Controller
@@ -129,8 +129,11 @@ class AccueilView(ttk.Frame):
         if not path.is_dir():
             return "Dossier introuvable", None
         try:
+            if (path / mission.REGISTRY).is_file():  # une ligne par mission, étapes comprises
+                summary = mission.summarize(path)
+                return f"Mission — {summary.line()}", summary.updated_at
             snapshot = self._controller.inspect(path)
-        except facade.InspectionError as exc:
+        except (facade.InspectionError, mission.MissionError) as exc:
             return f"Dossier illisible : {exc}", None
         return snapshot.presentation.status_label, snapshot.state.updated_at
 

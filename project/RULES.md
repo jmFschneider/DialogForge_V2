@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-10-02 (preuve d'exécution d'un test de confinement)
+> Dernière mise à jour : 2026-10-03 (dossier de mission, lot 2)
 
 ## Index
 
@@ -41,6 +41,18 @@
 **Le type d'une mission dit ce qu'on attend du livrable, pas si l'on a un corpus.** Recherche : un dossier sourcé, avec au moins une source (web ou corpus local). Conception : un plan de réalisation tiré de la demande, avec ou sans dossier fourni. Les sources se contrôlent à la création. *(PO, 2026-10-01, `conception/TYPES_DE_MISSION.md` ; **« corpus exigé » en conception levé le 2026-10-03** par le PO, `conception/PARCOURS_MISSION_CONCEPTION.md`.)*
 **Le résultat attendu du projet n'est pas le livrable de l'étape.** F, A et B reçoivent le type de travail : « application jouable » est le but du projet ; une recherche livre une étude, une conception un plan, et l'absence de code n'est pas un défaut d'un plan. Une hypothèse ou une réserve d'une recherche acceptée reste une hypothèse : la transition n'écrit aucune décision à la place de l'humain, et le logiciel n'en extrait aucune liste par analyse du texte. *(PO, 2026-10-03.)*
 **Une transition recherche → conception se prépare sous le verrou de la recherche, une fois, et se consomme telle quelle.** `facade.prepare_follow_up` copie demande, livrable, bilan et décision, construit le mandat sans appel ; F et la création lisent ce même instantané ; la source et l'acceptation sont revérifiées avant création, et un changement impose une nouvelle préparation — jamais un mélange de versions. *Motif : le corpus était reconstruit depuis la recherche à la création ; une conversation de F aurait pu porter sur d'autres sources que la conception créée.*
+
+**`mission.json` rattache et fait naviguer ; il ne porte jamais d'état.** Ni statut, ni décision, ni phase : ils se lisent dans chaque collaboration, à chaque affichage. Un registre invalide est signalé, jamais réinitialisé ; une étape rattachée garde son format de collaboration. Le verrou de mission (`verrou-mission.json`) ne couvre qu'une écriture locale, jamais un appel. *(PO, 2026-10-03, `PARCOURS_MISSION_CONCEPTION.md` §3.)*
+*Motif : un second état global de la mission recréerait ce que `etat.json` existe pour éviter — deux vérités à garder d'accord.*
+
+**Une étape existante se rouvre ; une nouvelle version est une action explicite.** Une mission n'a qu'une recherche et qu'une conception ; la deuxième demande est refusée avec le nom de l'étape à rouvrir, et `--nouvelle-version` (ou le bouton dédié) crée seul `conception-002`, puis les suivantes.
+*Motif : deux clics ne doivent jamais produire deux collaborations — chacune se paie.*
+
+**Un regroupement copie, vérifie, puis rattache ; il ne déplace jamais l'original.** `mission adopt` compare tous les fichiers à l'original, n'écrase rien et laisse l'original en sauvegarde jusqu'à la validation de la reprise. Seul `source_path` de `provenance_transition.json` est recalculé (ancienne valeur gardée) ; les traces historiques restent telles quelles.
+*Motif : la collaboration réelle de Mastermind est une preuve payée — une perte ne se rattrape pas.*
+
+**Une procédure destinée à des dossiers réels se répète d'abord sur une copie de ces dossiers, pas sur un cas synthétique seul.**
+*Motif (2026-10-03) : la copie de Mastermind a montré ce que le cas synthétique ne disait pas — sa conception, créée avant le lot 1, n'a pas de `provenance_transition.json`, alors que la consigne parlait d'en recalculer le `source_path`.*
 *Motif mesuré le 2026-10-01 : `recherche` exigeait un corpus, si bien que les 17 collaborations réelles étaient toutes de type `conception`, dont 6 recherches web sans corpus. Le type servait à déclarer un corpus, et la consigne de recherche ne servait jamais.*
 
 **Le livrable de la boucle est un document, jamais une exécution.**
@@ -49,6 +61,7 @@
 **La GUI V1 est une surface de plus sur le même moteur, jamais un second moteur.** Levée de l'interdit « Pas de GUI » par le PO le 2026-09-23, **limitée à `conception/GUI_V1.md`** : Tkinter/ttk de la bibliothèque standard, une fenêtre, une collaboration, une exécution, aucun worker ni processus détaché (§13). Plafonds : 1 200 lignes logiques de production pour la GUI et sa façade, +900 lignes nettes dans `src/` ; un dépassement se re-décide, il ne se constate pas. Les règles d'action (quelle commande est permise, laquelle peut payer) vivent dans `decisions.allowed_actions`, que la CLI et la GUI rendent chacune à sa façon — jamais une table propre à Tkinter.
 *Amendement du 2026-09-23 (PO), après les lots 3 et 4 : mesuré avec un compteur cohérent d'un lot à l'autre, la croissance nette de `src/` atteignait +1 046 lignes, 146 au-delà du plafond de +900. **Le plafond de croissance nette dans `src/` est porté à 2 500 lignes** — jugé trop bas à l'origine, plutôt que de réduire le lot 4 déjà livré et testé. Le plafond de 1 200 lignes logiques (façade + `gui/`) n'est pas changé : il n'a pas été approché (~1 000 lignes). Détail dans `conception/GUI_V1.md` §11 et `task_plan.md`.*
 *Motif : l'interdit tenait parce qu'une interface qui possède l'exécution tend à reconstruire l'autonomie — la conception retenue écarte explicitement « les mécanismes d'autonomie de l'ancienne GUI » (§11, §17). La levée ne vaut que si la GUI ne décide rien que la CLI ne décide déjà.*
+*Amendement du 2026-10-03 (PO) : « il ne faut pas que le nombre de lignes entraîne des conséquences potentiellement négatives sur le fonctionnement du programme ; si nécessaire ce nombre peut être revu à la hausse », y compris quand réduire le code demande du travail. **Plafond façade + `gui/` porté de 2 400 à 2 500** — valeur proposée au relevé de 2 414 du lot 2 et confirmée par le PO le 2026-10-03 ; la limite de 400 par vue est inchangée. Les règles de mission vivent dans `mission.py`, que ce plafond ne compte pas : le relevé les donne à part (`progress.md`).*
 *Mesuré après le lot 5 (2026-09-23) : le plafond de 1 200 lignes logiques (façade + `gui/`) est à **1 195** — non dépassé, mais sans marge pour un ajout futur à cette surface sans re-décision. Pas d'amendement demandé à ce stade, contrairement au plafond de `src/` : le constater ici suffit à ne pas le redécouvrir en silence.*
 
 **Une présentation qui ne dépend que de `State`/`Configuration` (statuts, phases, barre de progression) se calcule dans la façade partagée, jamais dans une vue Tkinter.**

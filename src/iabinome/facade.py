@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import contracts, corpus, decisions, incidents, lock, settings, storage
+from . import contracts, corpus, decisions, incidents, lock, mission, settings, storage
 from . import demande as demande_module
 from .adapters.base import AgentAdapter
 from .decisions import AllowedAction
@@ -43,6 +43,9 @@ from .models import (
     SchemaError,
     State,
     Status,
+)
+from .models import (
+    CreationError as CreationError,
 )
 
 _STATUS_LABELS = {
@@ -400,6 +403,10 @@ class CreationRequest:
     # Poursuite d'une recherche acceptée (D4) : l'instantané pris par `prepare_follow_up`,
     # que la création consomme sans reconstruire de second corpus.
     follow_up: FollowUp | None = None
+    # Étape d'une mission (`PARCOURS_MISSION_CONCEPTION.md` §3.2) : la racine, et la demande
+    # explicite d'une nouvelle version. Sans racine, la création reste indépendante.
+    mission: Path | None = None
+    new_version: bool = False
 
 
 @dataclass(frozen=True)
@@ -436,15 +443,10 @@ class FollowUp:
 
     @property
     def default_dest(self) -> Path:
-        return self.research.parent / f"{self.research.name}-conception"
+        return mission.default_dest(self.research)[1]
 
     def discard(self) -> None:
         shutil.rmtree(self.root, ignore_errors=True)
-
-
-class CreationError(RuntimeError):
-    """Refus avant toute écriture (§6.5) : rien n'est créé, l'écran qui a
-    appelé reste tel quel — formulaire intact, ligne de commande inchangée."""
 
 
 def create_collaboration(
@@ -456,6 +458,12 @@ def create_collaboration(
     écriture ; un refus ne laisse aucun dossier partiel derrière lui (AC-12).
     """
     check_creation(request, adapters=adapters)
+    if request.mission is None:
+        return _create(request, adapters)
+    return mission.create_step(request, lambda: _create(request, adapters))
+
+
+def _create(request: CreationRequest, adapters: Mapping[str, AgentAdapter]) -> CreationResult:
     dest = request.collab
     tmp = dest.parent / f".new-{dest.name}-{uuid.uuid4().hex}"
     tmp.mkdir(parents=True)
@@ -477,6 +485,8 @@ def check_creation(
     les passe **avant** d'ouvrir la session de F (§3.2), pour qu'aucun appel ne soit
     payé au profit d'une création qui serait refusée ensuite."""
     dest = request.collab
+    if request.mission is not None:
+        mission.check_step(request)
     if dest.exists():
         raise CreationError(f"{dest} existe deja")
     if bool(request.source_root) != bool(request.source_list):

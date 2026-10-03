@@ -1,6 +1,6 @@
 # Commandes
 
-Référence des douze commandes, des statuts et des codes de sortie. Pour un premier parcours,
+Référence des treize commandes, des statuts et des codes de sortie. Pour un premier parcours,
 commencez par [`PRISE_EN_MAIN.md`](PRISE_EN_MAIN.md). `dialogforge <commande> --help` donne la
 même information en ligne.
 
@@ -14,6 +14,7 @@ même information en ligne.
 | [`decide`](#decide) | Consigner votre décision | seulement `--correct` |
 | [`plan`](#plan) | Résumé pour un plan PWF, liaison facultative | non |
 | [`list`](#list) | Énumérer les collaborations d'un dossier | non, lecture seule |
+| [`mission`](#mission) | Rattacher ou reprendre une collaboration dans un dossier de mission | non |
 | [`gui`](#gui) | Ouvrir la fenêtre locale (Tkinter) | comme la CLI, selon l'écran ouvert |
 | [`dev-export`](#dev-export) | Exporter une conception acceptée | non |
 | [`dev-package`](#dev-package) | Figer deux commits et les validations fournies | non ; lit Git |
@@ -44,6 +45,8 @@ vérifié avant toute écriture : un refus ne laisse rien derrière lui, un cadr
 | `--model-a`, `--model-b` | Modèle de chaque rôle ; défaut : celui de l'adaptateur. |
 | `--effort-a`, `--effort-b` | Effort de raisonnement, facultatif. Le vocabulaire est celui de l'outil ([détail](CONFIGURATION.md#effort-de-raisonnement)). |
 | `--depuis <recherche>` | Poursuivre une recherche **acceptée** en conception : sa demande, son livrable, son bilan et sa décision deviennent le corpus, copiés et hachés sous le verrou de la recherche ; le manifeste nomme la recherche d'origine, `provenance_transition.json` sa décision. Les réglages de la recherche (outils, modèles, révisions, accès web) sont repris sauf ceux que vous donnez, et affichés. Sans `--demande`, le **mandat de transition** généré sert de demande ; avec `--cadrer-avec-agent`, F le complète. Sans autre corpus. Si la recherche change avant la création, `new` refuse : recommencer. |
+| `--mission <racine>` | Ranger l'étape dans ce **dossier de mission** (créé au besoin) et l'y inscrire dans `mission.json`. `<dossier>` doit s'y trouver. Sans cette option, `new` crée une collaboration indépendante, comme avant. Une mission n'a qu'une étape `recherche` et qu'une étape `conception` : la seconde demande est refusée, avec le nom de l'étape à rouvrir ([détail](#mission)). |
+| `--nouvelle-version` | Avec `--mission` : créer **explicitement** la version suivante de l'étape (`conception-002`, puis `-003`…). `<dossier>` doit porter ce nom ; les versions anciennes restent consultables. Jamais implicite. |
 | `--web-access` / `--no-web-access` | Autoriser ou non la recherche web, pour A et B ; fermé par défaut ([détail](CONFIGURATION.md#accès-web)). |
 | `--max-revisions <N>` | Nombre maximal de révisions ; entier positif ou nul. Défaut : 2. |
 | `--config <fichier>` | Fichier de réglages à utiliser ([détail](CONFIGURATION.md)). |
@@ -121,15 +124,18 @@ dernier incident, décision courante et **prochaine action**. Strictement en lec
 
 ## show
 
-`dialogforge show <dossier> [--no-document]`
+`dialogforge show <dossier> [--no-document] [--etape <chemin>]`
 
 Ce qu'il faut lire avant de décider : la décision courante, les corrections principales, les
 réserves (les objections restées ouvertes, et les vôtres), la prochaine action, puis le document.
-Lecture seule.
+Lecture seule. Sur la **racine d'une mission** (un dossier qui porte `mission.json`), `show` affiche
+la mission : ses étapes, leur situation lue dans chaque dossier, et les dossiers à rattacher ou
+partiels.
 
 | Option | Sens |
 |---|---|
 | `--no-document` | Le résumé seul, sans le document. |
+| `--etape <chemin>` | Sur une racine de mission : lire cette étape inscrite (`.` pour la collaboration historique située à la racine). |
 
 ## decide
 
@@ -170,7 +176,41 @@ fonctionne comme avant.
 `dialogforge list <dossier-racine>`
 
 Énumère les collaborations d'un dossier, **calculées** depuis les dossiers : pas d'index, rien à garder
-à jour. Un dossier illisible est nommé plutôt que caché.
+à jour. Un dossier illisible est nommé plutôt que caché. Un dossier de mission compte pour **une**
+entrée, avec ses étapes ; sur une racine de mission, `list` détaille ces étapes.
+
+## mission
+
+`dialogforge mission attach <racine> <collaboration> --role <rôle> [--source <étape>]`
+`dialogforge mission adopt <racine> <collaboration> --role <rôle> [--path <dossier>] [--source <étape>]`
+
+Une **mission** est un dossier qui regroupe les étapes d'un même projet — recherche, conception,
+revues — chacune restant une collaboration ordinaire au format habituel. `mission.json` ne fait que
+les **rattacher** et fait naviguer ; il ne porte ni statut, ni décision, ni état d'exécution, que
+chaque collaboration garde. Un `mission.json` invalide est signalé, jamais réinitialisé. Aucune de
+ces opérations n'appelle un agent.
+
+- **`attach`** inscrit une collaboration **déjà située dans la mission**. Elle doit être lisible et de
+  type compatible avec le rôle (`recherche` et `revue` : type recherche ; `conception` : type
+  conception). La racine peut elle-même être une collaboration historique : `--role recherche` avec
+  le chemin de la racine l'inscrit sous `.`. Rattacher deux fois la même étape ne change rien ; une
+  seconde étape du même rôle se range sous son nom numéroté (`conception-002`). C'est aussi la
+  réparation d'une création dont l'inscription a échoué : la collaboration valide est conservée,
+  rien n'est recréé ni repayé.
+- **`adopt`** **copie** une collaboration située hors de la mission, vérifie la copie octet pour
+  octet, publie sans rien écraser, puis l'inscrit. L'original n'est ni déplacé ni modifié : il reste
+  la sauvegarde, jusqu'à ce que vous ayez validé la reprise. Refusé si un verrou ou un statut
+  `RUNNING` suggère une exécution active, si la destination existe, ou si la copie diffère. Seul
+  `source_path` de `provenance_transition.json` — relatif au dossier d'origine, donc faux après
+  déplacement — est recalculé, et l'ancienne valeur est gardée (`previous_source_path`) ; avec ce
+  fichier, `--source` est exigé. Les chemins absolus des traces historiques (`appels/`, `cadrage/`,
+  `echanges/`) ne sont pas modifiés ; ceux relevés dans les autres fichiers sont signalés.
+
+| Option | Sens |
+|---|---|
+| `--role <rôle>` | `recherche`, `conception` ou `revue`. |
+| `--source <étape>` | L'étape d'origine d'une conception, inscrite dans la mission (ex. `.` ou `recherche`). |
+| `--path <dossier>` | `adopt` : dossier d'arrivée dans la mission ; défaut : le rôle. |
 
 ## dev-export
 

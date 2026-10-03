@@ -29,6 +29,7 @@ _SCHEMA_VERSION = 1
 class Recent:
     path: Path
     last_opened_at: str
+    last_step: str | None = None  # préférence d'affichage d'une mission, jamais une autorité
 
 
 def load(prefs_path: Path = DEFAULT_PATH) -> tuple[Recent, ...]:
@@ -42,7 +43,7 @@ def load(prefs_path: Path = DEFAULT_PATH) -> tuple[Recent, ...]:
         raw = json.loads(text)
         entries = raw["recents"]
         return tuple(
-            Recent(Path(e["path"]), str(e["last_opened_at"])) for e in entries
+            Recent(Path(e["path"]), str(e["last_opened_at"]), e.get("last_step")) for e in entries
         )
     except (OSError, ValueError, KeyError, TypeError):
         return ()
@@ -68,14 +69,17 @@ def save_root(root: Path, prefs_path: Path = DEFAULT_PATH) -> None:
 
 def record_opened(
     path: Path, prefs_path: Path = DEFAULT_PATH, *, max_entries: int = _MAX_ENTRIES,
+    last_step: str | None = None,
 ) -> tuple[Recent, ...]:
     """Place `path` en tête, sans doublon, borné à `max_entries`. Écrit
     atomiquement ; une écriture refusée (dossier absent, permissions) reste
     silencieuse pour l'ouverture qu'elle accompagne — les récents sont un
-    confort, pas une condition d'ouverture."""
+    confort, pas une condition d'ouverture. Sans `last_step`, celui déjà retenu
+    pour ce dossier est conservé."""
     resolved = path.resolve()
     kept = [r for r in load(prefs_path) if r.path != resolved]
-    updated = (Recent(resolved, _now()), *kept)[:max_entries]
+    old = next((r.last_step for r in load(prefs_path) if r.path == resolved), None)
+    updated = (Recent(resolved, _now(), last_step or old), *kept)[:max_entries]
     try:
         prefs_path.parent.mkdir(parents=True, exist_ok=True)
         storage.write_atomic_text(prefs_path, _dump(updated, load_root(prefs_path)))
@@ -87,7 +91,10 @@ def record_opened(
 def _dump(entries: tuple[Recent, ...], root: Path | None = None) -> str:
     payload: dict[str, Any] = {
         "schema_version": _SCHEMA_VERSION,
-        "recents": [{"path": str(r.path), "last_opened_at": r.last_opened_at} for r in entries],
+        "recents": [
+            {"path": str(r.path), "last_opened_at": r.last_opened_at,
+             **({"last_step": r.last_step} if r.last_step else {})} for r in entries
+        ],
     }
     if root is not None:
         payload["root_path"] = str(root)

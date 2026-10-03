@@ -29,6 +29,7 @@ from . import (
     facade,
     framing_cli,
     lock,
+    mission,
     planlink,
     settings,
     storage,
@@ -182,6 +183,9 @@ def cmd_new(args: argparse.Namespace) -> int:
         return _fail("demande exigée : --demande, --cadrer, --cadrer-avec-agent ou --depuis")
     if args.cadrer_avec_agent and args.agent_cadrage is None:
         return _fail("--agent-cadrage absent — sur la ligne de commande ou dans le fichier")
+    if args.nouvelle_version and not args.mission:
+        return _fail("--nouvelle-version ne vaut qu'avec --mission")
+    _hint_mission(args)
     if given and not args.cadrer_avec_agent:
         return _fail(f"{' '.join(given)} : réservé(s) à --cadrer-avec-agent")
     follow_up = None
@@ -195,6 +199,19 @@ def cmd_new(args: argparse.Namespace) -> int:
     finally:
         if follow_up is not None:
             follow_up.discard()
+
+
+def _hint_mission(args: argparse.Namespace) -> None:
+    """Une recherche rattachée à une mission se poursuit dans la mission : le dire, sans refuser —
+    `new` sans `--mission` reste une création indépendante."""
+    if args.depuis and not args.mission:
+        try:
+            root = mission.root_of(Path(args.depuis))
+        except mission.MissionError:
+            return
+        if root is not None:
+            print(f"cette recherche est dans la mission {root} : ajouter --mission pour y ranger"
+                  " la conception", file=sys.stderr)
 
 
 def _create(args: argparse.Namespace, follow_up: facade.FollowUp | None) -> int:
@@ -239,7 +256,8 @@ def _request(
         source_root=Path(args.source_root) if args.source_root else None,
         source_list=Path(args.source_list) if args.source_list else None,
         source_label=args.source_label,
-        follow_up=follow_up,
+        follow_up=follow_up, mission=Path(args.mission) if args.mission else None,
+        new_version=bool(args.nouvelle_version),
     )
 
 
@@ -410,13 +428,23 @@ def _status(collab: Path, *, json_output: bool) -> int:
     return 0
 
 
+def _print_mission(root: Path) -> None:
+    for line in mission.summarize(root).render():
+        print(line)
+
+
 def cmd_show(args: argparse.Namespace) -> int:
     """Ce que l'humain lit avant de décider — strictement en lecture seule."""
     collab = Path(args.collab)
     try:
+        if args.etape:
+            collab = mission.step_path(collab, args.etape)
+        elif (collab / mission.REGISTRY).is_file():
+            _print_mission(collab)
+            return 0
         state = State.from_dict(_read_json(collab / "etat.json"))
         print(decisions.render(collab, state, with_document=not args.no_document), end="")
-    except _BORDER_ERRORS as exc:
+    except (*_BORDER_ERRORS, mission.MissionError) as exc:
         return _fail(_describe(exc))
     return 0
 
@@ -472,6 +500,26 @@ def cmd_plan(args: argparse.Namespace) -> int:
         return _fail(_describe(exc))
 
 
+def cmd_mission(args: argparse.Namespace) -> int:
+    root, collab = Path(args.racine), Path(args.collab)
+    try:
+        if args.operation == "attach":
+            step = mission.attach(root, collab, args.role, args.source)
+            print(f"rattachée : {step.path} ({step.role})")
+            return 0
+        done = mission.adopt(root, collab, args.role, args.path, args.source)
+    except (mission.MissionError, OSError) as exc:
+        return _fail(_describe(exc))
+    print(f"copiée et rattachée : {done.dest} — {done.files} fichier(s) identiques à l'original")
+    for name in done.rewritten:
+        print(f"recalculé : {name}")
+    for name, hits in done.absolute_paths.items():
+        print(f"chemin absolu dans {name} ({hits}) : à vérifier avant la reprise")
+    print(f"traces historiques et corpus : {done.history_paths} chemin(s) absolu(s), inchangés")
+    print(f"l'original reste la sauvegarde : {collab}")
+    return 0
+
+
 def cmd_gui(args: argparse.Namespace) -> int:
     """Ouvre la fenêtre Tkinter/ttk locale (`conception/GUI_V1.md`). Importée ici
     seulement : la CLI ne dépend pas de `tkinter` pour le reste de ses commandes."""
@@ -488,7 +536,21 @@ def cmd_list(args: argparse.Namespace) -> int:
     if not root.is_dir():
         return _fail(f"{root} n'est pas un dossier")
     found = False
-    for candidate in sorted(p for p in root.iterdir() if (p / "etat.json").is_file()):
+    try:
+        if (root / mission.REGISTRY).is_file():
+            _print_mission(root)
+            return 0
+        children = sorted(p for p in root.iterdir() if p.is_dir())
+    except (OSError, mission.MissionError) as exc:
+        return _fail(_describe(exc))
+    for candidate in (p for p in children if (p / mission.REGISTRY).is_file()):
+        found = True
+        try:
+            _print_mission(candidate)
+        except mission.MissionError as exc:
+            print(f"{candidate.name}  mission illisible : {exc}")
+    for candidate in (p for p in children if (p / "etat.json").is_file()
+                      and not (p / mission.REGISTRY).is_file()):
         found = True
         try:
             state = State.from_dict(_read_json(candidate / "etat.json"))
@@ -632,6 +694,15 @@ def build_parser() -> argparse.ArgumentParser:
         " décision deviennent le corpus de la conception, dont les réglages sont hérités ;"
         " sans --demande, le mandat de transition généré sert de demande",
     )
+    p_new.add_argument(
+        "--mission", metavar="RACINE",
+        help="ranger l'étape dans ce dossier de mission (créé au besoin) et l'y inscrire ;"
+        " le dossier de l'étape doit y être contenu",
+    )
+    p_new.add_argument(
+        "--nouvelle-version", action="store_true",
+        help="avec --mission : créer explicitement la version suivante de l'étape (conception-002)",
+    )
     p_new.add_argument("--model-a", help="modèle de A (défaut : celui de l'adaptateur)")
     p_new.add_argument("--model-b", help="modèle de B (défaut : celui de l'adaptateur)")
     p_new.add_argument("--effort-a", help=_EFFORT_HELP.format("A"))
@@ -686,6 +757,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_show.add_argument(
         "--no-document", action="store_true", help="le résumé seul, sans le document"
     )
+    p_show.add_argument(
+        "--etape", metavar="CHEMIN",
+        help="sur une racine de mission : lire cette étape inscrite ('.' pour la racine)",
+    )
     p_show.set_defaults(func=cmd_show)
 
     # Une décision et une seule par commande. Trois ne touchent pas au moteur ;
@@ -720,6 +795,30 @@ def build_parser() -> argparse.ArgumentParser:
     p_list = sub.add_parser("list", help="énumérer les collaborations d'un dossier")
     p_list.add_argument("root", help="dossier qui contient des collaborations")
     p_list.set_defaults(func=cmd_list)
+
+    p_mission = sub.add_parser(
+        "mission", help="rattacher ou reprendre une collaboration d'une mission",
+    )
+    ops = p_mission.add_subparsers(
+        dest="operation", required=True, metavar="opération",
+        help="attach (inscrire sur place) ou adopt (copier puis inscrire)",
+    )
+    p_attach = ops.add_parser(
+        "attach", help="inscrire une collaboration déjà située dans la mission (aucun appel)",
+    )
+    p_adopt = ops.add_parser(
+        "adopt", help="copier une collaboration extérieure dans la mission, vérifiée, puis"
+        " l'inscrire ; l'original reste la sauvegarde",
+    )
+    for op, target in (
+        (p_attach, "collaboration à rattacher"), (p_adopt, "collaboration à copier"),
+    ):
+        op.add_argument("racine", help="dossier de la mission")
+        op.add_argument("collab", help=target)
+        op.add_argument("--role", required=True, choices=sorted(mission._KINDS))
+        op.add_argument("--source", metavar="ETAPE", help="étape d'origine, ex. '.' ou recherche")
+        op.set_defaults(func=cmd_mission)
+    p_adopt.add_argument("--path", help="dossier d'arrivée dans la mission (défaut : le rôle)")
 
     p_gui = sub.add_parser("gui", help="ouvrir la fenêtre locale (Tkinter)")
     p_gui.set_defaults(func=cmd_gui)

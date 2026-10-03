@@ -6,7 +6,28 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Parcours de mission — lot 1 (contrat des étapes) implémenté le 2026-10-03, en attente de la
+**Parcours de mission — lot 2 (dossier de mission, navigation, reprise) implémenté et revu par Codex
+(OK, 2026-10-03). État de Mastermind déclaré par le PO le 2026-10-03 : regroupement fait, conception
+terminée puis acceptée avec réserves (B-recette-003 : recette manuelle C01-C20 à rendre reproductible) ;
+prochaine étape : développement avec le Runner — pas encore de parcours « projet neuf » (lot 3 :
+dépôt `code/` créé par le Runner, validations éditables, reprise) ; en attendant, dépôt Git à créer
+à la main avec un commit initial, Node vérifié sous Ubuntu. Historique du lot 2 (rédigé avant la revue) :** Fait :
+`mission.py` (registre `mission.json` strict, verrou de mission, création et rattachement, `attach`,
+`adopt` = copie vérifiée d'un dossier extérieur), `new --mission/--nouvelle-version`, `show`/`list`
+qui reconnaissent les missions (`show --etape`), navigation GUI (en-tête de mission, une ligne par
+mission à l'accueil, dernière étape retenue comme préférence d'affichage), reprise sans doublon
+(« Reprendre la conception » / « Nouvelle version » explicite). Les deux corrections de revue du lot 1
+étaient déjà en place et testées. 957 tests passés (dont deux corrections de la revue Codex du lot 2, voir `progress.md`) ; ruff et mypy verts ; aucun appel fournisseur.
+Mastermind : procédure **répétée sur une copie des dossiers réels** (empreintes identiques, sauvegarde
+intacte, reprise avec réponse sous faux agents) ; l'exécution réelle a été refusée par le contrôle de
+permissions de la session. **Prochaine étape : revue Codex du lot 2 ; exécuter la procédure de
+`reference/REGROUPEMENT_MASTERMIND.md` (décision/lancement du PO) ; puis lot 3 (préparation et reprise
+du Runner) — non commencé.** Mesure : façade + GUI 2 414 (plafond 2 400 dépassé de 14 ; relèvement à
+2 500 proposé, voir `project/RULES.md`, à confirmer), `creation.py` 385 / 400, `mission.py` 412 hors
+plafond. Constat : `Mastermind-conception` n'a pas de `provenance_transition.json` (créée avant le
+lot 1) — le `source_path` à recalculer n'existe pas dans le cas réel.
+
+**Lot 1 (état antérieur, conservé) :** **Parcours de mission — lot 1 (contrat des étapes) implémenté le 2026-10-03, en attente de la
 revue Codex du lot.** Conception acceptée : `conception/PARCOURS_MISSION_CONCEPTION.md` (§11 :
 quatre lots). Lot 1 fait : conception sans corpus (D1 amendé), consignes F/A/B qui distinguent le
 résultat du projet et le livrable de l'étape, instantané de transition `facade.prepare_follow_up`
