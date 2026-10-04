@@ -1,5 +1,26 @@
 # Progress Log — DialogForge V2
 
+## Session 2026-10-04 — conception Runner recentrée sur la simplicité
+
+- À la demande du PO, rédaction de `conception/RUNNER_AGENT_UNIQUE.md` : A seul réalise et contrôle toute la conception acceptée ; validations existantes, remise locale puis essai et acceptation humaine. Aucune sélection de lot partiel dans ce parcours.
+- Retirés de la cible précédente : mesure de progression, registre supplémentaire de candidats, reprise générale et contrat JSON de fin d'appel. Une ligne finale à trois issues suffit ; le bilan reste libre. Réemploi des exports, clones, traces, paquets, bundles et références actuels.
+- Règle de travail précisée : une suggestion de revue ne devient pas une exigence sans besoin démontré ; plusieurs analyses servent à choisir, pas à cumuler leurs précautions. Analyse finale annotée comme historique ; plan et règles orientés vers la nouvelle proposition.
+- Contrôles documentaires : liens locaux, blocs Markdown, absence d'espaces en fin de ligne et cohérence avec le périmètre A seul. Aucun code, test d'implémentation, appel fournisseur ou mission réelle modifié/exécuté.
+
+## Session 2026-10-04 — révision impérative : Runner avec A seul
+
+- Le PO confirme la source Astra V2 et impose un seul agent pour la réalisation et le contrôle du code : A. Aucun B, agent de revue facultatif ou sous-agent délégué. Cette décision remplace la recommandation de la synthèse précédente, conservée ci-dessous comme historique.
+- `schema_dialogforge_analyseFinale.md` révisé dans son ensemble : parcours, mandat, contrôle par A, continuation, authentification, preuves, lots et recette Mastermind. Les validations locales ne sont pas des appels agent ; plusieurs appels au même A restent possibles pour poursuivre ou corriger.
+- Décision consignée dans `task_plan.md` et `project/RULES.md`. Les étapes documentaires amont ne sont pas redéfinies ; aucun code ni mission réelle modifié.
+- Vérification documentaire : recherche des références résiduelles à B et des appels de revue, contrôle des liens et blocs Markdown ; aucun appel fournisseur ni test d'implémentation.
+
+## Session 2026-10-04 — synthèse finale des propositions Runner
+
+- Document demandé : `schema_dialogforge_analyseFinale.md`, rédigé après lecture intégrale d'Opus V2 et d'Astra V2. `schema_dialogforge_analyseFable_V2.md` absent du dépôt ; hypothèse de correspondance explicitée, sans renommer les sources.
+- Arbitrage recommandé : revue B directe dans la cible complète, accès aux candidats historiques dès le premier lot, résultat de fin d'appel minimal, durée commune CLI/GUI, remise puis acceptation du commit essayé. Les recommandations ne sont pas enregistrées comme décisions du PO.
+- Vérification documentaire : liens locaux présents, blocs Markdown équilibrés, UTF-8 et espaces de fin de ligne contrôlés ; `git diff --check` sans erreur. Lecture ciblée du code courant ; aucun code modifié, test d'implémentation ou appel fournisseur exécuté, aucune mission réelle touchée.
+- Plan : prochain examen de la proposition signalé ; statuts des lots de développement inchangés. Aucune règle nouvelle ajoutée à `project/RULES.md` avant acceptation.
+
 ## Session: 2026-09-22 (suite) — 3.3 clos, J3 atteint, v0.1.0
 
 Suite à une relecture externe des commits : trois points corrigés avant de clore.
@@ -2215,3 +2236,37 @@ Note `conception/TYPES_DE_MISSION.md` écrite puis validée telle quelle par le 
 
 - **Retours de revue du lot 2 (même jour).** (1) Le registre acceptait une `source` ne désignant aucune étape : `load` exige désormais une étape **antérieure réellement inscrite** (inexistante, future ou soi-même : refusées). (2) `mission adopt` pouvait publier la copie avant de découvrir que le rôle ou `--source` interdisait le rattachement : les refus prévisibles (rôle inconnu, type incompatible, source absente, étape déjà inscrite, version numérotée attendue, registre invalide) sont vérifiés **avant la copie** par `_admit`, partagé avec `attach` ; seul un véritable échec d'écriture du registre laisse « copiée mais non inscrite », avec la commande de rattachement. Tests ajoutés (copie jamais lancée dans chaque refus, registre et dossier inchangés, échec d'écriture réel conservé) ; contre-épreuve : sans `_admit`, 3 tests échouent. **957 passés, 2 ignorés, 699 sous-tests** ; ruff et mypy verts. Plafond façade + GUI relevé à 2 500 (accord du PO, 2026-10-03) ; compter `mission.py` à part confirmé. Reste : reprise réelle de Mastermind (PO), création d'une mission neuve depuis la GUI.
 
+
+## Session 2026-10-03 — parcours de mission, lot 3 (préparation et reprise du Runner)
+
+- Départ : arbre propre sur `feat/runner-v1`, 957 tests passés. Mesure : Ubuntu WSL n'a aucune identité Git ; celle de l'utilisateur n'existe que sous Windows.
+- **Runner** (`core.py`, `gui_bridge.py`, `cli.py`) : `git_identity`, `check_new_project`, `init_project`, `reuse_initial_base`, `preflight`, `inspect_run` ; `prepare` rend l'OID et reporte l'identité en configuration locale du clone seulement si Ubuntu n'en voit aucune. Pont : actions `check`, `prepare`, `launch`, `continue`, `collect`, `inspect` (`start` supprimé), jeton réservé à `launch` et `continue`. CLI : `init-project`, `inspect`.
+- **Mission** : `executions.py` (référence `developpement/executions/NNN.json` à schéma strict sans jeton ni statut, export `export-NNN` repris s'il est octet pour octet identique, paramètres de l'écran, règles du formulaire, départs permis par état). `development.export_files` (contenu exact sans écriture) ; le mandat dit que les constats ouverts seront réexaminés par la revue du candidat.
+- **GUI** : session en étapes (prérequis, export, référence, dépôt initial, clone, appel), écran avec choix de la voie, lignes de validation, texte de la conception, reprise par lecture du dossier Linux.
+- **Tests (faux agents, dépôts jetables, aucun fournisseur)** : `test_runner_project` (16), `test_executions` (14), `test_runner_flow` (17, vrai pont en sous-processus), `test_gui_runner` (14). **1 015 passés, 2 ignorés, 703 sous-tests** ; ruff et mypy verts. 10 contre-épreuves (mutation du code puis restauration) toutes détectées.
+- **Essai réel Ubuntu sans fournisseur** : projet neuf créé avec l'identité réelle, clone préparé, pause avant l'agent, candidat committé à la main, `node --test` sous `srt`, paquet, source intacte, dossier d'essai supprimé. `tools/qualify_runner_wsl.py` réécrit pour le nouveau protocole et rejoué : vert.
+- **Défauts trouvés** : un pont de test sous Windows bloquait `git` 60 s (tube d'entrée hérité) ; accents en U+FFFD sans UTF-8 forcé. Trois fois, un script de remplacement en heredoc a mutilé les `\n` (règle déjà connue) ; fins de ligne CRLF introduites puis normalisées.
+- **Plafonds** : façade + GUI 2 414 → **2 577 / 2 500** (dépassement de 77, re-décision demandée) ; plus grande vue `creation.py` 385 / 400 (`runner.py` 253) ; `src/` 8 123 → 8 636 (+513, dont −3 d'artefact du compteur sur `modeles.toml`).
+- Limites : `find` prend brièvement le verrou de la conception à l'ouverture de l'écran ; chemin du paquet = chemin Ubuntu (lot 4) ; prérequis non vérifiés pour un chemin relatif au clone ; `Mastermind/code` non créé. Aucun commit, aucun push.
+
+- **Retours de revue du lot 3 (même jour).** (1) Conception modifiée pendant la préparation : `executions.check_current` relit la décision et compare le contenu actuel à l'export enregistré avant `launch` et `continue` ; en cas d'écart, aucun agent n'est appelé, le clone est conservé, un nouvel export et une nouvelle exécution sont exigés. (2) Paquet masqué après un échec : `inspect_run` rend `last_collect` (`reussie`/`echouee`) séparément de `package` (dernier paquet valide, toutes collectes confondues) ; l'écran dit « dernière collecte échouée » et que le paquet antérieur ne valide pas le code actuel. Tests ajoutés : conception changée entre `prepare` et `launch`/`continue` (0 appel agent, clone intact), paquet réussi puis collecte échouée puis réouverture, `check_current` unitaire ; contre-épreuve (garde neutralisée) détectée. **1 020 passés, 2 ignorés, 703 sous-tests** ; ruff et mypy verts.
+- **Plafonds** : le PO porte façade + GUI à **2 700** (relevé 2 583) et fixe **3 000** comme plafond à ne pas dépasser ensuite (voir `RULES.md`). Plus grande vue : `creation.py` 385 / 400.
+
+## Session 2026-10-03 — Runner après la première exécution réelle Mastermind
+
+- Mastermind a produit quatre paquets pour la **même** tête Git `dde9eaa` : le premier appel utile a créé six commits et passé `node --test` (23/23), puis trois clics « Continuer » n'ont rien ajouté. Le quatrième bilan dit explicitement que le lot est déjà réalisé. Le code reste dans le clone Ubuntu ; la recette navigateur C01 à C22 et le lot 4 restent à faire.
+- Correctif : paquet réussi = arrêt lisible avec bilan et validations ; une nouvelle correction exige un objectif saisi, transmis au prompt. La continuation CLI après paquet exige aussi `--correction`. Le dernier appel après un paquet est distingué du paquet ancien dans `inspect_run`. En cas de validation finale échouée **pendant un lancement GUI autorisé**, au plus deux appels correctifs supplémentaires, dans la durée totale saisie, réutilisent le jeton en mémoire ; aucun appel automatique après un paquet réussi ou après réouverture.
+- Diagnostic : une erreur OAuth 401 connue est nommée à l'écran sans exposer la sortie brute. Aucun secret ajouté à la référence, aucun appel fournisseur lancé pour cette modification.
+- Vérification : 54 tests ciblés de flux, projet et référence passés ; 15 tests GUI passés, 4 sous-tests ; `test_docs.py` : 8 tests et 214 sous-tests passés. Un regroupement des quatre fichiers a eu deux échecs intermittents de fixture GUI (`workflow.decide` trouvait `INTERRUPTED`) qui disparaissent en exécutant `test_gui_runner.py` séparément ; aucun échec du parcours Runner dans cette exécution. Ruff et mypy verts. Lecture réelle `dialogforge-run inspect` sur Mastermind : `stage=paquet`, 5 appels, 4 collectes, dernier paquet et bilan visibles. Façade + GUI : 2 643 / 2 700 ; vue Runner : 282 / 400. `src/` : 8 123 au HEAD, 8 781 après ce correctif (ajout net 658). Un test supplémentaire vérifie qu'une correction sans nouveau commit conserve le paquet antérieur.
+- **Suite complète finale : 1 019 tests réussis, 8 ignorés, 703 sous-tests**, code 0 (4 min 10 s). Les échecs intermittents de fixture du regroupement ciblé n'ont pas reparu ; `ruff check .` et `mypy src tests` verts, `git diff --check` sans erreur.
+
+## Session 2026-10-04 — suite du paquet Runner et lot 4
+
+- Retour réel du PO : huit appels et sept collectes Mastermind, toujours la même tête Git ; « correction » et ressaisie du jeton ne permettent pas d'avancer. Le dernier paquet est valide (`node --test`, 23 tests), malgré une trace d'authentification échouée après le travail utile.
+- `delivery.py` : copie vérifiée et atomique du paquet WSL dans `developpement/paquets/`, création/reprise d'une revue liée dans `developpement/revues/`, provenance relative et rattachement à la mission. L'écran Runner propose « Poursuivre : examiner le paquet », sans jeton ni nouvel appel agent.
+- Après acceptation actuelle de la revue, le suivi propose une intégration explicite. Le Runner construit un bundle Git du commit exact ; le dépôt cible doit être propre à la base attendue et n'avance qu'en fast-forward. Un reçu permet de reconnaître la même tête après interruption. Aucun merge de résolution ni écrasement.
+- `inspect_run` choisit le dernier bilan d'appel réussi : la trace OAuth 401 ultérieure n'est plus présentée comme bilan du paquet réussi. « Collecter sans appel » devient « Vérifier le candidat sans agent ».
+- Paquet Mastermind réel lu en lecture seule via `\\wsl.localhost` : base et export correspondent à la référence ; création d'une revue sur copie temporaire, `dev-verify` : READY. Aucun fichier de la mission réelle n'a été modifié et aucun agent réel appelé.
+- Vérifications ciblées : transfert, revue, bundle, intégration et GUI verts ; Ruff et mypy verts. Suite `tests/` : 1 025 passés, 8 ignorés, un échec de fixture Tk connu (`workflow.decide` sur `INTERRUPTED`) sous charge ; `test_gui_runner.py` isolé vert. La fixture GUI force désormais la collecte des variables Tk avant son fil moteur ; suite complète à rejouer après cet ajustement.
+- Taille avec `measure_development.py` : `src/` 9 131 lignes effectives (+1 008 depuis HEAD, lots 3, correction et 4 mêlés). Façade + GUI : **2 700 / 2 700** ; vues Runner et suivi sous 400. Aucun commit ni push.
+- Après collecte des variables Tk avant la fixture GUI, **suite complète `pytest tests -q` : 1 027 passés, 8 ignorés, 706 sous-tests**, code 0 (4 min 19 s). Un dernier ajustement de visibilité du bouton d'intégration exige une décision applicable ; ses tests ciblés passent. Ruff et mypy verts. Façade + GUI finale : 2 698 / 2 700.

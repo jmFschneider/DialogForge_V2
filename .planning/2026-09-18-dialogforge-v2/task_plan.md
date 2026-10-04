@@ -6,7 +6,40 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Parcours de mission — lot 2 (dossier de mission, navigation, reprise) implémenté et revu par Codex
+**Conception Runner recentrée — 2026-10-04 (documentaire).** Proposition rédigée dans
+`conception/RUNNER_AGENT_UNIQUE.md`, après accord du PO sur l'analyse de simplification.
+Exigences du PO : **A seul réalise et contrôle tout le code de la conception acceptée, puis
+le Runner remet un résultat utilisable ; aucun autre agent ni sous-agent.** Pas de lot partiel
+dans ce parcours, mesure de progression, registre supplémentaire de candidats ou reprise générale.
+La nouvelle conception réemploie le socle existant et remplace l'analyse finale pour la cible proposée.
+Prochaine étape : examen des modalités de cette conception, puis mise en œuvre lorsqu'elle sera
+engagée. Aucun code ni statut de lot d'implémentation modifié par cette session.
+Les mentions de suite ci-dessous décrivent le parcours antérieur.
+
+**Parcours de mission — ajustement du Runner après la recette Mastermind (2026-10-03).**
+Le premier appel réel a produit six commits et un paquet validé (23 tests). Trois clics
+« Continuer » supplémentaires ont produit trois paquets pour la même tête, sans code nouveau.
+Le Runner affiche désormais le bilan et les validations, arrête le parcours au paquet, exige un
+objectif pour une correction après paquet et borne à trois appels dans une durée totale les
+corrections automatiques d'échecs de validation au sein d'un lancement autorisé. Suite complète :
+1 019 tests réussis, 8 ignorés, 703 sous-tests ; façade + GUI 2 643 / 2 700.
+**Suite : revue du correctif, puis lot 4 pour rapatrier, revoir et
+intégrer explicitement le candidat Mastermind déjà produit.** La recette navigateur C01 à C22
+reste humaine.
+
+**Parcours de mission — lot 3 (préparation et reprise du Runner) implémenté le 2026-10-03, en attente
+de la revue Codex.** Fait : « Nouveau projet » / « Dépôt existant » dans la GUI ; dépôt initial créé par
+le Runner (`init_project`, identité déjà configurée, jamais inventée) puis clone isolé sous Ubuntu à
+partir de ce commit ; validations en liste éditable (contrat interne inchangé : listes d'arguments, sans
+shell) ; prérequis vérifiés avant tout appel ; export repris s'il est identique ; référence
+`developpement/executions/NNN.json` sans jeton ni statut ; reprise par lecture du dossier Linux
+(`inspect`) sans relance implicite ; B-recette-003 transmis (`OPEN`) dans le mandat. 1 015 tests passés,
+ruff et mypy verts, 10 contre-épreuves détectées, essai réel Ubuntu sans fournisseur (`node --test` sous
+`srt`) concluant. **Plafond façade + GUI relevé à 2 700 par le PO (relevé 2 583), 3 000 fixé comme limite ultérieure** (`RULES.md`).
+Retours de revue pris en compte : garde « conception modifiée » avant l'appel agent, dernier paquet valide distinct de la dernière collecte (1 020 tests). **Prochaine étape : revue Codex du lot 3 ; premier lancement Mastermind depuis la GUI (recette d'usage, appels réels par le PO) ; puis lot 4
+(rapatriement du paquet, revue liée, intégration) — non commencé.**
+
+**Lot 2 (état antérieur, conservé) :** **Parcours de mission — lot 2 (dossier de mission, navigation, reprise) implémenté et revu par Codex
 (OK, 2026-10-03). État de Mastermind déclaré par le PO le 2026-10-03 : regroupement fait, conception
 terminée puis acceptée avec réserves (B-recette-003 : recette manuelle C01-C20 à rendre reproductible) ;
 prochaine étape : développement avec le Runner — pas encore de parcours « projet neuf » (lot 3 :
@@ -372,8 +405,12 @@ l'injection automatique du plan est qualifiée.
 
 ## Current Phase
 Phase 7 (finalisation) — partie 1 complète (2026-09-27) ; types de mission (7.3) et consolidation de
-la partie 2 (7.4 : 2.1 à 2.3) faits le 2026-10-01 ; 7.5 (mesure d'utilité, 2.4) ouverte. Phases 1 à 6
-complètes.
+  la partie 2 (7.4 : 2.1 à 2.3) faits le 2026-10-01 ; 7.5 (mesure d'utilité, 2.4) ouverte. Phases 1 à 6
+  complètes.
+
+  Parcours de mission Mastermind : lots 1 à 3 en place ; lot 4 (paquet, revue et intégration
+  explicite) implémenté le 2026-10-04 dans l'arbre de travail. Tests locaux et répétition sur copie
+  du paquet réel effectués ; la recette réelle de revue et d'intégration reste à faire par le PO.
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi

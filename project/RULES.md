@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-10-03 (dossier de mission, lot 2)
+> Dernière mise à jour : 2026-10-03 (préparation et reprise du Runner, lot 3)
 
 ## Index
 
@@ -62,6 +62,7 @@
 *Amendement du 2026-09-23 (PO), après les lots 3 et 4 : mesuré avec un compteur cohérent d'un lot à l'autre, la croissance nette de `src/` atteignait +1 046 lignes, 146 au-delà du plafond de +900. **Le plafond de croissance nette dans `src/` est porté à 2 500 lignes** — jugé trop bas à l'origine, plutôt que de réduire le lot 4 déjà livré et testé. Le plafond de 1 200 lignes logiques (façade + `gui/`) n'est pas changé : il n'a pas été approché (~1 000 lignes). Détail dans `conception/GUI_V1.md` §11 et `task_plan.md`.*
 *Motif : l'interdit tenait parce qu'une interface qui possède l'exécution tend à reconstruire l'autonomie — la conception retenue écarte explicitement « les mécanismes d'autonomie de l'ancienne GUI » (§11, §17). La levée ne vaut que si la GUI ne décide rien que la CLI ne décide déjà.*
 *Amendement du 2026-10-03 (PO) : « il ne faut pas que le nombre de lignes entraîne des conséquences potentiellement négatives sur le fonctionnement du programme ; si nécessaire ce nombre peut être revu à la hausse », y compris quand réduire le code demande du travail. **Plafond façade + `gui/` porté de 2 400 à 2 500** — valeur proposée au relevé de 2 414 du lot 2 et confirmée par le PO le 2026-10-03 ; la limite de 400 par vue est inchangée. Les règles de mission vivent dans `mission.py`, que ce plafond ne compte pas : le relevé les donne à part (`progress.md`).*
+*Amendement du 2026-10-03 (PO), après le lot 3 du parcours de mission : relevé de 2 577 contre 2 500 (+163 pour l'écran Runner : voie, validations éditables, reprise). **Plafond façade + `gui/` porté de 2 500 à 2 700 lignes effectives** ; le PO fixe aussi **3 000 lignes comme plafond total à ne pas dépasser dans la suite** (lecture retenue : même périmètre façade + `gui/` ; à préciser si le PO visait `src/`). La limite de 400 par vue est inchangée.*
 *Mesuré après le lot 5 (2026-09-23) : le plafond de 1 200 lignes logiques (façade + `gui/`) est à **1 195** — non dépassé, mais sans marge pour un ajout futur à cette surface sans re-décision. Pas d'amendement demandé à ce stade, contrairement au plafond de `src/` : le constater ici suffit à ne pas le redécouvrir en silence.*
 
 **Une présentation qui ne dépend que de `State`/`Configuration` (statuts, phases, barre de progression) se calcule dans la façade partagée, jamais dans une vue Tkinter.**
@@ -77,12 +78,26 @@
 
 ## Travail avec les agents
 
+**Runner : un seul agent A réalise et contrôle tout le code prévu (décision impérative du PO, 2026-10-04).** A développe, teste, relit et corrige toute la conception acceptée ; le Runner exécute les validations locales et remet un résultat utilisable à l'essai humain. Aucun B, autre agent de revue, agent de secours ou sous-agent délégué n'est appelé dans ce parcours, même en option. Plusieurs appels de A peuvent poursuivre le même travail ; un lot partiel ne remplit pas le mandat. Les anciennes revues restent consultables sans relance. Cette décision remplace la proposition de revue B et la cible de passage obligatoire par une revue du code ; elle ne redéfinit pas les cycles documentaires de recherche et de conception. Proposition de conception : `conception/RUNNER_AGENT_UNIQUE.md`, qui recentre l'analyse finale sur la simplicité ; mise en œuvre non engagée par cette rédaction documentaire.
+*Motif : le PO demande explicitement « uniquement A fait la mise en place/contrôle du code. Pas d'autres agents à appeler ». Les validations sont des commandes locales, pas un second agent.*
+
 **Développement assisté (PO, 2026-09-26 ; acceptation déléguée le 27) : Git peut être lu sur deux commits, jamais écrit par DialogForge.** Le développeur extérieur écrit le code et exécute ses tests. Les paquets figent code et résultats déclarés ; une modification impose un nouveau paquet et une collaboration ordinaire. Aucun second moteur d'appels. Conception : `conception/DEVELOPPEMENT_ASSISTE.md`.
 
 **Runner V1 engagé par le PO le 2026-10-01 : exception séparée au développement assisté documentaire.** Sur `feat/runner-v1`, le Runner peut préparer un clone indépendant, appeler un agent développeur et recueillir ses commits locaux ; il ne modifie ni le dépôt source ni le cycle A/B, et remet un paquet à la revue existante. La conception de référence est `conception/DialogForge Runner V1 — conception simplifiée.md`. Les limites réelles de l'environnement d'écriture et des validations sont à qualifier avant un lancement sans surveillance.
 *Motif : automatiser le passage entre `dev-export` et `dev-package` sans réintroduire l'orchestration des tâches dans `workflow.py`. Cette exception ne change pas la règle de lecture seule de `development.py` pour le moteur documentaire.*
 
 **Extension GUI demandée par le PO le 2026-10-03 :** après l'acceptation de la version actuelle d'une conception, l'écran de suivi propose l'export et le lancement du Runner dans Ubuntu WSL2. Une seule exécution active, paquet livré pour revue, aucune intégration automatique. Cette extension porte le plafond façade + GUI à **2 400 lignes effectives** (2 216 mesurées), tout en gardant une vue à 400 lignes maximum. Le plafond propre à la GUI V1 reste historique ; le parcours Runner est décrit dans `docs/RUNNER.md`.
+
+**Un projet neuf est créé par le Runner avec l'identité Git déjà configurée — jamais inventée, jamais écrite en global — et ne l'est qu'une fois.** Avant toute écriture : dossier absent ou vide (ou dépôt sans commit), pas dans un autre dépôt, Git présent, `user.name` et `user.email` lus ; sinon refus avec le chemin de sortie (« Dépôt existant », configurer l'identité). Le commit initial est vide ; une relance ne réutilise que la base **enregistrée dans la référence d'exécution et intacte**. *(PO, 2026-10-03, `PARCOURS_MISSION_CONCEPTION.md` §7.1.)*
+*Motif mesuré le 2026-10-03 : Ubuntu WSL n'a aucune identité Git, celle de l'utilisateur n'existe que sous Windows. Le dépôt est donc créé côté Windows, et le clone reçoit cette identité en configuration **locale** seulement s'il n'en voit aucune — sans elle, l'agent paierait un appel pour échouer à committer.*
+
+**Une reprise du Runner relit le dossier Linux ; la référence d'exécution n'a pas de statut.** `developpement/executions/NNN.json` garde des paramètres non secrets ; l'état (clone préparé, appel, validations, paquet) se lit sur les artefacts (`inspect_run`) et ne propose que le départ qui convient. Aucune reprise ne relance l'agent, ne recrée le dépôt initial ni ne refait le clone ; un export n'est repris que s'il est octet pour octet celui de la version acceptée actuelle, jamais écrasé.
+*Motif : un statut copié dans la référence serait une seconde vérité à garder d'accord avec le dossier — exactement ce que `mission.json` s'interdit pour les collaborations.*
+
+**Un paquet réussi clôt l'appel de développement ; une correction ultérieure a un objectif humain explicite.** La GUI affiche le bilan et les validations du paquet. Elle ne propose plus « Continuer » sur un paquet prêt : quatre collectes réelles de Mastermind portaient sur la même tête Git après trois clics sans travail nouveau. Dans un lancement déjà autorisé, un échec de validation peut entraîner au plus deux appels de correction supplémentaires, avec le même jeton en mémoire et dans la durée totale indiquée ; un paquet réussi arrête cette boucle. Aucun jeton n'est enregistré pour une reprise après fermeture. *(PO, 2026-10-03.)*
+*Motif : les clics répétés et la ressaisie du jeton ne sont pas une autonomie utile ; ils ont reproduit quatre paquets pour le même candidat sans avancer le code.*
+
+**Suite du paquet (2026-10-04) :** l'action de poursuite importe et vérifie le paquet sans jeton, puis crée ou rouvre sa revue. L'intégration du code est une action distincte après acceptation de la revue : candidat Git exact, dépôt propre à la base attendue, fast-forward et reçu de reprise. Une erreur d'authentification postérieure au dernier travail réussi ne remplace pas le bilan de ce travail.
 
 **Taille de ce lot : ajout net dans `src/` strictement inférieur à 1 000 lignes effectives depuis 5 618 ; cible ≤ 500.** Cette décision du PO remplace pour ce lot la marge restante de 164 lignes. La limite façade/GUI n'est pas modifiée.
 
@@ -245,6 +260,9 @@
 **`Path.glob` est insensible à la casse sous Windows : ne jamais s'en servir pour sélectionner par un champ.**
 *Motif mesuré le 2026-09-04 : un test cherchait le dossier d'appel de B par `glob("*B*")`. Les dossiers s'appellent `NNNN-<role>-<uuid>`, et `*B*` a désigné celui de **A** dès que son UUID contenait un `b`. Découper le nom et comparer le champ est exact ; le glob ne l'est pas.*
 
+**Un pont de test lancé sous Windows détache l'entrée standard de ses enfants et force l'UTF-8.** Le vrai pont tourne sous Linux et n'a ni l'un ni l'autre défaut.
+*Motif mesuré le 2026-10-03 (`tests/runner_bridge.py`) : un `git` lancé par le pont héritait du tube d'entrée que le fil de contrôle lisait déjà — 60 s de blocage puis « timed out », alors que la même commande passait seule. Et sans `PYTHONIOENCODING`, les accents des messages du pont arrivaient en U+FFFD.*
+
 **Un faux agent écrit des octets UTF-8 sur le tampon binaire, jamais `write(str)`.** Sous Windows, le flux texte d'un tube encode en cp1252 alors que les adaptateurs décodent en UTF-8 : toute réponse simulée accentuée rend `DECODE_FAILED`.
 *Motif mesuré le 2026-09-19 (1.2) : un cycle à deux tours s'arrêtait en `ERROR` sans rapport avec le moteur, pour un « Désormais » dans une revue simulée. Le défaut était consigné depuis le lot 0 comme « à retenir » ; corrigé à la source dans `tests/fakes.py` plutôt que contourné par une variable d'environnement.*
 
@@ -354,6 +372,7 @@
 *Motif mesuré le 2026-10-02 (Runner V1) : Claude a rendu le code 0 et les témoins sont restés intacts lors de deux essais, alors qu'un classificateur avait interrompu un appel et que les commandes suivantes n'avaient pas été exécutées. Un test séparé, limité à une commande de lecture, a enfin montré l'appel `Bash`, son erreur WSL `socket failed 1` et l'absence du marqueur attendu. Rapport : `reference/RUNNER_QUALIFICATION_2026-10-01.md`.*
 
 **Avant d'ajouter un garde-fou, vérifier qu'il compense un défaut encore réel.**
+Une suggestion de revue ne devient pas automatiquement une exigence : nommer le besoin concret et pourquoi l'existant ne suffit pas. Plusieurs analyses servent à choisir une solution, pas à additionner leurs précautions. *Précision issue du recentrage demandé par le PO le 2026-10-04 pour le Runner (`conception/RUNNER_AGENT_UNIQUE.md`).*
 *Motif : l'échafaudage compense la faiblesse des modèles ; les modèles récents en demandent moins, pas plus.*
 
 **N'éprouver un refus de chemin d'un profil de permissions Codex (Windows, backend élevé) que dans un dossier jetable, puis vérifier `icacls`.**
