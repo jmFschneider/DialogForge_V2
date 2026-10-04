@@ -1,6 +1,10 @@
 # Runner — toute la conception, un seul agent, un résultat utilisable
 
-**4 octobre 2026 — conception proposée, sans implémentation engagée.**
+**4 octobre 2026 — conception engagée par le PO et implémentée le jour même** (R1 remise et
+acceptation `0436bb7`, R2 mandat entier et boucle commune `dfa7c94`, R3 écran et reprise `99f82a7`),
+relue par Codex sans remarque. Recette réelle sur Mastermind : paquet remis, essayé et accepté ; une
+correction demandée à A est passée (`RUNNER: CANDIDAT`, validations vertes, remise automatique). Le
+texte ci-dessous reste la cible ; les écarts de mise en œuvre sont dans `docs/RUNNER.md` et le plan.
 
 Le PO a fixé trois exigences : un seul agent A, tout le code prévu par la conception acceptée, légèreté du Runner. Ce document traduit ces exigences en une évolution du Runner existant. Il remplace, pour cette évolution, les mécanismes plus étendus de [l'analyse finale](../schema_dialogforge_analyseFinale.md). La conception Runner V1 reste la référence du socle réutilisé ; les changements sont décrits ici.
 
@@ -133,4 +137,4 @@ Les tests avec un A factice couvrent les quelques chemins déterminants : candid
 
 La recette réelle est réussie lorsque **toute la conception** donne un résultat lançable depuis `code/`, que l'utilisateur peut l'essayer, demander une correction à A et accepter la version corrigée. Un paquet vert ou une première partie du code ne clôt pas cette recette.
 
-Les essais et la mise en œuvre rejoignent le plan existant. Ce document définit la cible ; il ne constate ni code modifié, ni appel fournisseur, ni recette réelle effectuée.
+Les essais et la mise en œuvre rejoignent le plan existant. Ce document définit la cible ; la mise en œuvre et la recette sont suivies dans le plan PWF.

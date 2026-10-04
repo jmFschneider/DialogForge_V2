@@ -13,13 +13,13 @@ acceptation du commit essayé ; Mastermind remis puis accepté sur copie, 23 tes
 boucle unique `core.run_agent` bornée par la durée ; compteur GUI retiré ; remise automatique).
 **R3 fait** (message pour A sur « Continuer » et « Demander une correction », jeton en mémoire de
 session et « Oublier le jeton », reprise guidée par la ligne finale du dernier appel, exécutions
-`lot.md` sans nouvel appel). **R4 en partie (PO, 2026-10-04)** : depuis la GUI, le paquet
-Mastermind existant a été remis dans `code/`, essayé (« le programme est fonctionnel ») et accepté :
-`master` = `dde9eaa`, reçu dans `integrations/`. Aucun nouvel appel de A : la boucle R2 (ligne
-finale, correction demandée à A, acceptation d'une version corrigée) n'a pas encore tourné en réel.
-**Retour du PO : les sorties de DialogForge ne sont « pas forcément très lisibles, compréhensibles ».**
-**Prochaine étape : préciser avec le PO ce qui est peu lisible** (relevé dans `project/retour_essais_2026-10-04.md`),
-puis décider ; ensuite, à l'occasion, une correction réelle demandée à A pour clore R4.
+`lot.md` sans nouvel appel). **R1 à R3 relus par Codex : aucune remarque** (seule demande :
+terminer Mastermind). **R4 presque clos (PO, 2026-10-04)** : paquet existant remis, essayé et
+accepté (`master` = `dde9eaa`) ; puis **correction réelle demandée à A, passée** — appel 9 avec le
+message du PO, ligne finale `RUNNER: CANDIDAT`, `node --test` 23/23 sur `4298969`, remise
+automatique sur `dialogforge/candidat-002`. **Reste au PO : « Accepter cette version » sur
+`4298969`** (`master` encore à `dde9eaa`), ce qui clôt R4. Puis : lisibilité des sorties, à
+préciser par le PO (`project/retour_essais_2026-10-04.md`) ; décision de fusion de `feat/runner-v1`.
 Façade + GUI : **2 699 / 2 700** — toute nouvelle fonction GUI demande une re-décision du plafond.
 Les mentions de suite ci-dessous décrivent le parcours antérieur.
 
@@ -611,10 +611,11 @@ Conception : `conception/RUNNER_AGENT_UNIQUE.md`. Découpage validé par le PO l
       « Oublier le jeton », reprise par `inspect_run` ; `docs/RUNNER.md` ; mesure ajout/retrait
       *(2026-10-04 : `src/` +27 réels ; phase 8 au total +37 lignes effectives depuis `0814ec1`)*
 - [ ] R4 Recette réelle (PO) : toute la conception Mastermind avec A seul, essai, correction, acceptation
-      *(2026-10-04, en partie : paquet existant remis, essayé — fonctionnel selon le PO — et
-      accepté, `master` = `dde9eaa` ; aucun appel de A avec la nouvelle boucle ; correction réelle
-      à faire. Lisibilité des sorties jugée insuffisante par le PO, à préciser)*
-- **Status:** in_progress — R1 à R3 faits ; R4 en partie
+      *(2026-10-04 : paquet existant remis, essayé — fonctionnel selon le PO — et accepté,
+      `master` = `dde9eaa` ; correction réelle demandée à A passée (`RUNNER: CANDIDAT`,
+      validations vertes, remise sur `candidat-002`, `4298969`) ; acceptation de la version
+      corrigée à faire par le PO. Lisibilité des sorties à préciser)*
+- **Status:** in_progress — R1 à R3 faits et relus par Codex ; R4 : reste l'acceptation corrigée
 
 ## Extension identifiée (hors phases)
 

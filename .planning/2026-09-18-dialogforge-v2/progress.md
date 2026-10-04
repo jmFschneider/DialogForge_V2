@@ -1,5 +1,12 @@
 # Progress Log — DialogForge V2
 
+## Session 2026-10-04 — relecture Codex et première correction réelle
+
+- PO : Codex a relu R1 à R3 sans remarque, hormis « terminer Mastermind ».
+- PO : correction demandée à A depuis la GUI, « passée correctement ». Relevé en lecture seule : `call-0009` porte « Message de l'utilisateur (correction ou réponse) » ; A termine par `RUNNER: CANDIDAT` (couleur 6 en noir `#111111`, distincte de la couleur 1 ; journal d'écarts du README mis à jour ; lancement `python -m http.server 8000 --bind 127.0.0.1` ; limites : recette manuelle C01 à C22, `B-recette-003` inchangé) ; `collect-0008` : `node --test` PASSED sur `4298969` ; paquet `paquets/002`, bundle conservé ; `code/` sur `dialogforge/candidat-002`, `candidat-001` conservée ; `master` toujours `dde9eaa` (un seul reçu d'acceptation).
+- Première exécution réelle de la boucle R2 : ligne finale respectée par Claude, remise automatique après validation. Reste l'acceptation de la version corrigée.
+- `conception/RUNNER_AGENT_UNIQUE.md` : en-tête passé de « proposée » à « engagée et implémentée », avec les commits.
+
 ## Session 2026-10-04 — recette Mastermind par le PO (R4, en partie)
 
 - PO : « dialogforge est allé au bout. J'ai testé le programme et il est fonctionnel. Les sorties de dialogforge ne sont pas forcément très lisibles, compréhensibles. »
