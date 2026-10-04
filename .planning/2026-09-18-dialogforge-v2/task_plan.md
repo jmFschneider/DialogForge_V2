@@ -610,12 +610,12 @@ Conception : `conception/RUNNER_AGENT_UNIQUE.md`. Découpage validé par le PO l
 - [x] R3 Écran : prêt à essayer, correction à A sur la version remise, jeton en session et
       « Oublier le jeton », reprise par `inspect_run` ; `docs/RUNNER.md` ; mesure ajout/retrait
       *(2026-10-04 : `src/` +27 réels ; phase 8 au total +37 lignes effectives depuis `0814ec1`)*
-- [ ] R4 Recette réelle (PO) : toute la conception Mastermind avec A seul, essai, correction, acceptation
-      *(2026-10-04 : paquet existant remis, essayé — fonctionnel selon le PO — et accepté,
-      `master` = `dde9eaa` ; correction réelle demandée à A passée (`RUNNER: CANDIDAT`,
-      validations vertes, remise sur `candidat-002`, `4298969`) ; acceptation de la version
-      corrigée à faire par le PO. Lisibilité des sorties à préciser)*
-- **Status:** in_progress — R1 à R3 faits et relus par Codex ; R4 : reste l'acceptation corrigée
+- [x] R4 Recette réelle (PO) : toute la conception Mastermind avec A seul, essai, correction, acceptation
+      *(2026-10-04 : paquet existant remis, essayé — fonctionnel selon le PO — et accepté ;
+      correction réelle demandée à A passée (`RUNNER: CANDIDAT`, validations vertes, remise sur
+      `candidat-002`) ; version corrigée acceptée, `master` = `4298969`. Lisibilité des sorties :
+      plus tard, selon le PO)*
+- **Status:** complete — R1 à R4 faits, relus par Codex, fusionnés dans `main`
 
 ## Extension identifiée (hors phases)
 
