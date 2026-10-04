@@ -14,12 +14,13 @@ boucle unique `core.run_agent` bornée par la durée ; compteur GUI retiré ; re
 **R3 fait** (message pour A sur « Continuer » et « Demander une correction », jeton en mémoire de
 session et « Oublier le jeton », reprise guidée par la ligne finale du dernier appel, exécutions
 `lot.md` sans nouvel appel). **R1 à R3 relus par Codex : aucune remarque** (seule demande :
-terminer Mastermind). **R4 presque clos (PO, 2026-10-04)** : paquet existant remis, essayé et
-accepté (`master` = `dde9eaa`) ; puis **correction réelle demandée à A, passée** — appel 9 avec le
-message du PO, ligne finale `RUNNER: CANDIDAT`, `node --test` 23/23 sur `4298969`, remise
-automatique sur `dialogforge/candidat-002`. **Reste au PO : « Accepter cette version » sur
-`4298969`** (`master` encore à `dde9eaa`), ce qui clôt R4. Puis : lisibilité des sorties, à
-préciser par le PO (`project/retour_essais_2026-10-04.md`) ; décision de fusion de `feat/runner-v1`.
+terminer Mastermind). **R4 clos (PO, 2026-10-04) — la phase 8 est complète** : paquet existant
+remis, essayé et accepté ; puis correction réelle demandée à A — appel 9 avec le message du PO,
+ligne finale `RUNNER: CANDIDAT`, `node --test` 23/23 sur `4298969`, remise automatique sur
+`dialogforge/candidat-002` — et version corrigée acceptée (`master` = `4298969`, second reçu).
+`feat/runner-v1` fusionnée dans `main` en avance rapide (PO, 2026-10-04), non poussée.
+**Prochaine étape : à choisir avec le PO.** En attente : lisibilité des sorties, « plus tard »
+selon le PO (`project/retour_essais_2026-10-04.md`) ; mesure d'utilité (7.5).
 Façade + GUI : **2 699 / 2 700** — toute nouvelle fonction GUI demande une re-décision du plafond.
 Les mentions de suite ci-dessous décrivent le parcours antérieur.
 
