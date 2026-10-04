@@ -6,7 +6,7 @@ relue par Codex sans remarque. Recette réelle sur Mastermind : paquet remis, es
 correction demandée à A est passée (`RUNNER: CANDIDAT`, validations vertes, remise automatique). Le
 texte ci-dessous reste la cible ; les écarts de mise en œuvre sont dans `docs/RUNNER.md` et le plan.
 
-Le PO a fixé trois exigences : un seul agent A, tout le code prévu par la conception acceptée, légèreté du Runner. Ce document traduit ces exigences en une évolution du Runner existant. Il remplace, pour cette évolution, les mécanismes plus étendus de [l'analyse finale](../schema_dialogforge_analyseFinale.md). La conception Runner V1 reste la référence du socle réutilisé ; les changements sont décrits ici.
+Le PO a fixé trois exigences : un seul agent A, tout le code prévu par la conception acceptée, légèreté du Runner. Ce document traduit ces exigences en une évolution du Runner existant. Il remplace, pour cette évolution, les mécanismes plus étendus de [l'analyse finale](analyses_runner/schema_dialogforge_analyseFinale.md). La conception Runner V1 reste la référence du socle réutilisé ; les changements sont décrits ici.
 
 ## 1. Le contrat
 

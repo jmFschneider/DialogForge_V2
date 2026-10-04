@@ -1,6 +1,6 @@
 # DialogForge — réflexion finale sur l'évolution du Runner
 
-> **Suite au recentrage demandé par le PO sur la simplicité et la réalisation entière, la conception proposée est désormais [Runner — agent unique](conception/RUNNER_AGENT_UNIQUE.md).** Le présent document reste une analyse historique ; ses mécanismes supplémentaires, notamment la mesure de progression et le registre de candidats, ne constituent pas des exigences à reprendre.
+> **Suite au recentrage demandé par le PO sur la simplicité et la réalisation entière, la conception proposée est désormais [Runner — agent unique](../RUNNER_AGENT_UNIQUE.md).** Le présent document reste une analyse historique ; ses mécanismes supplémentaires, notamment la mesure de progression et le registre de candidats, ne constituent pas des exigences à reprendre.
 
 **4 octobre 2026 — synthèse révisée selon la décision du PO : un seul agent A dans le Runner.** Ce choix est impératif et acquis. Les modalités de réalisation ci-dessous restent une proposition de conception ; cette révision documentaire n'engage pas leur implémentation.
 
