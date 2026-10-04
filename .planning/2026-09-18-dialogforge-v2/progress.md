@@ -1,5 +1,11 @@
 # Progress Log — DialogForge V2
 
+## Session 2026-10-04 — recette Mastermind par le PO (R4, en partie)
+
+- PO : « dialogforge est allé au bout. J'ai testé le programme et il est fonctionnel. Les sorties de dialogforge ne sont pas forcément très lisibles, compréhensibles. »
+- Relevé en lecture seule : `code/` sur `dialogforge/candidat-001` = `master` = `dde9eaa`, arbre propre ; paquet `paquets/001`, bundle `candidats/1d4a12fa….bundle`, reçu `integrations/1d4a12fa….json` (branche `master`). Dossier Runner inchangé : 8 appels, 7 collectes, dernier appel = trace OAuth 401 antérieure ; **aucun nouvel appel de A**.
+- Donc acquis en réel : remise, essai utilisateur, acceptation fast-forward. Non encore éprouvé en réel : ligne finale de A, poursuite `RESTE`, correction demandée à A, acceptation d'une version corrigée.
+
 ## Session 2026-10-04 — retour du PO : la mission s'ouvrait sur l'ancienne revue
 
 - Constat du PO : ouverture de Mastermind sur « 001 — en cours », action « Reprendre le cycle », loin du code. Cause : la dernière étape consultée (`recents.json`) était la revue documentaire créée au lot 4 (`developpement/revues/001`, appel A resté `CALLING`), étape `revue` toujours inscrite dans `mission.json`.

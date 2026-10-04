@@ -13,10 +13,13 @@ acceptation du commit essayé ; Mastermind remis puis accepté sur copie, 23 tes
 boucle unique `core.run_agent` bornée par la durée ; compteur GUI retiré ; remise automatique).
 **R3 fait** (message pour A sur « Continuer » et « Demander une correction », jeton en mémoire de
 session et « Oublier le jeton », reprise guidée par la ligne finale du dernier appel, exécutions
-`lot.md` sans nouvel appel). **Prochaine étape : R4, recette réelle par le PO** — depuis la GUI,
-toute la conception Mastermind avec A seul (appels réels, jeton du PO) : résultat lançable depuis
-`code/`, essai, correction demandée à A, acceptation de la version corrigée. Avant : le paquet
-existant de Mastermind peut être remis tel quel (« Remettre dans code/ », sans agent).
+`lot.md` sans nouvel appel). **R4 en partie (PO, 2026-10-04)** : depuis la GUI, le paquet
+Mastermind existant a été remis dans `code/`, essayé (« le programme est fonctionnel ») et accepté :
+`master` = `dde9eaa`, reçu dans `integrations/`. Aucun nouvel appel de A : la boucle R2 (ligne
+finale, correction demandée à A, acceptation d'une version corrigée) n'a pas encore tourné en réel.
+**Retour du PO : les sorties de DialogForge ne sont « pas forcément très lisibles, compréhensibles ».**
+**Prochaine étape : préciser avec le PO ce qui est peu lisible** (écran Runner, bilans, messages),
+puis décider ; ensuite, à l'occasion, une correction réelle demandée à A pour clore R4.
 Façade + GUI : **2 699 / 2 700** — toute nouvelle fonction GUI demande une re-décision du plafond.
 Les mentions de suite ci-dessous décrivent le parcours antérieur.
 
@@ -608,7 +611,10 @@ Conception : `conception/RUNNER_AGENT_UNIQUE.md`. Découpage validé par le PO l
       « Oublier le jeton », reprise par `inspect_run` ; `docs/RUNNER.md` ; mesure ajout/retrait
       *(2026-10-04 : `src/` +27 réels ; phase 8 au total +37 lignes effectives depuis `0814ec1`)*
 - [ ] R4 Recette réelle (PO) : toute la conception Mastermind avec A seul, essai, correction, acceptation
-- **Status:** in_progress — R1 à R3 faits ; R4 (recette réelle) au PO
+      *(2026-10-04, en partie : paquet existant remis, essayé — fonctionnel selon le PO — et
+      accepté, `master` = `dde9eaa` ; aucun appel de A avec la nouvelle boucle ; correction réelle
+      à faire. Lisibilité des sorties jugée insuffisante par le PO, à préciser)*
+- **Status:** in_progress — R1 à R3 faits ; R4 en partie
 
 ## Extension identifiée (hors phases)
 
