@@ -18,7 +18,7 @@ Mastermind existant a été remis dans `code/`, essayé (« le programme est fon
 `master` = `dde9eaa`, reçu dans `integrations/`. Aucun nouvel appel de A : la boucle R2 (ligne
 finale, correction demandée à A, acceptation d'une version corrigée) n'a pas encore tourné en réel.
 **Retour du PO : les sorties de DialogForge ne sont « pas forcément très lisibles, compréhensibles ».**
-**Prochaine étape : préciser avec le PO ce qui est peu lisible** (écran Runner, bilans, messages),
+**Prochaine étape : préciser avec le PO ce qui est peu lisible** (relevé dans `project/retour_essais_2026-10-04.md`),
 puis décider ; ensuite, à l'occasion, une correction réelle demandée à A pour clore R4.
 Façade + GUI : **2 699 / 2 700** — toute nouvelle fonction GUI demande une re-décision du plafond.
 Les mentions de suite ci-dessous décrivent le parcours antérieur.
