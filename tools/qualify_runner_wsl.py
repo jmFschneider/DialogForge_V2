@@ -72,7 +72,7 @@ def main() -> None:
         "pathlib.Path('code.txt').write_text('candidate\\n'); "
         "subprocess.run(['git','add','code.txt'], check=True); "
         "subprocess.run(['git','commit','-qm','candidate'], check=True); "
-        "print('BILAN_OK')"
+        "print('BILAN_OK\\nRUNNER: CANDIDAT')"
     )
     print(f"Qualification : {root}", flush=True)
     real_agent = "--claude" in sys.argv[1:]

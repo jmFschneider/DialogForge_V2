@@ -7,13 +7,14 @@ avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
 **Runner agent unique — mise en œuvre engagée par le PO le 2026-10-04** (`conception/RUNNER_AGENT_UNIQUE.md`,
-phase 8 ci-dessous ; un commit par lot, sur demande du PO). **R1 (remise dans `code/` et
-acceptation du commit essayé) fait** : chemin revue retiré, paquet Mastermind remis puis accepté
-sur une copie, 23 tests Node verts depuis `code/`. **Prochaine étape : R2** — mandat entier avec
-la consigne du §4 dans le prompt (export inchangé), ligne finale `RUNNER: CANDIDAT|RESTE|INTERVENTION`,
-fonction commune `core.develop` bornée par la durée (retrait de `MAX_AGENT_CALLS` et de `_run_calls`),
-remise automatique après réussite. Puis R3 (écran, correction, jeton en session, reprise), puis
-recette réelle par le PO. Façade + GUI : **2 700 / 2 700** — R2 doit retirer la boucle GUI.
+phase 8 ci-dessous ; un commit par lot, sur demande du PO). **R1 fait** (remise dans `code/`,
+acceptation du commit essayé ; Mastermind remis puis accepté sur copie, 23 tests Node verts).
+**R2 fait** (consigne du §4 dans le prompt, export inchangé ; ligne finale à trois valeurs ;
+boucle unique `core.run_agent` bornée par la durée ; compteur GUI retiré ; remise automatique).
+**Prochaine étape : R3** — écran : réponse à une intervention et correction sur la version
+remise (objectif transmis à A), jeton gardé en mémoire de session et « Oublier le jeton »,
+action utile proposée à la réouverture (`verdict` lu par `inspect_run`), environnement vérifié.
+Puis recette réelle par le PO. Façade + GUI : 2 685 / 2 700.
 Les mentions de suite ci-dessous décrivent le parcours antérieur.
 
 **Parcours de mission — ajustement du Runner après la recette Mastermind (2026-10-03).**
@@ -596,13 +597,14 @@ Conception : `conception/RUNNER_AGENT_UNIQUE.md`. Découpage validé par le PO l
       acceptation du commit essayé (fast-forward, reçu `integrations/`), retrait de la revue
       créée et de l'intégration liée à la revue ; Mastermind remis et accepté sur copie
       *(2026-10-04 : `src/` −22 lignes effectives ; façade + GUI 2 700 / 2 700)*
-- [ ] R2 Mandat entier (consigne §4 dans le prompt), ligne finale à trois valeurs, `core.develop`
-      commun CLI/pont/GUI borné par la durée, retrait du compteur de trois appels, remise
-      automatique après réussite ; tests au faux A des chemins du §10
+- [x] R2 Mandat entier (consigne §4 dans le prompt), ligne finale à trois valeurs, boucle
+      commune CLI/pont/GUI (`core.run_agent`) bornée par la durée, retrait du compteur de trois
+      appels, remise automatique après réussite ; tests au faux A des chemins du §10
+      *(2026-10-04 : `src/` +26 ; façade + GUI 2 685 / 2 700)*
 - [ ] R3 Écran : prêt à essayer, correction à A sur la version remise, jeton en session et
       « Oublier le jeton », reprise par `inspect_run` ; `docs/RUNNER.md` ; mesure ajout/retrait
 - [ ] R4 Recette réelle (PO) : toute la conception Mastermind avec A seul, essai, correction, acceptation
-- **Status:** in_progress — R1 fait
+- **Status:** in_progress — R1 et R2 faits
 
 ## Extension identifiée (hors phases)
 

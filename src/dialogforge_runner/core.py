@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import uuid
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
@@ -40,7 +41,37 @@ SRT = "/usr/local/bin/srt"
 
 
 class ValidationFailed(ValueError):
-    """Une validation finale a échoué ; le candidat peut être corrigé dans le clone."""
+    """Défaut du candidat (validation échouée, espace non propre, aucun commit) : A peut le
+    corriger dans le clone."""
+
+
+class Paused(ValueError):
+    """A attend l'utilisateur, n'a pas conclu lisiblement, ou la durée est atteinte : le travail
+    est conservé et rien n'est relancé sans action explicite."""
+
+
+FINAL_LINE = re.compile(r"RUNNER: (CANDIDAT|RESTE|INTERVENTION)")
+CLAUDE_TOOLS = "Bash,Read,Write,Edit,Glob,Grep"  # aucun outil de délégation à un autre agent
+INSTRUCTIONS = (
+    "Réalise tout le code prévu par la conception jointe, dans le dépôt courant, à partir du "
+    "commit {base}. Organise librement ton travail, teste les comportements attendus, relis tes "
+    "modifications et corrige les défauts. Travaille seul, sans appeler d'autres agents. Termine "
+    "sur des commits locaux et fournis les instructions de lancement, les vérifications "
+    "effectuées et les limites éventuelles. Si du travail reste, poursuis ; si une décision ou un "
+    "prérequis te manque, explique précisément lequel. Ne publie ni ne déploie rien. Le "
+    "« passage de relais » du mandat vise un développeur extérieur et ne s'applique pas ici : "
+    "aucune revue ni nouvelle collaboration ne suit ton travail.\n\n"
+    "Termine ta réponse par une seule ligne, exactement l'une de : `RUNNER: CANDIDAT` (tout le "
+    "périmètre est réalisé et contrôlé), `RUNNER: RESTE` (tu expliques le travail restant), "
+    "`RUNNER: INTERVENTION` (tu expliques la question ou l'obstacle).\n"
+)
+
+
+def final_line(text: str) -> str | None:
+    """La valeur de la dernière ligne non vide de A, ou rien si elle est absente ou ambiguë."""
+    lines = [line.strip().strip("`") for line in text.splitlines() if line.strip()]
+    match = FINAL_LINE.fullmatch(lines[-1]) if lines else None
+    return match.group(1) if match else None
 
 
 def _claude() -> Path:
@@ -194,12 +225,14 @@ def inspect_run(run: Path) -> dict[str, Any]:
                       if name.startswith("validations/") and name.endswith(".json")]
         except (OSError, ValueError):
             pass
+    verdict = None
     for call in reversed(calls):
         result = call / "resultat.json"
         output = call / "stdout.txt"
         try:
             if json.loads(result.read_text("utf-8"))["return_code"] == 0 and output.is_file():
-                report = output.read_bytes().decode("utf-8", "replace")[:8000]
+                text = output.read_bytes().decode("utf-8", "replace")
+                report, verdict = text[-8000:], final_line(text)
                 break
         except (OSError, ValueError, KeyError):
             continue
@@ -217,7 +250,8 @@ def inspect_run(run: Path) -> dict[str, Any]:
         "stage": stage, "calls": len(calls), "collects": len(attempts),
         "last_collect": None if not attempts else "reussie" if last_ok else "echouee",
         "package": valid[-1] if valid else None,
-        "report": report, "checks": checks,
+        "report": report, "checks": checks, "verdict": verdict,
+        "lot": (run / "input" / "lot.md").exists(),
         "base_oid": config["base_oid"], "locked": (run / "verrou.json").exists(),
         "last_call_complete": bool(calls) and (calls[-1] / "resultat.json").exists(),
     }
@@ -273,7 +307,6 @@ def prepare(
     *,
     validations: Sequence[Sequence[str]],
     validation_timeout: float = 300,
-    lot: Path | None = None,
     profile: str = "local",
     identity: tuple[str, str] | None = None,
 ) -> str:
@@ -301,16 +334,12 @@ def prepare(
         raise ValueError("le dossier d'exécution doit être séparé du dépôt source")
     if target.is_relative_to(export.resolve()):
         raise ValueError("le dossier d'exécution doit être séparé de l'export")
-    if lot is not None and not lot.is_file():
-        raise ValueError("lot.md absent")
     target.mkdir(parents=True)
     try:
         (target / "input").mkdir()
         (target / "input" / "export").mkdir()
         shutil.copy2(export / "export.md", target / "input" / "export" / "export.md")
         shutil.copy2(export / "export.json", target / "input" / "export" / "export.json")
-        if lot is not None:
-            shutil.copy2(lot, target / "input" / "lot.md")
         development.validate_export(target / "input" / "export")
         subprocess.run(
             [
@@ -355,10 +384,10 @@ def prepare(
 def _candidate(run: Path, base: str) -> str:
     workspace = run / "workspace"
     if _git(workspace, "status", "--porcelain", "--untracked-files=normal"):
-        raise ValueError("espace de travail non propre : traiter les fichiers avant collecte")
+        raise ValidationFailed("espace de travail non propre : committer ou retirer les fichiers")
     head = _git(workspace, "rev-parse", "HEAD")
     if head == base:
-        raise ValueError("aucun commit candidat depuis la base")
+        raise ValidationFailed("aucun commit candidat depuis la base")
     _git(workspace, "merge-base", "--is-ancestor", base, head)
     return head
 
@@ -393,7 +422,20 @@ def collect(run: Path, *, control: transport.ExecutionControl | None = None) -> 
         return _collect_locked(run, control)
 
 
-def _collect_locked(run: Path, control: transport.ExecutionControl | None = None) -> Path:
+def _remaining(deadline: float | None, default: float) -> float:
+    """Le délai d'une étape, borné par le temps restant du lancement s'il y en a un."""
+    if deadline is None:
+        return default
+    left = deadline - time.monotonic()
+    if left <= 0:
+        raise Paused("durée choisie atteinte : travail conservé, reprendre explicitement")
+    return min(default, left)
+
+
+def _collect_locked(
+    run: Path, control: transport.ExecutionControl | None = None,
+    deadline: float | None = None,
+) -> Path:
     config = _config(run)
     base = str(config["base_oid"])
     head = _candidate(run, base)
@@ -413,7 +455,7 @@ def _collect_locked(run: Path, control: transport.ExecutionControl | None = None
                 actual_command,
                 cwd=run / "workspace",
                 call_dir=call,
-                timeout_seconds=float(config["validation_timeout"]),
+                timeout_seconds=_remaining(deadline, float(config["validation_timeout"])),
                 env=_validation_env() if config.get("profile") == "claude-wsl" else None,
                 control=control,
             )
@@ -461,7 +503,8 @@ def _collect_locked(run: Path, control: transport.ExecutionControl | None = None
         _write_json(path, record)
         validations.append(path)
         if record["outcome"] != "PASSED":
-            raise ValidationFailed(f"validation {index} échouée ; traces : {call}")
+            raise ValidationFailed(f"validation {index} échouée ({' '.join(command)}) ; traces : "
+                                   f"{call}\n{str(record['summary'])[:4000]}")
         try:
             current = _candidate(run, base)
         except ValueError as exc:
@@ -509,83 +552,103 @@ def run_agent(
     correction: str = "",
     control: transport.ExecutionControl | None = None,
 ) -> Path:
-    """Lance un agent fourni par l'appelant, puis collecte sans fenêtre concurrente.
+    """Confie toute la conception à A et le suit jusqu'à un paquet, dans la durée choisie.
 
-    Cette interface interne sert d'abord au faux agent. L'adaptateur réel et son
-    environnement d'écriture doivent être qualifiés avant exposition dans la CLI.
+    La ligne finale de A décide : `RESTE` poursuit avec A, `CANDIDAT` lance les validations
+    (un défaut du candidat lui est renvoyé), `INTERVENTION` ou une ligne illisible met en pause.
+    Un incident (interruption, authentification, validation non lancée) arrête aussi. Une seule
+    boucle pour la CLI, le pont et la GUI ; aucun autre agent n'est appelé.
     """
-    timeout_seconds = positive_seconds(timeout_seconds)
+    deadline = time.monotonic() + positive_seconds(timeout_seconds)
     with lock.acquire(run / "verrou.json", "runner-run"):
         config = _config(run)
-        calls = run / "calls"
-        previous = sorted(calls.glob("call-*"))
+        if (run / "input" / "lot.md").exists():
+            raise ValueError("exécution limitée à un lot : consultable seulement ; préparer une "
+                             "nouvelle exécution sur toute la conception acceptée")
+        previous = sorted((run / "calls").glob("call-*"))
         if previous and not continue_existing:
             raise ValueError("appel déjà tenté ; continuation explicite requise")
         if not previous and continue_existing:
             raise ValueError("aucun appel à continuer")
         if correction and not continue_existing:
             raise ValueError("une correction exige un appel de continuation")
-        prior = inspect_run(run) if continue_existing else None
-        if prior and prior["package"] and not correction:
+        prior = inspect_run(run)["package"] if continue_existing else None
+        if prior and not correction:
             raise ValueError("un paquet existe déjà : préciser la correction demandée")
-        call = calls / f"call-{len(previous) + 1:04d}"
-        call.mkdir()
-        mandate = (run / "input" / "export" / "export.md").read_text(encoding="utf-8")
-        lot = run / "input" / "lot.md"
-        prompt = (
-            f"Réalise le lot dans le dépôt courant à partir du commit {config['base_oid']}. "
-            "Organise librement ton travail, teste-le, puis crée les commits locaux. "
-            "Termine sur un candidat committé. Explique tout travail incomplet ou arbitrage "
-            "nécessaire dans ta réponse finale. Arrête-toi si un prérequis manque ou si une "
-            "décision dépasse le mandat. Ne publie ni ne déploie rien.\n\n"
-            f"# Mandat\n{mandate}\n"
-            "\n# Validations finales prévues\n"
-            f"{json.dumps(config['validations'], ensure_ascii=False)}\n"
-        )
-        if lot.exists():
-            prompt += f"\n# Lot choisi\n{lot.read_text(encoding='utf-8')}\n"
-        if previous:
-            prompt += "\nExamine l'état Git et le travail présent avant de continuer.\n"
-            attempts = sorted((run / "results").glob("collect-*"))
-            if attempts:
-                records = sorted(attempts[-1].glob("validation-*/validation.json"))
-                for record in records:
-                    result = json.loads(record.read_text(encoding="utf-8"))
-                    if result.get("outcome") != "PASSED":
-                        prompt += ("\n# Validation finale à corriger\n"
-                                   + str(result.get("summary", ""))[:4000] + "\n")
-        if correction:
-            prompt += f"\n# Correction demandée par l'utilisateur\n{correction}\n"
-        storage.write_atomic_text(call / "prompt.md", prompt)
-        result = transport.run(
-            command,
-            cwd=run / "workspace",
-            call_dir=call,
-            timeout_seconds=timeout_seconds,
-            stdin_text=prompt,
-            env=env,
-            control=control,
-        )
-        if result.outcome is not transport.Outcome.COMPLETED or result.return_code:
+        prior_head = development.read_package(Path(prior))[1]["identity"]["head_oid"] if (
+            prior) else None
+        defect = ""
+        while True:
+            call = _call_agent(run, config, command, _remaining(deadline, float("inf")), env,
+                               control, correction, defect)
+            if control is not None and (control.pause_requested.is_set()
+                                        or control.interrupt_requested.is_set()):
+                raise Paused(f"appel terminé, suite arrêtée à la demande ; traces : {call}")
             output = call / "stdout.txt"
-            if output.is_file():
-                with output.open("rb") as stream:
-                    if b"OAuth access token is invalid" in stream.read(4096):
-                        raise ValueError(
-                            "authentification de l'agent refusée (401) ; vérifier le jeton"
-                        )
-            raise ValueError(f"appel agent interrompu ou échoué ; traces : {call}")
-        if (prior and prior["stage"] == "paquet" and
-                _git(run / "workspace", "rev-parse", "HEAD") ==
-                development.read_package(Path(prior["package"]))[1]["identity"]["head_oid"]):
-            raise ValueError(
-                "la correction n'a produit aucun nouveau commit ; paquet précédent conservé"
-            )
-        if control is not None and control.pause_requested.is_set():
-            raise ValueError(f"appel terminé ; collecte à lancer séparément ; traces : {call}")
-        if control is not None and control.interrupt_requested.is_set():
-            raise ValueError(f"appel terminé ; collecte interrompue ; traces : {call}")
-        return _collect_locked(run, control)
+            verdict = final_line(output.read_bytes().decode("utf-8", "replace")
+                                 if output.is_file() else "")
+            if verdict == "RESTE":
+                defect = ""
+                continue
+            if verdict != "CANDIDAT":
+                raise Paused(("A demande une intervention" if verdict else
+                              "ligne finale de A absente ou ambiguë")
+                             + f" : lire son bilan ; rien n'est relancé ; traces : {call}")
+            if prior_head and _git(run / "workspace", "rev-parse", "HEAD") == prior_head:
+                raise Paused("la correction n'a produit aucun nouveau commit ; "
+                             "paquet précédent conservé")
+            try:
+                return _collect_locked(run, control, deadline)
+            except ValidationFailed as exc:
+                defect = str(exc)
+
+
+def _call_agent(
+    run: Path, config: dict[str, Any], command: Sequence[str], timeout: float,
+    env: Mapping[str, str] | None, control: transport.ExecutionControl | None,
+    correction: str, defect: str,
+) -> Path:
+    """Un appel de A : prompt écrit avant l'appel, sortie conservée ; un échec est un incident."""
+    calls = run / "calls"
+    previous = sorted(calls.glob("call-*"))
+    call = calls / f"call-{len(previous) + 1:04d}"
+    call.mkdir()
+    mandate = (run / "input" / "export" / "export.md").read_text(encoding="utf-8")
+    prompt = (
+        INSTRUCTIONS.format(base=config["base_oid"]) + f"\n# Mandat\n{mandate}\n"
+        "\n# Validations finales prévues\n"
+        f"{json.dumps(config['validations'], ensure_ascii=False)}\n"
+    )
+    if previous:
+        prompt += "\nExamine l'état Git et le travail présent avant de continuer.\n"
+    attempts = sorted((run / "results").glob("collect-*"))
+    if defect:
+        prompt += f"\n# Défaut du candidat à corriger\n{defect}\n"
+    elif previous and attempts:
+        for record in sorted(attempts[-1].glob("validation-*/validation.json")):
+            result = json.loads(record.read_text(encoding="utf-8"))
+            if result.get("outcome") != "PASSED":
+                prompt += ("\n# Validation finale à corriger\n"
+                           + str(result.get("summary", ""))[:4000] + "\n")
+    if correction:
+        prompt += f"\n# Correction demandée par l'utilisateur\n{correction}\n"
+    storage.write_atomic_text(call / "prompt.md", prompt)
+    result = transport.run(
+        command, cwd=run / "workspace", call_dir=call, timeout_seconds=timeout,
+        stdin_text=prompt, env=env, control=control,
+    )
+    if result.outcome is not transport.Outcome.COMPLETED or result.return_code:
+        output = call / "stdout.txt"
+        if output.is_file():
+            with output.open("rb") as stream:
+                if b"OAuth access token is invalid" in stream.read(4096):
+                    raise ValueError(
+                        "authentification de l'agent refusée (401) ; vérifier le jeton"
+                    )
+        if result.outcome is transport.Outcome.TIMEOUT:
+            raise Paused(f"durée choisie atteinte pendant l'appel ; traces : {call}")
+        raise ValueError(f"appel agent interrompu ou échoué ; traces : {call}")
+    return call
 
 
 def run_claude(
@@ -615,7 +678,7 @@ def run_claude(
     return run_agent(
         run,
         [str(claude), "-p", "--restricted", "--permission-mode", "dontAsk",
-         "--tools", "Bash,Read,Write,Edit,Glob,Grep", "--allowedTools", "Bash,Write,Edit",
+         "--tools", CLAUDE_TOOLS, "--allowedTools", "Bash,Write,Edit",
          "--strict-mcp-config", "--no-session-persistence", "--disable-slash-commands",
          "--settings", settings],
         timeout_seconds=timeout_seconds, env=env, continue_existing=continue_existing,

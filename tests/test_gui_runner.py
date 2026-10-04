@@ -54,8 +54,9 @@ class SessionProtocolTest(unittest.TestCase):
                                            "PYTHONIOENCODING": "utf-8"}),
             mock.patch("iabinome.gui.runner_session._bridge_command",
                        side_effect=lambda distro=None: [sys.executable, str(bridge)]),
+            mock.patch("iabinome.gui.runner_session.delivery.deliver"),
         ):
-            context.__enter__()
+            self.deliver = context.__enter__()
             self.addCleanup(context.__exit__, None, None, None)
 
     def session(self, action: str, token: str = "jeton") -> RunnerSession:
@@ -77,7 +78,10 @@ class SessionProtocolTest(unittest.TestCase):
         session = self.session("start")
         self.assertIsNone(session.error)
         self.assertEqual(session.package, "/tmp/paquet")
-        self.assertEqual(session.stage, "Paquet prêt")
+        self.assertEqual(session.stage, "Prêt à essayer")
+        self.deliver.assert_called_once()
+        self.assertEqual(self.deliver.call_args.args[2], {"package": "/tmp/paquet",
+                                                          "locked": False})
         calls = self.calls()
         self.assertEqual([c["action"] for c in calls], ["check", "prepare", "launch"])
         self.assertEqual([c["token"] for c in calls], ["", "", "jeton"])

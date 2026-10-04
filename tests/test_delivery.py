@@ -1,34 +1,23 @@
 """Remise d'un candidat dans `code/` puis acceptation du commit essayé, sans agent ni jeton.
 
 Le candidat vient d'un vrai parcours Runner (pont en sous-processus, faux agent, profil local) ;
-seul le transport du bundle depuis Ubuntu est remplacé par l'appel direct au Runner.
+seul le transport du bundle depuis Ubuntu est remplacé par l'appel direct au Runner. Le parcours
+remet déjà le candidat après sa réussite : refaire la remise ne doit rien changer.
 """
 
 from __future__ import annotations
 
 import json
+import unittest
 from pathlib import Path
 from typing import Any
-from unittest import mock
 
-from dialogforge_runner import core
 from iabinome import delivery, development, executions
 from tests.runner_support import git
 from tests.test_runner_flow import FlowCase
 
 
-def _direct_bundle(found: executions.Found, remote: str, package_id: str) -> Path:
-    assert found.data is not None
-    return core.bundle_candidate(Path(found.data["run"]), Path(remote), package_id)
-
-
 class DeliveryCase(FlowCase):
-    def setUp(self) -> None:
-        super().setUp()
-        patch = mock.patch.object(delivery, "_bundle", side_effect=_direct_bundle)
-        patch.start()
-        self.addCleanup(patch.stop)
-
     def deliver(self) -> delivery.Delivered:
         state = self.state()
         return delivery.deliver(self.collab, executions.find(self.collab), state,
@@ -72,7 +61,6 @@ class NewProjectDeliveryTest(DeliveryCase):
         with self.assertRaisesRegex(ValueError, "rien n'est écrasé"):
             self.deliver()
         self.assertEqual((self.code / "notes.txt").read_text(encoding="utf-8"), "à moi")
-        self.assertIsNone(delivery.current(self.collab, executions.find(self.collab)))
 
     def test_only_the_tried_commit_can_be_accepted(self) -> None:
         self.assertIsNone(self.go("start").error)
@@ -163,6 +151,8 @@ class PackageReceptionTest(DeliveryCase):
             delivery.receive_package(self.collab, executions.find(self.collab), state,
                                      source=source)
 
+
+class LinuxPathTest(unittest.TestCase):
     def test_linux_source_must_be_inside_run(self) -> None:
         data = {"run": "/home/test/runner"}
         good = "/home/test/runner/results/collect-0001/package"

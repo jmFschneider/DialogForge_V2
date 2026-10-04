@@ -1,9 +1,11 @@
 """Passage Windows GUI → Runner Linux ; protocole JSON sur stdin/stdout.
 
 Une requête, une action : `check` (prérequis, sans rien écrire), `prepare` (clone isolé),
-`launch` (premier appel de l'agent), `continue` (appel suivant, explicite), `collect` (validations
-et paquet, sans agent) et `inspect` (état du dossier, en lecture). Seuls `launch` et `continue`
-reçoivent le jeton, qui ne passe jamais par un argument ni par un fichier.
+`launch` (premier lancement de A), `continue` et `correct` (lancement suivant, explicite),
+`collect` (validations et paquet, sans agent), `bundle` (transport Git d'un paquet) et `inspect`
+(état du dossier, en lecture). Un lancement suit A jusqu'au paquet ou à une pause, dans la durée
+reçue (`core.run_agent`). Seuls les lancements reçoivent le jeton, qui ne passe jamais par un
+argument ni par un fichier.
 """
 
 from __future__ import annotations
@@ -126,7 +128,7 @@ def main() -> int:
         return 0
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
         _event("error", message=str(exc),
-               code="validation_failed" if isinstance(exc, core.ValidationFailed) else "error")
+               code="pause" if isinstance(exc, core.Paused) else "error")
         return 1
 
 

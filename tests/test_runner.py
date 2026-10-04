@@ -147,7 +147,8 @@ class RunnerTest(unittest.TestCase):
             "pathlib.Path('code.txt').write_text('agent result\\n')\n"
             "subprocess.run(['git', 'add', 'code.txt'], check=True)\n"
             "subprocess.run(['git', 'commit', '-qm', 'agent candidate'], check=True)\n"
-            "print('Bilan : changement terminé')\n",
+            "print('Bilan : changement terminé')\n"
+            "print('RUNNER: CANDIDAT')\n",
             encoding="utf-8",
         )
         package = core.run_agent(self.run_dir, [sys.executable, str(fake)], timeout_seconds=10)
@@ -172,10 +173,36 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(len(list((self.run_dir / "calls").glob("call-*"))), 1)
         self.candidate(workspace)
         package = core.run_agent(
-            self.run_dir, [sys.executable, "-c", "print('continued')"],
+            self.run_dir, [sys.executable, "-c", "print('continued\\nRUNNER: CANDIDAT')"],
             timeout_seconds=10, continue_existing=True,
         )
         self.assertTrue(package.exists())
+
+    def test_the_final_line_is_read_strictly(self) -> None:
+        for text, expected in (
+            ("Bilan\nRUNNER: CANDIDAT\n", "CANDIDAT"), ("x\n`RUNNER: RESTE`\n\n", "RESTE"),
+            ("RUNNER: INTERVENTION", "INTERVENTION"), ("RUNNER: CANDIDAT\nMerci.", None),
+            ("RUNNER: candidat", None), ("RUNNER: CANDIDAT ou RESTE", None), ("", None),
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(core.final_line(text), expected)
+
+    def test_a_dirty_workspace_goes_back_to_the_agent_before_any_validation(self) -> None:
+        self.prepare()
+        script = self.root / "agent.py"
+        script.write_text(
+            "import pathlib, subprocess, sys\n"
+            "prompt = sys.stdin.read()\n"
+            "pathlib.Path('code.txt').write_text('agent result\\n')\n"
+            "if 'non propre' in prompt:\n"
+            "    subprocess.run(['git', 'commit', '-qam', 'fini'], check=True)\n"
+            "print('RUNNER: CANDIDAT')\n",
+            encoding="utf-8",
+        )
+        package = core.run_agent(self.run_dir, [sys.executable, str(script)], timeout_seconds=30)
+        self.assertTrue(package.exists())
+        self.assertEqual(len(list((self.run_dir / "calls").glob("call-*"))), 2)
+        self.assertEqual(len(list((self.run_dir / "results").glob("collect-*"))), 1)
 
     def test_claude_profile_requires_native_linux_run(self) -> None:
         if sys.platform == "linux":

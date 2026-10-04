@@ -1,5 +1,14 @@
 # Progress Log — DialogForge V2
 
+## Session 2026-10-04 — Runner agent unique, R2 (mandat entier, ligne finale, boucle commune)
+
+- R1 commité (`0436bb7`). `core.run_agent` devient la boucle unique de la CLI, du pont et de la GUI : prompt = consigne du §4 (dont « travaille seul », la ligne finale, et l'écart du « passage de relais » de l'export) + export entier + validations ; `RESTE` → nouvel appel, `CANDIDAT` → validations, `INTERVENTION`/ligne illisible → `Paused`, `TIMEOUT` d'appel ou durée écoulée → `Paused`. `ValidationFailed` couvre aussi espace non propre et absence de commit, et son message (avec l'extrait de sortie) devient le « Défaut du candidat à corriger » du prompt suivant. Les validations prennent `min(délai, temps restant)`.
+- **Export inchangé, volontairement** : modifier son texte aurait rendu méconnaissables `export-001` de Mastermind et sa référence d'exécution (R1 n'aurait plus trouvé le paquet).
+- Retirés : `MAX_AGENT_CALLS`, `RunnerRequest.max_calls`, `_run_calls` (GUI), option `--lot` et paramètre `lot` de `prepare` ; une exécution avec `input/lot.md` est refusée pour tout nouvel appel (consultable). Pont : code `pause` pour `Paused` (au lieu de `validation_failed`). `inspect_run` rend `verdict` (ligne finale du dernier appel réussi), `lot`, et le bilan pris en fin de sortie. `CLAUDE_TOOLS` nommé, sans outil de délégation.
+- Session GUI : un paquet est aussitôt remis dans `code/` (`delivery.deliver` dans le fil de la session) ; étapes « Prêt à essayer », « En pause », « Arrêté » ; un refus de remise garde le paquet et l'explique.
+- Tests au faux A (modes `reste`, `toujours-reste`, `intervention`, `puis-intervention`, `illisible` ajoutés ; ligne finale dans tous les modes) : RESTE puis candidat, intervention et ligne illisible sans validation ni relance, durée bornante, exécution `lot.md` refusée, outils sans délégation, échec de validation renvoyé à A puis pause, modification utilisateur dans `code/` conservée, dossier `revues/` jamais créé. `FlowCase` fait désormais une vraie remise (`runner_support.local_delivery`). Contre-épreuve : `RESTE` neutralisé → 2 tests échouent ; restauré.
+- Mesure : `src/` 9 117 → 9 143 (+26 ; `core.py` +45 dont la consigne, `runner_session.py` −16) ; façade + GUI **2 685 / 2 700**.
+
 ## Session 2026-10-04 — Runner agent unique, R1 (remise et acceptation)
 
 - PO : découpage R1 remise → R2 continuation → R3 écran validé, « n'attends pas mon accord » ; un commit par lot. Travail antérieur commité d'abord : `4365598` (lots 3, correctif, 4), `0814ec1` (conception et analyses).

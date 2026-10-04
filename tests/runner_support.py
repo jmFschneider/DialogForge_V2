@@ -11,6 +11,7 @@ import subprocess
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 from iabinome import decisions, workflow
@@ -22,23 +23,51 @@ AGENT = """\
 import os, pathlib, subprocess, sys
 sys.stdin.read()
 mode = os.environ.get("RUNNER_TEST_MODE", "ok")
-pathlib.Path(os.environ["RUNNER_TEST_LOG"]).open("a").write("appel\\n")
+log = pathlib.Path(os.environ["RUNNER_TEST_LOG"])
+log.open("a").write("appel\\n")
+calls = len(log.read_text().splitlines())
 if mode == "fail":
     raise SystemExit(7)
 if mode == "auth":
     print("Failed to authenticate. API Error: 401 OAuth access token is invalid.")
     raise SystemExit(1)
 if mode == "noop":
-    print("Aucune correction nécessaire")
+    print("Aucune correction nécessaire\\nRUNNER: CANDIDAT")
     raise SystemExit(0)
-calls = len(pathlib.Path(os.environ["RUNNER_TEST_LOG"]).read_text().splitlines())
+if mode == "illisible":
+    print("Tout est fait.")
+    raise SystemExit(0)
+if mode == "intervention" or mode == "puis-intervention" and calls > 1:
+    print("Quel navigateur faut-il viser ?\\nRUNNER: INTERVENTION")
+    raise SystemExit(0)
+if mode == "toujours-reste" or mode == "reste" and calls == 1:
+    print("Une partie reste à écrire.\\nRUNNER: RESTE")
+    raise SystemExit(0)
 content = ("mauvais\\n" if mode == "repair" and calls == 1 else
            "amélioré\\n" if mode == "improve" else "resultat de l'agent\\n")
-pathlib.Path("app.txt").write_text(content)
-subprocess.run(["git", "add", "app.txt"], check=True)
-subprocess.run(["git", "commit", "-qm", "candidat de l'agent"], check=True)
-print("Bilan : lot terminé")
+path = pathlib.Path("app.txt")
+if not path.exists() or path.read_text() != content:
+    path.write_text(content)
+    subprocess.run(["git", "add", "app.txt"], check=True)
+    subprocess.run(["git", "commit", "-qm", "candidat de l'agent"], check=True)
+print("Bilan : lancer avec python app.txt\\nRUNNER: CANDIDAT")
 """
+
+
+def direct_bundle(found: Any, remote: str, package_id: str) -> Path:
+    """Le transport du bundle sans `wsl.localhost` : le Runner de test est déjà local."""
+    from dialogforge_runner import core
+
+    return core.bundle_candidate(Path(found.data["run"]), Path(remote), package_id)
+
+
+def local_delivery() -> list[Any]:
+    """Remise réelle dans `code/` avec des chemins de run natifs (pas de WSL sous Windows)."""
+    return [
+        mock.patch("iabinome.delivery._bundle", side_effect=direct_bundle),
+        mock.patch("iabinome.delivery._source_path",
+                   side_effect=lambda data, package, distro: Path(package)),
+    ]
 
 
 @contextmanager

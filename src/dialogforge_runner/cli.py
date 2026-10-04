@@ -22,7 +22,6 @@ def main(argv: list[str] | None = None) -> int:
         help="fichier JSON des commandes de validation (listes d'arguments)",
     )
     prepare.add_argument("--validation-timeout", type=float, default=300)
-    prepare.add_argument("--lot", type=Path)
     prepare.add_argument("--output", type=Path, required=True)
     prepare.add_argument("--profile", choices=("local", "claude-wsl"), default="local")
     init = commands.add_parser(
@@ -49,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("checks : liste de listes de chaînes attendue")
             core.prepare(args.export, args.repo, args.base, args.output,
                          validations=checks, validation_timeout=args.validation_timeout,
-                         lot=args.lot, profile=args.profile)
+                         profile=args.profile)
             print(f"Dossier préparé : {args.output.resolve()}")
         elif args.command == "init-project":
             oid, author = core.init_project(args.project)

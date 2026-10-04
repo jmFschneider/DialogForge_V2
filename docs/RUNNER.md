@@ -45,11 +45,19 @@ effacé du formulaire dès le lancement. **Préparer et lancer** enchaîne : pr�
 conception, dépôt initial (projet neuf), clone, puis premier appel. L'export est publié sous
 `developpement/export-NNN` (jamais écrasé : un export identique à la version acceptée est repris,
 une nouvelle acceptation en crée un nouveau). Un échec garde le dossier Runner et ses traces.
-Depuis la GUI, un lancement peut faire **au plus trois appels agent dans la durée totale indiquée**, uniquement
-si une validation finale échoue. Il réutilise le jeton saisi pour ce lancement et joint l'échec
-au prompt de correction. Un paquet réussi arrête immédiatement les appels. Le jeton n'est pas
-conservé après le lancement. Le bilan de l'agent et les validations sont affichés avec le paquet,
-dont le commit se remet ensuite dans `code/` pour l'essayer. La fermeture de la fenêtre pendant
+**A est le seul agent** (`conception/RUNNER_AGENT_UNIQUE.md`) : il reçoit la conception acceptée
+entière et une consigne d'un paragraphe (tout réaliser, tester, relire, corriger, travailler seul,
+committer, expliquer comment lancer le résultat). Son profil n'offre aucun outil de délégation. Il
+termine son bilan par une seule ligne : `RUNNER: CANDIDAT` (périmètre réalisé et contrôlé : les
+validations sont lancées), `RUNNER: RESTE` (le Runner poursuit avec A dans le même lancement) ou
+`RUNNER: INTERVENTION` (pause : son bilan dit ce qui lui manque). Une ligne absente ou ambiguë est
+une pause, jamais un succès. Un défaut du candidat (validation échouée, espace non propre, aucun
+commit) est renvoyé à A ; un incident (interruption, authentification refusée, validation non
+lancée) arrête. **Seule la durée indiquée borne le lancement**, validations comprises ; il n'y a
+plus de nombre fixe d'appels. Le jeton n'est pas conservé après le lancement. Un paquet réussi est
+**aussitôt remis dans `code/`** (voir plus bas) ; le bilan et les validations sont affichés. Une
+exécution ancienne limitée par `lot.md` reste consultable mais ne peut plus être poursuivie.
+La fermeture de la fenêtre pendant
 l'exécution propose pause ou interruption et attend la fin du processus avant de fermer.
 
 ### Reprise après fermeture ou incident
@@ -76,7 +84,8 @@ refait le clone. Après un paquet, « Continuer » ne répète plus le travail a
 Si ce nouvel appel ne crée aucun commit, aucun paquet supplémentaire n'est produit.
 ### Remise dans `code/` et acceptation
 
-**Remettre dans code/** conserve le dernier paquet valide sous `developpement/paquets/NNN` (trace
+La remise suit automatiquement un paquet réussi ; **Remettre dans code/** la refait ou la termine
+après une fermeture ou un refus. Elle conserve le dernier paquet valide sous `developpement/paquets/NNN` (trace
 interne) et ses commits exacts dans un bundle Git sous `developpement/candidats/`, puis extrait ce
 commit sur la branche `dialogforge/candidat-NNN` de l'espace d'essai : `code/` lui-même pour un
 projet neuf, une copie d'essai `code/` distincte pour un dépôt existant (votre dépôt n'est pas
@@ -139,10 +148,12 @@ hors de l'espace d'écriture de l'agent. Les validations passent par `srt` avec 
 au clone, la lecture du dossier personnel fermée sauf pour le clone, et le réseau refusé. Leur
 environnement de test doit donc se trouver dans le clone ou dans les outils système accessibles.
 Le jeton de l'agent n'est pas transmis aux validations. Chaque tentative garde ses
-traces. Après un appel échoué ou interrompu, examiner les traces et le clone, puis utiliser
-`run-claude RUN --timeout 3600 --continue` seulement pour une continuation voulue. Si un paquet
-existe déjà, fournir `--correction "objectif précis"` ; sans objectif, la commande refuse de
-répéter l'appel.
+traces. `run-claude` suit A jusqu'au paquet ou à une pause, selon sa ligne finale, dans la durée
+`--timeout` : c'est la même boucle que la GUI (`core.run_agent`). La remise dans `code/` est une
+opération Windows de la GUI ; la CLI s'arrête au paquet. Après une pause ou un appel interrompu,
+examiner les traces et le clone, puis utiliser `run-claude RUN --timeout 3600 --continue`
+seulement pour une continuation voulue. Si un paquet existe déjà, fournir
+`--correction "objectif précis"` ; sans objectif, la commande refuse de répéter l'appel.
 
 `python3 /mnt/c/Projets/DialogForge_2/tools/qualify_runner_wsl.py` exerce sous Ubuntu le passage
 complet avec un faux agent : commit dans le clone, validation sous `srt`, paquet pour le même

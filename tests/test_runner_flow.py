@@ -20,7 +20,15 @@ from unittest import mock
 from dialogforge_runner import core
 from iabinome import development, executions, mission
 from iabinome.gui.runner_session import RunnerRequest, RunnerSession
-from tests.runner_support import AGENT, BRIDGE, OWNER, accepted_conception, git, git_home
+from tests.runner_support import (
+    AGENT,
+    BRIDGE,
+    OWNER,
+    accepted_conception,
+    git,
+    git_home,
+    local_delivery,
+)
 
 TOKEN = "jeton-secret-de-test-4711"
 
@@ -48,6 +56,7 @@ class FlowCase(unittest.TestCase):
             }),
             mock.patch("iabinome.gui.runner_session._bridge_command",
                        side_effect=lambda distro=None: [sys.executable, str(BRIDGE)]),
+            *local_delivery(),
         ):
             context.__enter__()
             self.addCleanup(context.__exit__, None, None, None)
@@ -109,29 +118,33 @@ class FlowCase(unittest.TestCase):
 
 
 class NewProjectFlowTest(FlowCase):
-    def test_a_new_project_reaches_a_package_and_the_source_stays_untouched(self) -> None:
+    def test_a_new_project_is_delivered_to_code_and_its_branch_stays_on_the_base(self) -> None:
         session = self.go("start")
         self.assertIsNone(session.error)
+        self.assertEqual(session.stage, "Prêt à essayer")
         assert session.package is not None
-        initial = git(self.code, "rev-list", "--max-parents=0", "HEAD")
-        self.assertEqual(self.commits(self.code), 1)
-        self.assertEqual(git(self.code, "ls-tree", "-r", "--name-only", "HEAD"), "")
-        self.assertEqual(git(self.code, "status", "--porcelain"), "")
-        self.assertEqual(git(self.code, "log", "-1", "--format=%an <%ae>"),
+        initial = git(self.code, "rev-parse", "main")
+        self.assertEqual(git(self.code, "ls-tree", "-r", "--name-only", "main"), "")
+        self.assertEqual(git(self.code, "log", "-1", "--format=%an <%ae>", "main"),
                          f"{OWNER[0]} <{OWNER[1]}>")
         workspace = self.run_path / "workspace"
         self.assertEqual(git(workspace, "rev-parse", "HEAD~1"), initial)
-        self.assertTrue((workspace / "app.txt").exists())
-        self.assertFalse((self.code / "app.txt").exists())
         _, metadata = development.read_package(Path(session.package))
         self.assertEqual(metadata["identity"]["base_oid"], initial)
+        self.assertEqual(git(self.code, "rev-parse", "HEAD"), metadata["identity"]["head_oid"])
+        self.assertEqual(git(self.code, "branch", "--show-current"), "dialogforge/candidat-001")
+        self.assertTrue((self.code / "app.txt").exists(), "le résultat est à essayer dans code/")
+        self.assertEqual(git(self.code, "status", "--porcelain"), "")
         self.assertEqual(self.agent_calls(), 1)
+        self.assertFalse((executions.dev_dir(self.collab) / "revues").exists(),
+                         "aucune revue, donc aucun autre agent")
 
     def test_the_reference_records_the_run_and_the_packages(self) -> None:
         session = self.go("start")
         data = self.reference()
-        initial = git(self.code, "rev-parse", "HEAD")
+        initial = git(self.code, "rev-parse", "main")
         self.assertEqual(data["projet"]["mode"], "nouveau")
+        self.assertEqual(data["projet"]["branche"], "main")
         self.assertEqual(data["projet"]["base_oid"], initial)
         self.assertEqual(data["projet"]["identite"], f"{OWNER[0]} <{OWNER[1]}>")
         self.assertEqual(data["run"], str(self.run_path))
@@ -173,7 +186,10 @@ class NewProjectFlowTest(FlowCase):
         self.assertIn('"id": "B-001"', opened)
         self.assertIn('"disposition": "OPEN"', opened)
         self.assertIn("recette à rendre reproductible", prompt)
-        self.assertIn("La revue du candidat les réexaminera", opened)
+        self.assertIn("# Plan", prompt, "la conception acceptée entière est transmise")
+        self.assertIn("Réalise tout le code prévu", prompt)
+        self.assertIn("sans appeler d'autres agents", prompt)
+        self.assertIn("`RUNNER: CANDIDAT`", prompt)
 
     def test_a_missing_prerequisite_stops_before_any_mutation(self) -> None:
         session = self.go("start", validations=[["outil-introuvable-4821", "--test"]])
@@ -216,7 +232,7 @@ class NewProjectFlowTest(FlowCase):
         session = self.go("start")
         self.assertIsNone(session.error)
         self.assertEqual(self.code, mission_root / "code")
-        self.assertEqual(self.commits(self.code), 1)
+        self.assertEqual(self.commits(self.code), 2, "commit initial et candidat remis")
         self.assertTrue((mission_root / "developpement" / "export-001" / "export.md").is_file())
         self.assertTrue((mission_root / "developpement" / "executions" / "001.json").is_file())
 
@@ -247,7 +263,7 @@ class ExistingRepositoryFlowTest(FlowCase):
         data = self.reference()
         self.assertEqual((data["projet"]["mode"], data["projet"]["base_oid"]),
                          ("existant", self.base))
-        self.assertFalse(self.code.exists(), "aucun projet neuf n'est créé")
+        self.assertTrue((self.code / "app.txt").exists(), "copie d'essai distincte du dépôt")
 
     def test_only_committed_files_enter_the_clone(self) -> None:
         (self.repo / "brouillon.txt").write_text("non commité", encoding="utf-8")
@@ -304,16 +320,21 @@ class ExistingRepositoryFlowTest(FlowCase):
         self.assertIn("authentification de l'agent refusée (401)", session.error or "")
         self.assertEqual(self.agent_calls(), 1)
 
-    def test_failed_validations_are_collected_again_without_calling_the_agent(self) -> None:
-        session = self.existing(validations=[["git", "sous-commande-inconnue-9"]],
-                                max_calls=1)
-        self.assertIn("validation 1 échouée", session.error or "")
+    def test_a_failed_validation_goes_back_to_a_then_collects_again_without_agent(self) -> None:
+        self.mode("puis-intervention")
+        session = self.existing(validations=[["git", "sous-commande-inconnue-9"]])
+        self.assertIn("A demande une intervention", session.error or "")
+        self.assertEqual(session.stage, "En pause")
+        prompt = (self.run_path / "calls" / "call-0002" / "prompt.md").read_text("utf-8")
+        self.assertIn("# Défaut du candidat à corriger", prompt)
+        self.assertIn("validation 1 échouée (git sous-commande-inconnue-9)", prompt)
         state = self.state()
-        self.assertEqual((state["stage"], state["collects"]), ("validations", 1))
-        self.assertEqual(self.agent_calls(), 1)
+        self.assertEqual((state["stage"], state["collects"], state["verdict"]),
+                         ("appel", 1, "INTERVENTION"))
+        self.assertEqual(self.agent_calls(), 2)
         again = self.resume("collect")
         self.assertIn("validation 1 échouée", again.error or "")
-        self.assertEqual(self.agent_calls(), 1)
+        self.assertEqual(self.agent_calls(), 2)
         self.assertEqual(self.state()["collects"], 2)
         self.assertEqual(self.reference()["paquets"], [])
 
@@ -392,6 +413,64 @@ class ExistingRepositoryFlowTest(FlowCase):
         self.assertEqual(executions.actions(state), ("correct",))
 
 
+class ContinuationTest(FlowCase):
+    """La ligne finale de A décide de la suite ; la durée borne le lancement."""
+
+    def test_remaining_work_continues_with_a_in_the_same_launch(self) -> None:
+        self.mode("reste")
+        session = self.go("start")
+        self.assertIsNone(session.error)
+        self.assertEqual(self.agent_calls(), 2)
+        self.assertEqual(self.state()["collects"], 1, "pas de validation sur un RESTE")
+        self.assertTrue((self.code / "app.txt").exists())
+        second = (self.run_path / "calls" / "call-0002" / "prompt.md").read_text("utf-8")
+        self.assertIn("Examine l'état Git et le travail présent", second)
+        self.assertNotIn("Défaut du candidat", second, "un RESTE ne passe pas par la collecte")
+
+    def test_an_intervention_or_an_unreadable_end_pauses_without_validation(self) -> None:
+        for mode, expected in (("intervention", "A demande une intervention"),
+                               ("illisible", "absente ou ambiguë")):
+            with self.subTest(mode=mode):
+                shutil.rmtree(self.root / "runs", ignore_errors=True)
+                self.mode(mode)
+                self.log.write_text("", encoding="utf-8")
+                session = self.go("start", run=str(self.root / "runs" / mode))
+                self.assertIn(expected, session.error or "")
+                self.assertEqual((session.stage, session.package), ("En pause", None))
+                self.assertEqual(self.agent_calls(), 1)
+                state = core.inspect_run(self.root / "runs" / mode)
+                self.assertEqual((state["stage"], state["collects"]), ("appel", 0))
+                self.assertEqual(self.agent_calls(), 1, "relire l'état ne relance rien")
+
+    def test_the_chosen_duration_bounds_the_launch(self) -> None:
+        self.mode("toujours-reste")
+        session = self.go("start", timeout=2.0)
+        self.assertIn("durée choisie atteinte", session.error or "")
+        self.assertEqual(session.stage, "En pause")
+        self.assertGreaterEqual(self.agent_calls(), 1)
+        self.assertIsNone(session.package)
+
+    def test_a_run_limited_to_a_lot_is_not_continued(self) -> None:
+        self.assertIn("lancement arrêté", self.go("start", signals=("pause",)).error or "")
+        (self.run_path / "input" / "lot.md").write_text("# Lot 1\n", encoding="utf-8")
+        self.assertIn("exécution limitée à un lot", self.resume("launch").error or "")
+        self.assertEqual(self.agent_calls(), 0)
+
+    def test_the_agent_profile_offers_no_delegation_tool(self) -> None:
+        tools = core.CLAUDE_TOOLS.split(",")
+        self.assertFalse({"Task", "Agent"} & set(tools), tools)
+
+    def test_user_changes_in_code_stop_the_delivery_but_keep_the_package(self) -> None:
+        self.assertIsNone(self.go("start").error)
+        (self.code / "notes.txt").write_text("à moi", encoding="utf-8")
+        self.mode("improve")
+        session = self.resume("correct", correction="Améliorer le texte.")
+        self.assertIn("remise dans code/ non faite", session.error or "")
+        self.assertEqual(len(self.reference()["paquets"]), 2)
+        self.assertEqual((self.code / "notes.txt").read_text(encoding="utf-8"), "à moi")
+        self.assertEqual(git(self.code, "branch", "--show-current"), "dialogforge/candidat-001")
+
+
 class InitialBaseReuseTest(FlowCase):
     def test_a_failed_clone_never_recreates_the_initial_repository(self) -> None:
         self.run_path.mkdir(parents=True)
@@ -406,8 +485,7 @@ class InitialBaseReuseTest(FlowCase):
             session = self.go("start")
         self.assertIsNone(session.error)
         init.assert_not_called()
-        self.assertEqual(git(self.code, "rev-parse", "HEAD"), initial)
-        self.assertEqual(self.commits(self.code), 1)
+        self.assertEqual(git(self.code, "rev-parse", "main"), initial)
         self.assertEqual(self.agent_calls(), 1)
 
     def test_a_modified_initial_repository_is_not_reused(self) -> None:

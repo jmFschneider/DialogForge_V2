@@ -89,10 +89,11 @@ class RunnerView(ttk.Frame):
             self, text=f"Conception acceptée : {self._collaboration}", wraplength=650,
         ).pack(anchor="w", padx=16)
         ttk.Label(
-            self, text="Le Runner développe dans un clone isolé sous Ubuntu, jamais dans votre "
-            "dossier. Une fois les validations réussies, le commit est remis dans code/ pour "
-            "l'essayer ; il n'avance votre branche que si vous acceptez cette version. En cas "
-            "d'échec des tests, un lancement peut faire jusqu'à 3 appels dans la durée indiquée.",
+            self, text="A, seul agent, réalise toute la conception dans un clone isolé sous "
+            "Ubuntu, jamais dans votre dossier ; il poursuit ou corrige un échec de validation "
+            "dans la durée indiquée, et s'arrête s'il a besoin de vous. Les validations réussies, "
+            "le commit est remis dans code/ pour l'essayer ; votre branche n'avance que si vous "
+            "acceptez cette version.",
             wraplength=650,
         ).pack(anchor="w", padx=16, pady=(4, 8))
         body = ttk.Frame(self)

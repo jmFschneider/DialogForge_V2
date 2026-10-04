@@ -1,9 +1,11 @@
 """Exécution du Runner depuis Tk, sans bloquer le fil de la fenêtre.
 
 Une session mène une action : `start` (prérequis, export, référence, dépôt initial d'un projet
-neuf, clone, puis premier appel), `launch` (premier appel sur un clone préparé), `continue`
-(appel suivant, explicite), `collect` (sans agent) ou `inspect` (lecture du dossier Linux).
-Rien ne relance un agent de soi-même ; le jeton ne part que par l'entrée standard du pont.
+neuf, clone, puis lancement de A), `launch` (lancement sur un clone préparé), `continue` ou
+`correct` (lancement suivant, explicite), `collect` (sans agent) ou `inspect` (lecture du dossier
+Linux). Un lancement suit A jusqu'au paquet ou à une pause, dans la durée saisie, côté Runner ;
+un paquet est aussitôt remis dans `code/`. Rien ne relance A après une pause ou une fermeture ;
+le jeton ne part que par l'entrée standard du pont.
 """
 
 from __future__ import annotations
@@ -14,21 +16,18 @@ import shutil
 import subprocess
 import sys
 import threading
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from dialogforge_runner import core
 
-from .. import executions, facade
+from .. import delivery, executions, facade
 
 _STAGES = {
-    "launch": "Agent Claude au travail", "continue": "Continuation",
-    "correct": "Correction demandée", "collect": "Collecte",
-    "inspect": "Lecture du dossier Runner",
+    "launch": "A au travail", "continue": "A poursuit", "correct": "Correction demandée à A",
+    "collect": "Validations", "inspect": "Lecture du dossier Runner",
 }
-MAX_AGENT_CALLS = 3
 
 
 @dataclass
@@ -46,7 +45,6 @@ class RunnerRequest:
     validation_timeout: float
     distro: str | None = None
     correction: str = ""
-    max_calls: int = MAX_AGENT_CALLS
 
 
 def _bridge_command(distro: str | None = None) -> list[str]:
@@ -106,43 +104,31 @@ class RunnerSession:
                 if self._requested:
                     raise ValueError("clone préparé ; lancement arrêté avant l'appel agent")
                 self._guard_current()
-                self._run_calls("launch")
+                self._bridge("launch")
             else:
                 if request.action in {"launch", "continue", "correct"}:
                     self._guard_current()
-                    self._run_calls(request.action)
-                else:
-                    self._bridge(request.action)
+                self._bridge(request.action)
+            if self.package and request.action != "inspect":
+                self._deliver()
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
             self.error = str(exc)
         finally:
             request.token = ""
         if self.error is not None:
-            self.stage = "Arrêté"
+            self.stage = "En pause" if self.error_code == "pause" else "Arrêté"
         elif self.package:
-            self.stage = "Paquet prêt"
+            self.stage = "Prêt à essayer"
 
-    def _run_calls(self, action: str) -> None:
-        """Une seule autorisation couvre au plus trois appels, uniquement si les tests échouent."""
-        deadline = time.monotonic() + self.request.timeout
-        if not 1 <= self.request.max_calls <= MAX_AGENT_CALLS:
-            raise ValueError("nombre d'appels agent hors limites")
-        for attempt in range(self.request.max_calls):
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise ValueError("durée totale des appels agent atteinte")
-            self.error = self.error_code = None
-            try:
-                self._bridge(action, timeout=remaining)
-                return  # paquet réussi : aucune continuation automatique
-            except ValueError:
-                if (self.error_code != "validation_failed" or attempt + 1 == self.request.max_calls
-                        or self._requested):
-                    raise
-                self.stage = (f"Validation échouée ; correction {attempt + 1}/"
-                              f"{self.request.max_calls - 1}")
-                self._guard_current()
-                action = "continue"
+    def _deliver(self) -> None:
+        """Une réussite de validation est remise dans `code/` sans attendre : opération locale."""
+        self.stage = "Remise dans code/"
+        collaboration = self.request.collaboration
+        try:
+            delivery.deliver(collaboration, executions.find(collaboration),
+                             {"package": self.package, "locked": False})
+        except (OSError, ValueError) as exc:
+            raise ValueError(f"paquet validé, remise dans code/ non faite : {exc}") from exc
 
     def _guard_current(self) -> None:
         if self.reference is not None:
