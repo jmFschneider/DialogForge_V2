@@ -18,7 +18,7 @@ terminer Mastermind). **R4 clos (PO, 2026-10-04) — la phase 8 est complète** 
 remis, essayé et accepté ; puis correction réelle demandée à A — appel 9 avec le message du PO,
 ligne finale `RUNNER: CANDIDAT`, `node --test` 23/23 sur `4298969`, remise automatique sur
 `dialogforge/candidat-002` — et version corrigée acceptée (`master` = `4298969`, second reçu).
-`feat/runner-v1` fusionnée dans `main` en avance rapide (PO, 2026-10-04), non poussée.
+`feat/runner-v1` fusionnée dans `main` en avance rapide puis poussée (PO, 2026-10-04) ; analyses préparatoires rangées dans `conception/analyses_runner/`, branche locale supprimée.
 **Prochaine étape : à choisir avec le PO.** En attente : lisibilité des sorties, « plus tard »
 selon le PO (`project/retour_essais_2026-10-04.md`) ; mesure d'utilité (7.5).
 Façade + GUI : **2 699 / 2 700** — toute nouvelle fonction GUI demande une re-décision du plafond.
