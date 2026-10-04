@@ -363,6 +363,24 @@ class TestNavigation(MissionCase):
         self.assertEqual(mission.resolve(self.mission_root, ".").step, ".")
         self.assertEqual(mission.resolve(self.mission_root, "disparue").step, "conception")
 
+    def test_an_old_code_review_is_never_the_opening_step_but_stays_reachable(self) -> None:
+        review = fakes.collaboration(self.root_dir / "tmp-revue", mission_kind="RECHERCHE")
+        target = self.mission_root / "developpement" / "revues" / "001"
+        target.parent.mkdir(parents=True)
+        shutil.move(review, target)
+        mission.attach(self.mission_root, target, "revue", source="conception")
+        rel = "developpement/revues/001"
+        self.assertEqual(mission.resolve(self.mission_root).step, rel, "registre inchangé")
+        for preferred in (None, rel):
+            with self.subTest(preferred=preferred):
+                self.assertEqual(
+                    mission.resolve(self.mission_root, preferred, opening=True).step,
+                    "conception",
+                )
+        self.assertEqual(mission.resolve(self.mission_root, rel).step, rel, "clic explicite")
+        labels = {v.step.role: v.label for v in mission.summarize(self.mission_root).steps}
+        self.assertTrue(labels["revue"].startswith("archive, hors du parcours"))
+
     def test_a_mission_without_step_is_diagnosed(self) -> None:
         empty = self.root_dir / "Vide"
         empty.mkdir()

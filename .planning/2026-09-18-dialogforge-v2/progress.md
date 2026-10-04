@@ -1,5 +1,10 @@
 # Progress Log — DialogForge V2
 
+## Session 2026-10-04 — retour du PO : la mission s'ouvrait sur l'ancienne revue
+
+- Constat du PO : ouverture de Mastermind sur « 001 — en cours », action « Reprendre le cycle », loin du code. Cause : la dernière étape consultée (`recents.json`) était la revue documentaire créée au lot 4 (`developpement/revues/001`, appel A resté `CALLING`), étape `revue` toujours inscrite dans `mission.json`.
+- Correctif : `mission.resolve(..., opening=True)` n'arrive jamais sur une étape `revue` à l'ouverture d'une mission (clic explicite toujours possible) ; l'en-tête l'étiquette « archive, hors du parcours ». Registre et revue inchangés. Vérifié en lecture sur Mastermind réel : ouverture sur `conception`, Runner proposé. Suite complète : 1 043 passés, 8 ignorés.
+
 ## Session 2026-10-04 — Runner agent unique, R3 (écran et reprise)
 
 - R2 commité (`dfa7c94`) après la suite complète (1 039 passés, 8 ignorés) et `tools/qualify_runner_wsl.py` rejoué sous Ubuntu (faux agent, `srt`, pont) : vert.

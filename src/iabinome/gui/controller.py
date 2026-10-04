@@ -108,7 +108,7 @@ class Controller:
         try:
             remembered = next((r.last_step for r in recents.load(self.recents_path)
                                if r.path == path.resolve()), None)
-            target = mission.resolve(path, step or remembered)
+            target = mission.resolve(path, step or remembered, opening=step is None)
             self.inspect(target.collab)
         except (facade.InspectionError, mission.MissionError) as exc:
             messagebox.showerror("Dossier introuvable ou invalide", str(exc))

@@ -221,16 +221,19 @@ def root_of(path: Path) -> Path | None:
     return found.mission.root if found is not None and found.step is not None else None
 
 
-def resolve(path: Path, preferred: str | None = None) -> Target:
+def resolve(path: Path, preferred: str | None = None, *, opening: bool = False) -> Target:
     """L'ouverture d'un dossier. Une racine de mission ouvre l'étape préférée (préférence
     d'affichage seulement), à défaut la dernière inscrite ; une collaboration indépendante, ou
-    non rattachée, s'ouvre telle quelle."""
+    non rattachée, s'ouvre telle quelle. À l'ouverture d'une mission (`opening`), une ancienne
+    revue du code n'est jamais l'étape d'arrivée : elle reste consultable par un clic explicite,
+    le développement se suivant depuis la conception (`conception/RUNNER_AGENT_UNIQUE.md` §8)."""
     found = locate(path)
     if found is None or (found.rel != "." and found.step is None):
         return Target(None, None, path)
     if found.rel != ".":
         return Target(found.mission.root, found.rel, path)
-    paths = [s.path for s in found.mission.steps]
+    paths = [s.path for s in found.mission.steps
+             if not (opening and s.role == "revue")] or [s.path for s in found.mission.steps]
     if not paths:
         raise MissionError(f"{path} : mission sans étape rattachée")
     step = preferred if preferred in paths else paths[-1]
@@ -268,6 +271,8 @@ def summarize(root: Path) -> Summary:
             label, updated = snapshot.presentation.status_label, snapshot.state.updated_at
         except facade.InspectionError as exc:
             label = f"illisible : {exc}" if folder.is_dir() else "dossier introuvable"
+        if step.role == "revue":
+            label = f"archive, hors du parcours ({label})"
         views.append(StepView(step, folder, label, updated))
     registered = {s.path for s in mission.steps}
     to_attach, partial = [], []
