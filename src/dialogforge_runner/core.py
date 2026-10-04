@@ -232,7 +232,8 @@ def inspect_run(run: Path) -> dict[str, Any]:
         try:
             if json.loads(result.read_text("utf-8"))["return_code"] == 0 and output.is_file():
                 text = output.read_bytes().decode("utf-8", "replace")
-                report, verdict = text[-8000:], final_line(text)
+                report = text[-8000:]
+                verdict = final_line(text) if call == calls[-1] else None
                 break
         except (OSError, ValueError, KeyError):
             continue
@@ -631,7 +632,7 @@ def _call_agent(
                 prompt += ("\n# Validation finale à corriger\n"
                            + str(result.get("summary", ""))[:4000] + "\n")
     if correction:
-        prompt += f"\n# Correction demandée par l'utilisateur\n{correction}\n"
+        prompt += f"\n# Message de l'utilisateur (correction ou réponse)\n{correction}\n"
     storage.write_atomic_text(call / "prompt.md", prompt)
     result = transport.run(
         command, cwd=run / "workspace", call_dir=call, timeout_seconds=timeout,

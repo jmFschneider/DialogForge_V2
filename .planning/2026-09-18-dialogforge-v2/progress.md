@@ -1,5 +1,13 @@
 # Progress Log — DialogForge V2
 
+## Session 2026-10-04 — Runner agent unique, R3 (écran et reprise)
+
+- R2 commité (`dfa7c94`) après la suite complète (1 039 passés, 8 ignorés) et `tools/qualify_runner_wsl.py` rejoué sous Ubuntu (faux agent, `srt`, pont) : vert.
+- Écran Runner : libellés « Lancer A », « Continuer avec A », « Refaire les validations » ; un seul champ « message pour A » sert de réponse à une intervention (`continue`) ou de correction (`correct`, obligatoire), titre du prompt « Message de l'utilisateur (correction ou réponse) » ; jeton gardé par le contrôleur (`runner_token`, mémoire seulement) jusqu'à la fermeture ou « Oublier le jeton ».
+- Reprise : `inspect_run` ne rend `verdict` que pour le **dernier** appel (une ligne d'un appel antérieur ne guide pas) ; `describe` propose l'action utile (intervention → répondre puis continuer ; RESTE → continuer ; CANDIDAT sans validations finies → refaire les validations) ; une exécution `lot.md` n'offre que les validations.
+- Tests : jeton en mémoire puis oublié, message transmis avec `continue` seulement, exécution `lot` sans appel ; libellés mis à jour.
+- Mesure : `src/` +27 réels (compteur : +24, artefact `modeles.toml` −3) ; façade + GUI **2 699 / 2 700** ; vue `runner.py` 353 / 400. Phase 8 au total : +37 lignes effectives depuis `0814ec1` (R1 −19, R2 +29, R3 +27).
+
 ## Session 2026-10-04 — Runner agent unique, R2 (mandat entier, ligne finale, boucle commune)
 
 - R1 commité (`0436bb7`). `core.run_agent` devient la boucle unique de la CLI, du pont et de la GUI : prompt = consigne du §4 (dont « travaille seul », la ligne finale, et l'écart du « passage de relais » de l'export) + export entier + validations ; `RESTE` → nouvel appel, `CANDIDAT` → validations, `INTERVENTION`/ligne illisible → `Paused`, `TIMEOUT` d'appel ou durée écoulée → `Paused`. `ValidationFailed` couvre aussi espace non propre et absence de commit, et son message (avec l'extrait de sortie) devient le « Défaut du candidat à corriger » du prompt suivant. Les validations prennent `min(délai, temps restant)`.

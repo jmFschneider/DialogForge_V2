@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 _POLL_MS = 500
 _LABELS = {
-    "start": "Préparer et lancer", "launch": "Lancer l'agent", "continue": "Continuer l'agent",
+    "start": "Préparer et lancer", "launch": "Lancer A", "continue": "Continuer avec A",
     "correct": "Demander une correction",
 }
 
@@ -132,22 +132,22 @@ class RunnerView(ttk.Frame):
             conception.insert("1.0", f"Conception illisible : {exc}")
         conception.configure(state="disabled")
         conception.pack(fill="x")
-        ttk.Label(body, text="Correction demandée après un paquet (objectif précis) :").pack(
-            anchor="w", pady=(6, 0),
-        )
+        ttk.Label(body, text="Message pour A — correction précise ou réponse à sa question :"
+                  ).pack(anchor="w", pady=(6, 0))
         self._correction = ScrolledText(body, height=3, wrap="word", state="disabled")
         self._correction.pack(fill="x")
-        ttk.Label(body, text="Bilan du paquet et vérifications restantes :").pack(
-            anchor="w", pady=(6, 0),
-        )
+        ttk.Label(body, text="Bilan de A (instructions, vérifications, limites) et validations :"
+                  ).pack(anchor="w", pady=(6, 0))
         self._report = ScrolledText(body, height=7, wrap="word", state="disabled")
         self._report.pack(fill="x")
         token_row = ttk.Frame(body)
         token_row.pack(fill="x", pady=(8, 0))
-        ttk.Label(token_row, text="Jeton Claude (non conservé)", width=25).pack(side="left")
+        ttk.Label(token_row, text="Jeton Claude (en mémoire)", width=25).pack(side="left")
         ttk.Entry(token_row, textvariable=self._token, show="•").pack(
             side="left", fill="x", expand=True,
         )
+        self._forget = ttk.Button(token_row, text="Oublier le jeton", command=self._forget_token)
+        self._forget.pack(side="left", padx=(4, 0))
         self._status = ttk.Label(body, text="Prêt", wraplength=650, justify="left")
         self._status.pack(anchor="w", pady=(10, 0))
         actions = ttk.Frame(self)
@@ -168,7 +168,7 @@ class RunnerView(ttk.Frame):
         )
         self._primary.pack(side="right")
         self._collect = ttk.Button(
-            actions, text="Vérifier le candidat sans agent", state="disabled",
+            actions, text="Refaire les validations", state="disabled",
             command=lambda: self._begin("collect"),
         )
         self._collect.pack(side="right", padx=(0, 8))
@@ -247,6 +247,11 @@ class RunnerView(ttk.Frame):
         assert found is not None
         self._local("Acceptation…", lambda: delivery.accept(self._collaboration, found))
 
+    def _forget_token(self) -> None:
+        self._controller.runner_token = ""
+        self._token.set("")
+        self._forget.configure(state="disabled")
+
     def _delivered(self) -> delivery.Delivered | None:
         return None if self._found is None else delivery.current(self._collaboration, self._found)
 
@@ -267,15 +272,17 @@ class RunnerView(ttk.Frame):
         else:
             shown = executions.parameters(self._collaboration, self._found)
         calls = action in _LABELS
-        correction = self._correction.get("1.0", "end").strip() if action == "correct" else ""
+        message = self._correction.get("1.0", "end").strip()
+        correction = message if action in {"correct", "continue"} else ""
         if action == "correct" and not correction:
             raise ValueError("décrire la correction attendue avant un nouvel appel")
-        if calls and not self._token.get():
+        token = self._token.get() or self._controller.runner_token
+        if calls and not token:
             raise ValueError("saisir le jeton Claude pour l'appel agent")
         return RunnerRequest(
             action=action, collaboration=self._collaboration, found=self._found, mode=shown.mode,
             repo=Path(shown.repo), base=shown.base, validations=shown.validations, run=shown.run,
-            token=self._token.get() if calls else "",
+            token=token if calls else "",
             timeout=positive_seconds(float(self._timeout.get())),
             validation_timeout=shown.validation_timeout, distro=shown.distro,
             correction=correction,
@@ -297,14 +304,18 @@ class RunnerView(ttk.Frame):
         except (ValueError, TypeError) as exc:
             self._status.configure(text=f"À corriger : {exc}")
             return
+        token = request.token  # la session l'efface du lancement ; la fenêtre le garde
         session = self._controller.start_runner(request)
         if session is None:
             self._status.configure(text="Une autre exécution est encore active.")
             return
+        self._controller.runner_token = token or self._controller.runner_token
         self._token.set("")
         self._session = session
         if action != "inspect":
             self._note = ""
+            self._correction.configure(state="normal")
+            self._correction.delete("1.0", "end")
         for button in (self._primary, self._collect, self._back_button, self._deliver_button,
                        self._accept_button):
             button.configure(state="disabled")
@@ -328,12 +339,15 @@ class RunnerView(ttk.Frame):
             state="normal" if shown is not None and not shown.accepted else "disabled",
         )
         self._back_button.configure(state="normal")
+        self._forget.configure(state="normal" if self._controller.runner_token else "disabled")
         self._unlocked = not locked and (state is None or state["stage"] == "absent")
         for widget in self._editable:
             if widget.winfo_exists():
                 widget.state(["!disabled"] if self._unlocked else ["disabled"])
         self._sync_base()
-        self._correction.configure(state="normal" if "correct" in allowed else "disabled")
+        self._correction.configure(
+            state="normal" if {"correct", "continue"} & set(allowed) else "disabled",
+        )
         report = state.get("report", "") if state else ""
         checks = state.get("checks", []) if state else []
         results = "\n".join(

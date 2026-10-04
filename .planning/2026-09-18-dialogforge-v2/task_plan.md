@@ -11,10 +11,13 @@ phase 8 ci-dessous ; un commit par lot, sur demande du PO). **R1 fait** (remise 
 acceptation du commit essayé ; Mastermind remis puis accepté sur copie, 23 tests Node verts).
 **R2 fait** (consigne du §4 dans le prompt, export inchangé ; ligne finale à trois valeurs ;
 boucle unique `core.run_agent` bornée par la durée ; compteur GUI retiré ; remise automatique).
-**Prochaine étape : R3** — écran : réponse à une intervention et correction sur la version
-remise (objectif transmis à A), jeton gardé en mémoire de session et « Oublier le jeton »,
-action utile proposée à la réouverture (`verdict` lu par `inspect_run`), environnement vérifié.
-Puis recette réelle par le PO. Façade + GUI : 2 685 / 2 700.
+**R3 fait** (message pour A sur « Continuer » et « Demander une correction », jeton en mémoire de
+session et « Oublier le jeton », reprise guidée par la ligne finale du dernier appel, exécutions
+`lot.md` sans nouvel appel). **Prochaine étape : R4, recette réelle par le PO** — depuis la GUI,
+toute la conception Mastermind avec A seul (appels réels, jeton du PO) : résultat lançable depuis
+`code/`, essai, correction demandée à A, acceptation de la version corrigée. Avant : le paquet
+existant de Mastermind peut être remis tel quel (« Remettre dans code/ », sans agent).
+Façade + GUI : **2 699 / 2 700** — toute nouvelle fonction GUI demande une re-décision du plafond.
 Les mentions de suite ci-dessous décrivent le parcours antérieur.
 
 **Parcours de mission — ajustement du Runner après la recette Mastermind (2026-10-03).**
@@ -601,10 +604,11 @@ Conception : `conception/RUNNER_AGENT_UNIQUE.md`. Découpage validé par le PO l
       commune CLI/pont/GUI (`core.run_agent`) bornée par la durée, retrait du compteur de trois
       appels, remise automatique après réussite ; tests au faux A des chemins du §10
       *(2026-10-04 : `src/` +26 ; façade + GUI 2 685 / 2 700)*
-- [ ] R3 Écran : prêt à essayer, correction à A sur la version remise, jeton en session et
+- [x] R3 Écran : prêt à essayer, correction à A sur la version remise, jeton en session et
       « Oublier le jeton », reprise par `inspect_run` ; `docs/RUNNER.md` ; mesure ajout/retrait
+      *(2026-10-04 : `src/` +27 réels ; phase 8 au total +37 lignes effectives depuis `0814ec1`)*
 - [ ] R4 Recette réelle (PO) : toute la conception Mastermind avec A seul, essai, correction, acceptation
-- **Status:** in_progress — R1 et R2 faits
+- **Status:** in_progress — R1 à R3 faits ; R4 (recette réelle) au PO
 
 ## Extension identifiée (hors phases)
 

@@ -37,6 +37,7 @@ class Controller:
         self._run_control: ExecutionControl | None = None
         self._run_error: str | None = None
         self._runner_session: RunnerSession | None = None
+        self.runner_token = ""  # en mémoire seulement : jamais écrit, oublié à la fermeture
         self.framing: framing.Framing | None = None
         self._framing_control: ExecutionControl | None = None
         self._framing_outcome: framing.Turn | Exception | None = None

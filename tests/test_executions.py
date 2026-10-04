@@ -199,7 +199,7 @@ class FormRulesTest(unittest.TestCase):
         called = executions.describe({"stage": "appel", "calls": 2, "last_call_complete": False})
         self.assertIn("2 appel(s)", called)
         self.assertIn("interrompu", called)
-        self.assertIn("paquet : /x. « Remettre dans code/ »", executions.describe(
+        self.assertIn("paquet : /x. Son commit est remis dans code/", executions.describe(
             {"stage": "paquet", "package": "/x"}))
         self.assertIn("jamais supprimé", executions.describe(
             {"stage": "prepare", "locked": True}))

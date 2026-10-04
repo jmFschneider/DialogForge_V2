@@ -247,6 +247,8 @@ def rows_from_validations(validations: Sequence[Sequence[str]]) -> list[tuple[st
 def actions(state: dict[str, Any] | None) -> tuple[str, ...]:
     """Les départs permis pour l'état d'un dossier Runner ; un état inconnu n'en permet aucun
     sauf `start` pour un dossier absent."""
+    if state and state.get("lot"):
+        return ("collect",) if state["stage"] in {"appel", "validations"} else ()
     if state and state.get("package") and state["stage"] in {"appel", "validations"}:
         return ("correct", "collect")
     return _ACTIONS.get(state["stage"] if state else "absent", ())
@@ -263,14 +265,24 @@ def describe(state: dict[str, Any] | None) -> str:
     ) else ""
     if stage == "prepare":
         return "Clone préparé, agent non lancé : lancer l'agent sur cette préparation." + lock
+    if state.get("lot"):
+        lock = (" Exécution limitée à un lot : consultable seulement, aucun nouvel appel ; "
+                "préparer une nouvelle exécution sur toute la conception.") + lock
     if stage == "appel":
         done = "terminé" if state.get("last_call_complete") else "interrompu ou sans résultat"
         if state.get("package"):
-            return (f"{state['calls']} appel(s) agent ; le dernier est {done}. "
+            return (f"{state['calls']} appel(s) de A ; le dernier est {done}. "
                     "Un paquet antérieur reste disponible ; la nouvelle correction exige un "
-                    "objectif précis ou une collecte sans appel.") + lock
-        return (f"{state['calls']} appel(s) agent ; le dernier est {done}. Examiner les traces et "
-                "le clone, puis continuer l'agent ou collecter sans appel.") + lock
+                    "objectif précis, sinon « Refaire les validations ».") + lock
+        hint = {
+            "INTERVENTION": "A attend une intervention : lire son bilan, écrire la réponse dans "
+                            "le message pour A, puis « Continuer avec A ».",
+            "RESTE": "A avait encore du travail : « Continuer avec A ».",
+            "CANDIDAT": "A a déclaré son candidat avant la fin des validations : « Refaire les "
+                        "validations ».",
+        }.get(str(state.get("verdict")), "Examiner les traces et le clone, puis « Continuer "
+                                         "avec A » ou « Refaire les validations ».")
+        return f"{state['calls']} appel(s) de A ; le dernier est {done}. {hint}" + lock
     if stage == "validations":
         earlier = (f" Le dernier paquet valide ({state['package']}) est antérieur : il ne valide "
                    "pas le code actuel.") if state.get("package") else ""
@@ -278,6 +290,6 @@ def describe(state: dict[str, Any] | None) -> str:
                      "continuer explicitement pour corriger.")
         return ("Dernière collecte échouée (validations non réussies ou interrompues) : voir les "
                 "traces ; " + next_step + earlier) + lock
-    return (f"Validations réussies — paquet : {state['package']}. « Remettre dans code/ » "
-            "extrait ce commit pour l'essayer, sans appel agent. Une correction n'est utile que "
-            "si un défaut précis est constaté.") + lock
+    return (f"Validations réussies — paquet : {state['package']}. Son commit est remis dans "
+            "code/ pour l'essayer (« Remettre dans code/ » termine ou refait la remise, sans "
+            "agent). Une correction n'est utile que si un défaut précis est constaté.") + lock

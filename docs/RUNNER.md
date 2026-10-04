@@ -41,7 +41,12 @@ projet ne sont pas installées automatiquement.
 
 Le jeton Claude est saisi dans un champ masqué, transmis au pont par son entrée standard seulement
 (jamais en argument, jamais dans un fichier), uniquement pour les actions qui appellent l'agent, et
-effacé du formulaire dès le lancement. **Préparer et lancer** enchaîne : prérequis, export de la
+effacé du formulaire dès le lancement. La fenêtre le **garde en mémoire** jusqu'à sa fermeture ou
+**Oublier le jeton**, pour une correction ou une réponse sans ressaisie ; il n'est jamais écrit
+sur disque ni transmis aux validations, et le garder n'autorise aucun lancement sans clic. Le
+**message pour A** accompagne **Continuer avec A** (réponse à une question) ou **Demander une
+correction** (objectif obligatoire) ; une demande qui change le périmètre exige une conception
+amendée. **Préparer et lancer** enchaîne : prérequis, export de la
 conception, dépôt initial (projet neuf), clone, puis premier appel. L'export est publié sous
 `developpement/export-NNN` (jamais écrasé : un export identique à la version acceptée est repris,
 une nouvelle acceptation en crée un nouveau). Un échec garde le dossier Runner et ses traces.
@@ -72,11 +77,15 @@ le clone ne sont plus modifiables.
 | Situation lue | Départ proposé |
 |---|---|
 | Export publié, clone absent | **Préparer et lancer** : l'export est repris ; un dépôt initial déjà créé n'est reconnu que s'il est intact (un seul commit vide, même identité), jamais recréé |
-| Clone préparé, agent non lancé | **Lancer l'agent** sur cette préparation |
-| Appel interrompu ou résultat incertain | **Continuer l'agent** (explicite) ou **Vérifier le candidat sans agent** |
-| Validations échouées sans paquet antérieur | **Continuer l'agent** (explicite) ou **Vérifier le candidat sans agent** |
-| Validations échouées après un paquet | **Demander une correction** précise ou **Vérifier le candidat sans agent** ; le paquet antérieur reste affiché |
-| Paquet prêt | **Remettre dans code/** extrait son commit pour l'essayer, sans jeton ; une correction exige un défaut précis |
+| Clone préparé, agent non lancé | **Lancer A** sur cette préparation |
+| A attend une intervention (`RUNNER: INTERVENTION`) | Lire son bilan, écrire la réponse dans le **message pour A**, puis **Continuer avec A** |
+| A avait encore du travail (`RUNNER: RESTE`, durée atteinte ou interruption) | **Continuer avec A** |
+| A a déclaré son candidat, validations non terminées | **Refaire les validations** |
+| Appel interrompu, ligne finale absente ou résultat incertain | **Continuer avec A** (explicite) ou **Refaire les validations** |
+| Validations échouées sans paquet antérieur | **Continuer avec A** (explicite) ou **Refaire les validations** |
+| Validations échouées après un paquet | **Demander une correction** précise ou **Refaire les validations** ; le paquet antérieur reste affiché |
+| Paquet prêt | Son commit est remis dans `code/` ; **Remettre dans code/** termine ou refait la remise, sans jeton. **Accepter cette version** ou **Demander une correction** |
+| Exécution ancienne limitée par `lot.md` | Consultable ; **Refaire les validations** seulement, aucun nouvel appel de A |
 
 Aucune reprise après fermeture ne relance l'agent d'elle-même, ne recrée le dépôt initial ni ne
 refait le clone. Après un paquet, « Continuer » ne répète plus le travail achevé : l'action

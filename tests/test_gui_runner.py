@@ -289,15 +289,15 @@ class RunnerViewTest(ViewCase):
                          ("existant", "main", "/home/u/run"))
         self.assertEqual(self.rows(view), [("node", "--test"), ("git", "status")])
         self.assertEqual((view._timeout.get(), view._validation_timeout.get()), ("1800.0", "120.0"))
-        self.assertEqual(str(view._primary.cget("text")), "Lancer l'agent")
+        self.assertEqual(str(view._primary.cget("text")), "Lancer A")
         self.assertEqual(str(view._collect.cget("state")), "normal")
         self.assertTrue(view._repo_entry.instate(["disabled"]), "le clone existe : figé")
         self.assertIn("agent non lancé", str(view._status.cget("text")))
 
     def test_each_interruption_offers_its_own_start(self) -> None:
         expected = {
-            "absent": "Préparer et lancer", "appel": "Continuer l'agent",
-            "validations": "Continuer l'agent", "paquet": "Demander une correction",
+            "absent": "Préparer et lancer", "appel": "Continuer avec A",
+            "validations": "Continuer avec A", "paquet": "Demander une correction",
         }
         for stage, label in expected.items():
             with self.subTest(stage=stage):
@@ -338,8 +338,40 @@ class RunnerViewTest(ViewCase):
         self.assertEqual([r.action for r in requests], ["inspect", "continue", "inspect"])
         shown = str(view._status.cget("text"))
         self.assertIn("appel agent interrompu", shown)
-        self.assertIn("1 appel(s) agent", shown)
+        self.assertIn("1 appel(s) de A", shown)
         self.assertEqual(view._token.get(), "")
+
+    def test_the_token_stays_in_memory_until_forgotten_and_the_message_reaches_a(self) -> None:
+        view = self.reopened({"stage": "appel", "calls": 1, "verdict": "INTERVENTION",
+                              "last_call_complete": True})
+        self.assertIn("A attend une intervention", str(view._status.cget("text")))
+        self.assertEqual(str(view._forget.cget("state")), "disabled")
+        view._token.set("jeton")
+        view._correction.insert("1.0", "Viser Firefox et Chromium.")
+        view._begin("continue")
+        self.assertEqual(self.controller.runner_token, "jeton")
+        self.assertEqual(view._token.get(), "", "le champ est vidé, la mémoire garde le jeton")
+        view._apply({"stage": "appel", "calls": 2})
+        request = view._request("continue")
+        self.assertEqual((request.token, request.correction), ("jeton", ""))
+        self.assertEqual(str(view._forget.cget("state")), "normal")
+        view._forget.invoke()
+        self.assertEqual(self.controller.runner_token, "")
+        with self.assertRaisesRegex(ValueError, "jeton"):
+            view._request("continue")
+
+    def test_the_message_for_a_goes_with_a_continuation(self) -> None:
+        view = self.reopened({"stage": "appel", "calls": 1, "verdict": "INTERVENTION"})
+        view._token.set("jeton")
+        view._correction.insert("1.0", "Viser Firefox.")
+        self.assertEqual(view._request("continue").correction, "Viser Firefox.")
+        self.assertEqual(view._request("collect").correction, "")
+
+    def test_a_run_limited_to_a_lot_offers_no_agent_call(self) -> None:
+        view = self.reopened({"stage": "appel", "calls": 1, "lot": True})
+        self.assertEqual(str(view._primary.cget("state")), "disabled")
+        self.assertEqual(str(view._collect.cget("state")), "normal")
+        self.assertIn("limitée à un lot", str(view._status.cget("text")))
 
     def test_a_bridge_failure_while_reading_the_state_is_shown_not_hidden(self) -> None:
         view = self.reopened({"stage": "prepare"})
