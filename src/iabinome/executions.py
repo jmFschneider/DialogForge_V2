@@ -23,7 +23,8 @@ _KEYS = {
     "schema_version", "conception", "export", "projet", "profil", "wsl", "run", "validations",
     "delais", "paquets",
 }
-_PROJECT_KEYS = {"mode", "depot", "base_demandee", "base_oid", "identite"}
+_PROJECT_KEYS = {"mode", "depot", "base_demandee", "base_oid", "identite"}  # + "branche" cible,
+# notée à la première remise (`delivery.deliver`)
 _ACTIONS = {
     "absent": ("start",), "prepare": ("launch", "collect"), "appel": ("continue", "collect"),
     "validations": ("continue", "collect"), "paquet": ("correct",), "invalide": (),
@@ -95,7 +96,8 @@ def load(path: Path) -> dict[str, Any]:
         raise ValueError(f"{path.name} illisible : {exc}") from exc
     if (
         not isinstance(data, dict) or set(data) != _KEYS or data["schema_version"] != 1
-        or not isinstance(data["projet"], dict) or set(data["projet"]) != _PROJECT_KEYS
+        or not isinstance(data["projet"], dict)
+        or set(data["projet"]) - {"branche"} != _PROJECT_KEYS
         or data["projet"]["mode"] not in MODES
     ):
         raise ValueError(f"{path.name} : référence d'exécution invalide")
@@ -188,6 +190,7 @@ def save(
         "projet": {
             "mode": mode, "depot": str(repo), "base_demandee": base,
             "base_oid": keep.get("base_oid"), "identite": keep.get("identite"),
+            **({"branche": keep["branche"]} if keep.get("branche") else {}),
         },
         "profil": "claude-wsl", "wsl": previous["wsl"] if previous else {"distribution": None},
         "run": run, "validations": [list(command) for command in validations],
@@ -275,6 +278,6 @@ def describe(state: dict[str, Any] | None) -> str:
                      "continuer explicitement pour corriger.")
         return ("Dernière collecte échouée (validations non réussies ou interrompues) : voir les "
                 "traces ; " + next_step + earlier) + lock
-    return (f"Développement terminé — paquet à examiner : {state['package']}. "
-            "Choisir « Poursuivre : examiner le paquet » pour ouvrir sa revue sans nouvel "
-            "appel agent. Une correction n'est utile que si un défaut précis est constaté.") + lock
+    return (f"Validations réussies — paquet : {state['package']}. « Remettre dans code/ » "
+            "extrait ce commit pour l'essayer, sans appel agent. Une correction n'est utile que "
+            "si un défaut précis est constaté.") + lock

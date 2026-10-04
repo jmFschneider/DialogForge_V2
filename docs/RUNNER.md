@@ -49,7 +49,7 @@ Depuis la GUI, un lancement peut faire **au plus trois appels agent dans la dur�
 si une validation finale échoue. Il réutilise le jeton saisi pour ce lancement et joint l'échec
 au prompt de correction. Un paquet réussi arrête immédiatement les appels. Le jeton n'est pas
 conservé après le lancement. Le bilan de l'agent et les validations sont affichés avec le paquet,
-qui reste à relire et à intégrer séparément. La fermeture de la fenêtre pendant
+dont le commit se remet ensuite dans `code/` pour l'essayer. La fermeture de la fenêtre pendant
 l'exécution propose pause ou interruption et attend la fin du processus avant de fermer.
 
 ### Reprise après fermeture ou incident
@@ -68,20 +68,30 @@ le clone ne sont plus modifiables.
 | Appel interrompu ou résultat incertain | **Continuer l'agent** (explicite) ou **Vérifier le candidat sans agent** |
 | Validations échouées sans paquet antérieur | **Continuer l'agent** (explicite) ou **Vérifier le candidat sans agent** |
 | Validations échouées après un paquet | **Demander une correction** précise ou **Vérifier le candidat sans agent** ; le paquet antérieur reste affiché |
-| Paquet prêt | **Poursuivre : examiner le paquet** le rapatrie, vérifie son identité et ouvre sa revue sans jeton ; une correction exige un défaut précis |
+| Paquet prêt | **Remettre dans code/** extrait son commit pour l'essayer, sans jeton ; une correction exige un défaut précis |
 
 Aucune reprise après fermeture ne relance l'agent d'elle-même, ne recrée le dépôt initial ni ne
 refait le clone. Après un paquet, « Continuer » ne répète plus le travail achevé : l'action
 « Demander une correction » transmet l'objectif saisi à un nouvel appel explicite.
 Si ce nouvel appel ne crée aucun commit, aucun paquet supplémentaire n'est produit.
-Le paquet est copié sous `developpement/paquets/NNN` et sa revue sous
-`developpement/revues/NNN`. Les deux sont repris après fermeture : un second clic ouvre la même
-revue. La revue suit le cycle documentaire ordinaire ; après sa décision d'acceptation,
-**Intégrer ce candidat** affiche dépôt, base et tête avant confirmation. DialogForge transporte
-les commits exacts dans un bundle Git, exige un dépôt propre à la base attendue et avance en
-fast-forward seulement. Le reçu se trouve dans `developpement/integrations/`. Aucun jeton Claude
-n'est requis pour le rapatriement, la lecture ou l'intégration ; la revue, elle, appelle ses agents
-au lancement explicite du cycle documentaire.
+### Remise dans `code/` et acceptation
+
+**Remettre dans code/** conserve le dernier paquet valide sous `developpement/paquets/NNN` (trace
+interne) et ses commits exacts dans un bundle Git sous `developpement/candidats/`, puis extrait ce
+commit sur la branche `dialogforge/candidat-NNN` de l'espace d'essai : `code/` lui-même pour un
+projet neuf, une copie d'essai `code/` distincte pour un dépôt existant (votre dépôt n'est pas
+touché). La branche cible est celle sur laquelle se trouvait le dépôt à la première remise ; elle
+est notée dans la référence d'exécution. Si l'espace d'essai contient des modifications, la remise
+s'arrête et l'explique : rien n'est écrasé. Refaire la remise ne change rien.
+
+L'écran indique alors « Prêt à essayer » avec le dossier, la branche et le commit, validés sous
+Ubuntu : un essai Linux ne démontre pas un fonctionnement Windows. **Accepter cette version** porte
+sur le commit essayé seulement (un commit ajouté à la main dans `code/` n'est pas accepté). La
+branche cible avance en fast-forward depuis la base ou une version déjà acceptée ; une divergence
+ou un dépôt cible modifié demande une intervention humaine. Le reçu se trouve dans
+`developpement/integrations/`. Les versions précédentes restent sur leurs branches et dans leurs
+bundles. Aucun jeton ni appel d'agent n'est requis pour la remise ou l'acceptation ; les revues
+documentaires créées auparavant restent consultables comme collaborations ordinaires.
 
 ## Depuis la CLI
 

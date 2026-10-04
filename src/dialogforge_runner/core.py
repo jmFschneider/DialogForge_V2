@@ -223,33 +223,37 @@ def inspect_run(run: Path) -> dict[str, Any]:
     }
 
 
+def bundle_ref(package_id: str) -> str:
+    return f"refs/dialogforge/{package_id}"
+
+
 def bundle_candidate(run: Path, package: Path, package_id: str) -> Path:
-    """Transporte uniquement les commits du candidat exact d'un paquet terminé."""
+    """Transporte uniquement les commits du candidat exact d'un paquet valide, même si le clone a
+    avancé depuis : le bundle désigne la tête du paquet par une référence à son nom."""
     with lock.acquire(run / "verrou.json", "runner-bundle"):
-        state = inspect_run(run)
-        if state["stage"] != "paquet" or not package.is_relative_to(run / "results"):
-            raise ValueError("le dossier Runner n'a pas de paquet terminé à transporter")
+        if not package.is_relative_to(run / "results"):
+            raise ValueError("paquet étranger au dossier Runner")
         _, metadata = development.read_package(package)
         if metadata["package_id"] != package_id:
-            raise ValueError("identité du paquet différente de la revue")
+            raise ValueError("identité du paquet différente de celle demandée")
         base, head = metadata["identity"]["base_oid"], metadata["identity"]["head_oid"]
         if base != _config(run)["base_oid"]:
             raise ValueError("base du paquet différente du dossier Runner")
-        if _candidate(run, base) != head:
-            raise ValueError("le clone a changé depuis le paquet")
+        workspace, ref = run / "workspace", bundle_ref(package_id)
+        _git(workspace, "update-ref", ref, head)
         folder = run / "transport"
         folder.mkdir(exist_ok=True)
         target = folder / f"{package_id}.bundle"
         if not target.exists():
             temporary = folder / f".new-{uuid.uuid4().hex}.bundle"
             try:
-                _git(run / "workspace", "bundle", "create", str(temporary), "HEAD", f"^{base}")
-                _git(run / "workspace", "bundle", "verify", str(temporary))
+                _git(workspace, "bundle", "create", str(temporary), ref, f"^{base}")
+                _git(workspace, "bundle", "verify", str(temporary))
                 temporary.rename(target)
             finally:
                 temporary.unlink(missing_ok=True)
-        _git(run / "workspace", "bundle", "verify", str(target))
-        if head not in _git(run / "workspace", "bundle", "list-heads", str(target)):
+        _git(workspace, "bundle", "verify", str(target))
+        if f"{head} {ref}" not in _git(workspace, "bundle", "list-heads", str(target)):
             raise ValueError("le bundle ne désigne pas la tête du paquet")
         return target
 

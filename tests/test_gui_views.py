@@ -186,23 +186,6 @@ class TestAccueilView(ViewCase):
 
 
 class TestSuiviView(ViewCase):
-    def test_an_accepted_runner_review_offers_explicit_integration(self) -> None:
-        collect_tk_garbage()
-        review = self.accepted_collaboration()
-        (review / "provenance_runner.json").write_text("{}", encoding="utf-8")
-        view = SuiviView(_ROOT, self.controller, review)
-        self.assertNotEqual(view._integrate.winfo_manager(), "")
-        receipt = self.root_dir / "recu.json"
-        with (mock.patch("iabinome.gui.views.suivi.delivery.integration_preview",
-                         return_value=("C:/Mastermind/code", "a" * 40, "b" * 40)),
-              mock.patch("iabinome.gui.views.suivi.dialogs.confirm", return_value=True) as confirm,
-              mock.patch("iabinome.gui.views.suivi.delivery.integrate_candidate",
-                         return_value=receipt) as integrate,
-              mock.patch("iabinome.gui.views.suivi.messagebox.showinfo")):
-            view._integrate.invoke()
-        confirm.assert_called_once()
-        integrate.assert_called_once_with(review)
-
     def test_runner_opens_only_for_the_current_accepted_conception(self) -> None:
         collab = self.accepted_collaboration()
         view = SuiviView(_ROOT, self.controller, collab)

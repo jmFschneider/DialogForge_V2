@@ -1,124 +1,171 @@
-"""Le paquet prêt avance vers une revue locale, sans nouvel appel au Runner."""
+"""Remise d'un candidat dans `code/` puis acceptation du commit essayé, sans agent ni jeton.
+
+Le candidat vient d'un vrai parcours Runner (pont en sous-processus, faux agent, profil local) ;
+seul le transport du bundle depuis Ubuntu est remplacé par l'appel direct au Runner.
+"""
 
 from __future__ import annotations
 
-import os
-import tempfile
-import unittest
+import json
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
-from iabinome import decisions, delivery, development, executions, mission, workflow
-from tests import fakes, runner_support
+from dialogforge_runner import core
+from iabinome import delivery, development, executions
+from tests.runner_support import git
+from tests.test_runner_flow import FlowCase
 
 
-class DeliveryTests(unittest.TestCase):
+def _direct_bundle(found: executions.Found, remote: str, package_id: str) -> Path:
+    assert found.data is not None
+    return core.bundle_candidate(Path(found.data["run"]), Path(remote), package_id)
+
+
+class DeliveryCase(FlowCase):
     def setUp(self) -> None:
-        self.temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
-        self.collab = runner_support.accepted_conception(self.root / "conception")
-        mission.attach(self.root, self.collab, "conception")
-        self.repo = self.root / "repo"
+        super().setUp()
+        patch = mock.patch.object(delivery, "_bundle", side_effect=_direct_bundle)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def deliver(self) -> delivery.Delivered:
+        state = self.state()
+        return delivery.deliver(self.collab, executions.find(self.collab), state,
+                                source=Path(state["package"]))
+
+    def accept(self) -> Path:
+        return delivery.accept(self.collab, executions.find(self.collab))
+
+    def head_of(self, package: str) -> Any:
+        return development.read_package(Path(package))[1]["identity"]["head_oid"]
+
+
+class NewProjectDeliveryTest(DeliveryCase):
+    def test_a_package_is_delivered_in_code_then_accepted_on_its_branch(self) -> None:
+        self.assertIsNone(self.go("start").error)
+        package = self.reference()["paquets"][0]
+        shown = self.deliver()
+        self.assertEqual((shown.code, shown.branch), (self.code, "dialogforge/candidat-001"))
+        self.assertEqual(shown.head, self.head_of(package))
+        self.assertEqual((self.code / "app.txt").read_text(encoding="utf-8"),
+                         "resultat de l'agent\n")
+        self.assertEqual(self.reference()["projet"]["branche"], "main")
+        self.assertEqual(git(self.code, "rev-parse", "main"),
+                         self.reference()["projet"]["base_oid"])
+        bundles = list((executions.dev_dir(self.collab) / "candidats").glob("*.bundle"))
+        self.assertEqual(len(bundles), 1)
+        self.assertEqual(self.deliver(), shown, "refaire la remise ne change rien")
+        receipt = self.accept()
+        self.assertEqual(git(self.code, "rev-parse", "main"), shown.head)
+        record = json.loads(receipt.read_text(encoding="utf-8"))
+        self.assertEqual((record["head_oid"], record["branch"], record["package"]),
+                         (shown.head, "main", "001"))
+        found = executions.find(self.collab)
+        self.assertTrue(delivery.current(self.collab, found).accepted)  # type: ignore[union-attr]
+        self.assertEqual(self.accept(), receipt)
+        self.assertEqual(self.agent_calls(), 1)
+
+    def test_user_changes_in_code_stop_the_delivery_and_are_kept(self) -> None:
+        self.assertIsNone(self.go("start").error)
+        (self.code / "notes.txt").write_text("à moi", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "rien n'est écrasé"):
+            self.deliver()
+        self.assertEqual((self.code / "notes.txt").read_text(encoding="utf-8"), "à moi")
+        self.assertIsNone(delivery.current(self.collab, executions.find(self.collab)))
+
+    def test_only_the_tried_commit_can_be_accepted(self) -> None:
+        self.assertIsNone(self.go("start").error)
+        self.deliver()
+        (self.code / "essai.txt").write_text("x", encoding="utf-8")
+        git(self.code, "add", "essai.txt")
+        git(self.code, "commit", "-qm", "essai local")
+        with self.assertRaisesRegex(ValueError, "aucune version remise"):
+            self.accept()
+        self.assertEqual(git(self.code, "rev-parse", "main"),
+                         self.reference()["projet"]["base_oid"])
+
+    def test_a_correction_after_acceptance_advances_from_the_accepted_version(self) -> None:
+        self.assertIsNone(self.go("start").error)
+        first = self.deliver()
+        self.accept()
+        self.mode("improve")
+        self.assertIsNone(self.resume("correct", correction="Améliorer le texte.").error)
+        second = self.deliver()
+        self.assertEqual(second.branch, "dialogforge/candidat-002")
+        self.assertIn(b"lior", (self.code / "app.txt").read_bytes())  # encodage local de l'agent
+        self.accept()
+        self.assertEqual(git(self.code, "rev-parse", "main"), second.head)
+        self.assertEqual(git(self.code, "rev-parse", "dialogforge/candidat-001"), first.head,
+                         "la version précédente reste disponible")
+
+    def test_a_diverged_target_branch_asks_for_a_human(self) -> None:
+        self.assertIsNone(self.go("start").error)
+        shown = self.deliver()
+        git(self.code, "switch", "-q", "main")
+        (self.code / "autre.txt").write_text("x", encoding="utf-8")
+        git(self.code, "add", "autre.txt")
+        git(self.code, "commit", "-qm", "travail parallèle")
+        diverged = git(self.code, "rev-parse", "main")
+        git(self.code, "switch", "-q", shown.branch)
+        with self.assertRaisesRegex(ValueError, "intervention humaine"):
+            self.accept()
+        self.assertEqual(git(self.code, "rev-parse", "main"), diverged)
+
+
+class ExistingRepositoryDeliveryTest(DeliveryCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.repo = self.root / "depot"
         self.repo.mkdir()
-        with runner_support.git_home(self.root):
-            runner_support.git(self.repo, "init")
-            runner_support.git(self.repo, "commit", "--allow-empty", "-m", "base")
-            self.base = runner_support.git(self.repo, "rev-parse", "HEAD")
-            (self.repo / "app.txt").write_text("Mastermind\n", encoding="utf-8")
-            runner_support.git(self.repo, "add", "app.txt")
-            runner_support.git(self.repo, "commit", "-m", "candidat")
-            self.head = runner_support.git(self.repo, "rev-parse", "HEAD")
-            found = executions.find(self.collab)
-            export = executions.ensure_export(self.collab, found)
-            self.source = self.root / "runner" / "results" / "collect-0001" / "package"
-            development.build_package(export, self.repo, self.base, self.head, self.source)
-        self.reference = executions.save(
-            found, export, mode="nouveau", repo=self.repo, base="HEAD",
-            validations=[["node", "--test"]], run=str(self.root / "runner"),
-            agent_timeout=10, validation_timeout=10,
-        )
-        executions.update(self.reference, paquets=[str(self.source)],
-                          projet={"base_oid": self.base})
-        self.found = executions.find(self.collab)
-        self.state = {"stage": "paquet", "package": str(self.source), "locked": False}
+        git(self.repo, "init", "-q")
+        (self.repo / "code.txt").write_text("base\n", encoding="utf-8")
+        git(self.repo, "add", ".")
+        git(self.repo, "commit", "-qm", "base")
+        self.base = git(self.repo, "rev-parse", "HEAD")
 
-    def test_receive_is_verified_and_idempotent(self) -> None:
-        first = delivery.receive_package(self.collab, self.found, self.state, source=self.source)
-        second = delivery.receive_package(self.collab, self.found, self.state, source=self.source)
-        self.assertEqual(first, second)
-        self.assertEqual(first.parent, executions.dev_dir(self.collab) / "paquets")
-        self.assertEqual(
-            development.read_package(first)[1]["package_id"],
-            development.read_package(self.source)[1]["package_id"],
-        )
-        (self.source / "revision" / "diff.patch").write_text("altéré", encoding="utf-8")
+    def test_a_trial_copy_is_delivered_and_the_user_repository_moves_only_on_acceptance(
+        self,
+    ) -> None:
+        self.assertIsNone(self.go("start", mode="existant", repo=self.repo).error)
+        shown = self.deliver()
+        self.assertEqual(shown.code, self.code)
+        self.assertNotEqual(shown.code, self.repo)
+        self.assertTrue((self.code / "app.txt").is_file())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), self.base)
+        self.assertFalse((self.repo / "app.txt").exists())
+        (self.repo / "brouillon.txt").write_text("x", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "dépôt cible"):
+            self.accept()
+        (self.repo / "brouillon.txt").unlink()
+        self.accept()
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), shown.head)
+        self.assertEqual((self.repo / "app.txt").read_text(encoding="utf-8"),
+                         "resultat de l'agent\n")
+
+
+class PackageReceptionTest(DeliveryCase):
+    def test_refuses_a_running_or_foreign_package(self) -> None:
+        self.assertIsNone(self.go("start").error)
+        state, found = self.state(), executions.find(self.collab)
+        for changed in ({**state, "locked": True}, {**state, "package": "/foreign/package"},
+                        {**state, "package": None}):
+            with self.subTest(state=changed), self.assertRaises(ValueError):
+                delivery.receive_package(self.collab, found, changed,
+                                         source=Path(state["package"]))
+
+    def test_an_altered_package_is_refused(self) -> None:
+        self.assertIsNone(self.go("start").error)
+        state = self.state()
+        source = Path(state["package"])
+        (source / "revision" / "diff.patch").write_text("altéré", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "modifié"):
-            delivery.receive_package(self.collab, self.found, self.state, source=self.source)
-
-    def test_review_creation_reuses_same_review(self) -> None:
-        package = delivery.receive_package(self.collab, self.found, self.state, source=self.source)
-        adapters = {
-            "fake-a": fakes.FakeAdapter("fake-a", ()),
-            "fake-b": fakes.FakeAdapter("fake-b", ()),
-        }
-        with mock.patch.object(delivery, "ADAPTERS", adapters):
-            first = delivery.create_review(self.collab, package)
-            second = delivery.create_review(self.collab, package)
-        self.assertEqual(first, second)
-        self.assertEqual(development.verify_package(package, first)["status"], "READY")
-        self.assertEqual(delivery.review_context(first)[0], self.collab)
-        located = mission.locate(first)
-        assert located is not None and located.step is not None
-        self.assertEqual(located.step.role, "revue")
-
-    def test_accepted_review_integrates_exact_head_once(self) -> None:
-        package = delivery.receive_package(self.collab, self.found, self.state, source=self.source)
-        adapters = {
-            "fake-a": fakes.FakeAdapter("fake-a", ("IABINOME:DOCUMENT\n# Rapport\n",)),
-            "fake-b": fakes.FakeAdapter("fake-b", (fakes.review("ACCEPTER"),)),
-        }
-        with mock.patch.object(delivery, "ADAPTERS", adapters):
-            review = delivery.create_review(self.collab, package)
-        with self.assertRaisesRegex(ValueError, "accepter d'abord"):
-            delivery.integrate_candidate(review)
-        workflow.run(review, adapters=adapters, timeout_seconds=15)
-        workflow.decide(review, decisions.ACCEPTED)
-        target = self.root / "target"
-        bundle = self.root / "candidate.bundle"
-        with runner_support.git_home(self.root):
-            runner_support.git(self.repo, "bundle", "create", str(bundle), "HEAD",
-                               f"^{self.base}")
-            runner_support.git(self.root, "clone", str(self.repo), str(target))
-            runner_support.git(target, "reset", "--hard", self.base)
-            executions.update(self.reference, projet={"depot": str(target)})
-            with mock.patch.object(delivery, "_local_bundle", return_value=bundle):
-                receipt = delivery.integrate_candidate(review)
-                self.assertEqual(runner_support.git(target, "rev-parse", "HEAD"), self.head)
-                self.assertEqual(delivery.integrate_candidate(review), receipt)
-            self.assertTrue(receipt.is_file())
-            (target / "untracked.txt").write_text("local", encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "changements locaux"):
-                delivery.integrate_candidate(review)
-
-    def test_refuses_unfinished_or_foreign_package(self) -> None:
-        for state in (
-            {**self.state, "stage": "appel"},
-            {**self.state, "locked": True},
-            {**self.state, "package": "/foreign/package"},
-        ):
-            with self.subTest(state=state), self.assertRaises(ValueError):
-                delivery.receive_package(self.collab, self.found, state, source=self.source)
+            delivery.receive_package(self.collab, executions.find(self.collab), state,
+                                     source=source)
 
     def test_linux_source_must_be_inside_run(self) -> None:
         data = {"run": "/home/test/runner"}
         good = "/home/test/runner/results/collect-0001/package"
-        source = delivery._source_path(data, good, "Ubuntu")
-        self.assertTrue(str(source).endswith("collect-0001\\package" if os.name == "nt"
-                                             else "collect-0001/package"))
+        self.assertEqual(delivery._source_path(data, good, "Ubuntu").name, "package")
         with self.assertRaisesRegex(ValueError, "étranger"):
             delivery._source_path(data, "/home/test/other/package", "Ubuntu")
-
-
-if __name__ == "__main__":
-    unittest.main()

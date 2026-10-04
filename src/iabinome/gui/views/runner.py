@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from ... import decisions, delivery, executions
 from ...models import positive_seconds
+from .. import dialogs
 from ..runner_session import RunnerRequest, RunnerSession
 
 if TYPE_CHECKING:
@@ -89,9 +90,9 @@ class RunnerView(ttk.Frame):
         ).pack(anchor="w", padx=16)
         ttk.Label(
             self, text="Le Runner développe dans un clone isolé sous Ubuntu, jamais dans votre "
-            "dossier, puis produit un paquet à relire. En cas d'échec des tests, un lancement "
-            "peut faire jusqu'à 3 appels dans la durée indiquée. "
-            "Aucun code n'est intégré automatiquement.",
+            "dossier. Une fois les validations réussies, le commit est remis dans code/ pour "
+            "l'essayer ; il n'avance votre branche que si vous acceptez cette version. En cas "
+            "d'échec des tests, un lancement peut faire jusqu'à 3 appels dans la durée indiquée.",
             wraplength=650,
         ).pack(anchor="w", padx=16, pady=(4, 8))
         body = ttk.Frame(self)
@@ -152,11 +153,14 @@ class RunnerView(ttk.Frame):
         actions.pack(fill="x", padx=16, pady=16)
         self._back_button = ttk.Button(actions, text="Retour au suivi", command=self._back)
         self._back_button.pack(side="left")
-        self._review_button = ttk.Button(
-            actions, text="Poursuivre : examiner le paquet", state="disabled",
-            command=self._open_review,
+        self._accept_button = ttk.Button(
+            actions, text="Accepter cette version", state="disabled", command=self._accept,
         )
-        self._review_button.pack(side="right")
+        self._accept_button.pack(side="right")
+        self._deliver_button = ttk.Button(
+            actions, text="Remettre dans code/", state="disabled", command=self._deliver,
+        )
+        self._deliver_button.pack(side="right", padx=(0, 8))
         self._primary = ttk.Button(
             actions, text=_LABELS["start"], state="disabled",
             command=lambda: self._begin(self._primary_action),
@@ -207,21 +211,43 @@ class RunnerView(ttk.Frame):
     def _back(self) -> None:
         self._controller.show_suivi(self._collaboration)
 
-    def _open_review(self) -> None:
-        if self._found is None or self._runner_state is None:
-            return
-        self._review_button.configure(state="disabled")
-        self._status.configure(text="Rapatriement et vérification du paquet…")
+    def _local(self, label: str, work: Any) -> None:
+        """Une opération locale, sans agent ni jeton : remise ou acceptation."""
+        state = self._runner_state
+        self._deliver_button.configure(state="disabled")
+        self._accept_button.configure(state="disabled")
+        self._status.configure(text=label)
         self.update_idletasks()
         try:
-            package = delivery.receive_package(self._collaboration, self._found, self._runner_state)
-            review = delivery.create_review(self._collaboration, package)
+            work()
+            self._note = ""
         except (OSError, ValueError, RuntimeError) as exc:
-            self._status.configure(text=f"Paquet non ouvert : {exc}")
-            self._review_button.configure(state="normal")
+            self._note = f"Opération arrêtée, rien n'est écrasé : {exc}"
+        self._find()
+        self._apply(state)
+
+    def _deliver(self) -> None:
+        if self._found is not None and self._runner_state is not None:
+            found, state = self._found, self._runner_state
+            self._local("Remise du candidat dans code/…",
+                        lambda: delivery.deliver(self._collaboration, found, state))
+
+    def _accept(self) -> None:
+        shown = self._delivered()
+        if shown is None or not dialogs.confirm(
+            self, "Accepter cette version ?",
+            f"Commit essayé : {shown.head}\nDossier d'essai : {shown.code}\n"
+            f"Branche cible : {shown.target_branch} de {shown.target}\n\n"
+            "La branche cible avance uniquement en fast-forward.",
+            ok_label="Accepter cette version",
+        ):
             return
-        self._controller.record_created(review)
-        self._controller.show_suivi(review)
+        found = self._found
+        assert found is not None
+        self._local("Acceptation…", lambda: delivery.accept(self._collaboration, found))
+
+    def _delivered(self) -> delivery.Delivered | None:
+        return None if self._found is None else delivery.current(self._collaboration, self._found)
 
     def _request(self, action: str) -> RunnerRequest:
         if self._found is None:
@@ -278,7 +304,8 @@ class RunnerView(ttk.Frame):
         self._session = session
         if action != "inspect":
             self._note = ""
-        for button in (self._primary, self._collect, self._back_button, self._review_button):
+        for button in (self._primary, self._collect, self._back_button, self._deliver_button,
+                       self._accept_button):
             button.configure(state="disabled")
         self._poll()
 
@@ -291,9 +318,13 @@ class RunnerView(ttk.Frame):
             state="normal" if self._primary_action else "disabled",
         )
         self._collect.configure(state="normal" if "collect" in allowed else "disabled")
-        self._review_button.configure(
-            state="normal" if state and state.get("stage") == "paquet"
-            and state.get("package") and not state.get("locked") else "disabled",
+        shown = self._delivered()
+        self._deliver_button.configure(
+            state="normal" if state and state.get("package") and not state.get("locked")
+            else "disabled",
+        )
+        self._accept_button.configure(
+            state="normal" if shown is not None and not shown.accepted else "disabled",
         )
         self._back_button.configure(state="normal")
         self._unlocked = not locked and (state is None or state["stage"] == "absent")
@@ -314,7 +345,11 @@ class RunnerView(ttk.Frame):
         self._report.insert("1.0", "\n\n".join(filter(None, (results, report))))
         self._report.configure(state="disabled")
         described = "" if locked else executions.describe(state)
-        self._status.configure(text="\n".join(filter(None, (self._note, described))))
+        trial = "" if shown is None else (
+            f"{'Version acceptée' if shown.accepted else 'Prêt à essayer'} : {shown.code} — "
+            f"branche {shown.branch}, commit {shown.head[:12]} (validé sous Ubuntu)."
+        )
+        self._status.configure(text="\n".join(filter(None, (self._note, trial, described))))
 
     def _poll(self) -> None:
         self._after_id = None

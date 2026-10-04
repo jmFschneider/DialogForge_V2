@@ -1,5 +1,15 @@
 # Progress Log — DialogForge V2
 
+## Session 2026-10-04 — Runner agent unique, R1 (remise et acceptation)
+
+- PO : découpage R1 remise → R2 continuation → R3 écran validé, « n'attends pas mon accord » ; un commit par lot. Travail antérieur commité d'abord : `4365598` (lots 3, correctif, 4), `0814ec1` (conception et analyses).
+- `delivery.py` réécrit autour de la remise : `deliver` (paquet copié sous `paquets/NNN`, bundle sous `candidats/`, branche `dialogforge/candidat-NNN` extraite dans `code/` ; copie d'essai distincte pour un dépôt existant ; arrêt sans écrasement si l'espace d'essai est modifié), `current` (version remise relue sur Git et le paquet, sans état copié), `accept` (commit essayé seulement, fast-forward depuis la base ou une version acceptée, divergence = humain, reçu `integrations/`). Retirés : `create_review`, `review_for`, `_link_review`, `review_context`, `integration_preview`, `can_integrate`, `integrate_candidate` et le bouton « Intégrer ce candidat » du suivi.
+- `core.bundle_candidate` : le bundle désigne la tête du paquet par `refs/dialogforge/<id>` ; il n'exige plus que le clone soit encore à cette tête ni le stade « paquet » (une trace 401 ultérieure bloquait Mastermind). `executions` : clé facultative `projet.branche` (branche cible notée à la première remise), anciennes références lues telles quelles.
+- Écran Runner : « Remettre dans code/ » et « Accepter cette version » (confirmation), statut « Prêt à essayer » avec dossier, branche, commit et environnement vérifié.
+- Mastermind **sur copie** (mission copiée dans le scratchpad, dossier Runner copié sous `/tmp` d'Ubuntu, référence de la copie réécrite) : `inspect` réel par le pont WSL (`paquet`, 8 appels, 7 collectes), remise de `dde9eaa` sur `dialogforge/candidat-001`, `node --test` sous Windows depuis `code/` : 23/23 ; acceptation sur une seconde copie : `master` → `dde9eaa`, reçu écrit. Mission réelle et son dossier Runner non modifiés ; aucun agent appelé.
+- Tests : `test_delivery.py` réécrit sur le vrai parcours (`FlowCase`, faux agent) — remise, idempotence, modifications utilisateur conservées, commit essayé seul acceptable, correction après acceptation (avance depuis la version acceptée, ancienne branche conservée), divergence, dépôt existant (copie d'essai, dépôt utilisateur avancé seulement à l'acceptation). Fichiers Runner/GUI ciblés : 109 passés.
+- Mesure (`tools/measure_development.py`) : `src/` 9 136 → 9 114 (**−22**, dont −3 d'artefact `modeles.toml`) ; façade + GUI **2 700 / 2 700** ; plus grande vue `creation.py` 385.
+
 ## Session 2026-10-04 — conception Runner recentrée sur la simplicité
 
 - À la demande du PO, rédaction de `conception/RUNNER_AGENT_UNIQUE.md` : A seul réalise et contrôle toute la conception acceptée ; validations existantes, remise locale puis essai et acceptation humaine. Aucune sélection de lot partiel dans ce parcours.

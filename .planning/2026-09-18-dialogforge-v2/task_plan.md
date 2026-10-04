@@ -6,14 +6,14 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Conception Runner recentrée — 2026-10-04 (documentaire).** Proposition rédigée dans
-`conception/RUNNER_AGENT_UNIQUE.md`, après accord du PO sur l'analyse de simplification.
-Exigences du PO : **A seul réalise et contrôle tout le code de la conception acceptée, puis
-le Runner remet un résultat utilisable ; aucun autre agent ni sous-agent.** Pas de lot partiel
-dans ce parcours, mesure de progression, registre supplémentaire de candidats ou reprise générale.
-La nouvelle conception réemploie le socle existant et remplace l'analyse finale pour la cible proposée.
-Prochaine étape : examen des modalités de cette conception, puis mise en œuvre lorsqu'elle sera
-engagée. Aucun code ni statut de lot d'implémentation modifié par cette session.
+**Runner agent unique — mise en œuvre engagée par le PO le 2026-10-04** (`conception/RUNNER_AGENT_UNIQUE.md`,
+phase 8 ci-dessous ; un commit par lot, sur demande du PO). **R1 (remise dans `code/` et
+acceptation du commit essayé) fait** : chemin revue retiré, paquet Mastermind remis puis accepté
+sur une copie, 23 tests Node verts depuis `code/`. **Prochaine étape : R2** — mandat entier avec
+la consigne du §4 dans le prompt (export inchangé), ligne finale `RUNNER: CANDIDAT|RESTE|INTERVENTION`,
+fonction commune `core.develop` bornée par la durée (retrait de `MAX_AGENT_CALLS` et de `_run_calls`),
+remise automatique après réussite. Puis R3 (écran, correction, jeton en session, reprise), puis
+recette réelle par le PO. Façade + GUI : **2 700 / 2 700** — R2 doit retirer la boucle GUI.
 Les mentions de suite ci-dessous décrivent le parcours antérieur.
 
 **Parcours de mission — ajustement du Runner après la recette Mastermind (2026-10-03).**
@@ -408,9 +408,8 @@ Phase 7 (finalisation) — partie 1 complète (2026-09-27) ; types de mission (7
   la partie 2 (7.4 : 2.1 à 2.3) faits le 2026-10-01 ; 7.5 (mesure d'utilité, 2.4) ouverte. Phases 1 à 6
   complètes.
 
-  Parcours de mission Mastermind : lots 1 à 3 en place ; lot 4 (paquet, revue et intégration
-  explicite) implémenté le 2026-10-04 dans l'arbre de travail. Tests locaux et répétition sur copie
-  du paquet réel effectués ; la recette réelle de revue et d'intégration reste à faire par le PO.
+  Parcours de mission Mastermind : lots 1 à 4 commités (`4365598`). Phase 8 (Runner agent unique)
+  en cours : R1 fait, la revue du code n'est plus dans le parcours.
 
 ## Plan de référence
 `C:\Projets\DialogForge_Next\astra\06_plan_mise_en_oeuvre.md`. Ce plan PWF est le **seul** suivi
@@ -589,6 +588,21 @@ ci-dessus ; le point 1.3 reste conditionnel (§ Extension identifiée). Parties 
       *(2026-10-01)*
 - [ ] 7.5 Partie 2, mesure d'utilité (2.4) : tâches réelles, lancées par le PO
 - **Status:** in_progress — partie 1 terminée (2026-09-27) ; partie 2 : 2.4 restant
+
+### Phase 8: Runner agent unique — engagée par le PO le 2026-10-04
+Conception : `conception/RUNNER_AGENT_UNIQUE.md`. Découpage validé par le PO le 2026-10-04
+(« n'attends pas mon accord, tu peux continuer » ; un commit par lot).
+- [x] R1 Remise dans `code/` (paquet + bundle conservés, branche `dialogforge/candidat-NNN`),
+      acceptation du commit essayé (fast-forward, reçu `integrations/`), retrait de la revue
+      créée et de l'intégration liée à la revue ; Mastermind remis et accepté sur copie
+      *(2026-10-04 : `src/` −22 lignes effectives ; façade + GUI 2 700 / 2 700)*
+- [ ] R2 Mandat entier (consigne §4 dans le prompt), ligne finale à trois valeurs, `core.develop`
+      commun CLI/pont/GUI borné par la durée, retrait du compteur de trois appels, remise
+      automatique après réussite ; tests au faux A des chemins du §10
+- [ ] R3 Écran : prêt à essayer, correction à A sur la version remise, jeton en session et
+      « Oublier le jeton », reprise par `inspect_run` ; `docs/RUNNER.md` ; mesure ajout/retrait
+- [ ] R4 Recette réelle (PO) : toute la conception Mastermind avec A seul, essai, correction, acceptation
+- **Status:** in_progress — R1 fait
 
 ## Extension identifiée (hors phases)
 

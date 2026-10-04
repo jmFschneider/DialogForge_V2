@@ -12,7 +12,7 @@ from tkinter import ttk
 from typing import Any
 from unittest import mock
 
-from iabinome import executions
+from iabinome import delivery, executions
 from iabinome.gui.runner_session import RunnerRequest, RunnerSession
 from iabinome.gui.views.runner import RunnerView
 from tests.runner_support import accepted_conception, git_home
@@ -237,20 +237,34 @@ class RunnerViewTest(ViewCase):
         view._correction.insert("1.0", "Corriger C03 après revue.")
         self.assertEqual(view._request("correct").correction, "Corriger C03 après revue.")
 
-    def test_a_ready_package_opens_review_without_token_or_agent_call(self) -> None:
+    def test_a_ready_package_is_delivered_then_accepted_without_token(self) -> None:
         view = self.reopened({"stage": "paquet", "package": "/home/u/package", "calls": 1})
-        package = self.root_dir / "paquet-local"
-        review = self.root_dir / "revue"
-        with (mock.patch("iabinome.gui.views.runner.delivery.receive_package",
-                         return_value=package),
-              mock.patch("iabinome.gui.views.runner.delivery.create_review", return_value=review),
-              mock.patch.object(self.controller, "record_created") as recorded,
-              mock.patch.object(self.controller, "show_suivi") as opened):
-            self.assertEqual(str(view._review_button.cget("state")), "normal")
-            view._review_button.invoke()
-        recorded.assert_called_once_with(review)
-        opened.assert_called_once_with(review)
+        self.assertEqual(str(view._accept_button.cget("state")), "disabled")
+        shown = delivery.Delivered(
+            self.root_dir / "code", "dialogforge/candidat-001", self.root_dir / "p", "a" * 40,
+            "b" * 40, self.root_dir / "code", "main", False,
+        )
+        with (mock.patch("iabinome.gui.views.runner.delivery.deliver") as deliver,
+              mock.patch("iabinome.gui.views.runner.delivery.current", return_value=shown)):
+            self.assertEqual(str(view._deliver_button.cget("state")), "normal")
+            view._deliver_button.invoke()
+            deliver.assert_called_once()
+            self.assertIn("Prêt à essayer", str(view._status.cget("text")))
+            self.assertIn("b" * 12, str(view._status.cget("text")))
+            self.assertEqual(str(view._accept_button.cget("state")), "normal")
+            with (mock.patch("iabinome.gui.views.runner.dialogs.confirm", return_value=True),
+                  mock.patch("iabinome.gui.views.runner.delivery.accept") as accept):
+                view._accept_button.invoke()
+            accept.assert_called_once()
         self.assertEqual(view._token.get(), "")
+
+    def test_a_refused_delivery_explains_and_overwrites_nothing(self) -> None:
+        view = self.reopened({"stage": "paquet", "package": "/home/u/package", "calls": 1})
+        with mock.patch("iabinome.gui.views.runner.delivery.deliver",
+                        side_effect=ValueError("l'espace d'essai contient des modifications")):
+            view._deliver_button.invoke()
+        self.assertIn("rien n'est écrasé", str(view._status.cget("text")))
+        self.assertIn("contient des modifications", str(view._status.cget("text")))
 
     def reopened(self, state: dict[str, Any]) -> RunnerView:
         collab = accepted_conception(self.root_dir / "reprise")
