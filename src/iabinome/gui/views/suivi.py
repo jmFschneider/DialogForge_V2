@@ -9,12 +9,13 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 from pathlib import Path
-from tkinter import Misc, ttk
+from tkinter import Misc, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 from typing import TYPE_CHECKING
 
-from ... import facade, mission, storage
+from ... import delivery, facade, mission, storage
 from ...decisions import AllowedAction
+from .. import dialogs
 from . import intervention
 
 if TYPE_CHECKING:
@@ -101,6 +102,9 @@ class SuiviView(ttk.Frame):
             footer, text="Développer avec le Runner",
             command=lambda: self._controller.show_runner(self._path),
         )
+        self._integrate = ttk.Button(
+            footer, text="Intégrer ce candidat", command=self._integrate_candidate,
+        )
         ttk.Button(
             footer, text="Retour à l'accueil", command=self._controller.show_accueil,
         ).pack(side="right")
@@ -142,6 +146,10 @@ class SuiviView(ttk.Frame):
             self._runner.pack(side="left", padx=(8, 0))
         else:
             self._runner.pack_forget()
+        if not running and delivery.can_integrate(self._path, snapshot.state):
+            self._integrate.pack(side="left", padx=(8, 0))
+        else:
+            self._integrate.pack_forget()
         self._result.configure(text=self._result_text(snapshot))
         for child in self._actions_row.winfo_children():
             child.destroy()
@@ -161,6 +169,28 @@ class SuiviView(ttk.Frame):
             ).pack(side="left", padx=(0, 4))
         if running:
             self._after_id = self.after(_POLL_MS, self._refresh)
+
+    def _integrate_candidate(self) -> None:
+        try:
+            repo, base, head = delivery.integration_preview(self._path)
+        except (OSError, ValueError, RuntimeError) as exc:
+            messagebox.showerror("Intégration impossible", str(exc))
+            return
+        if not dialogs.confirm(
+            self, "Intégrer ce candidat ?",
+            f"Dépôt cible : {repo}\nBase : {base}\n"
+            f"Tête : {head}\nRevue : {self._path}\n\n"
+            "Le dépôt sera avancé uniquement en fast-forward.",
+            ok_label="Intégrer ce candidat",
+        ):
+            return
+        try:
+            receipt = delivery.integrate_candidate(self._path)
+        except (OSError, ValueError, RuntimeError) as exc:
+            messagebox.showerror("Intégration impossible", str(exc))
+            return
+        messagebox.showinfo("Candidat intégré", f"Code intégré dans {repo}\nReçu : {receipt}")
+        self._refresh()
 
     def _show_mission(self) -> None:
         """La mission et ses étapes, lues du registre et des dossiers : naviguer ne change aucun

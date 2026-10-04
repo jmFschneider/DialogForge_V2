@@ -9,25 +9,79 @@ fournisseur n'est lancé par les tests. Un candidat produit manuellement dans le
 ## Depuis la GUI
 
 Terminer une collaboration de type **Conception** et accepter sa version actuelle, avec ou sans
-réserves. Dans le suivi, cliquer sur **Développer avec le Runner**. L'écran demande le dépôt Git
-source, le commit de départ (`HEAD` par défaut), un dossier d'export Windows, un dossier Runner
-dans Ubuntu (par défaut `~/dialogforge-runs/<nom>`), les délais et au moins une validation finale.
-Chaque validation est une liste JSON d'arguments, par exemple :
+réserves. Dans le suivi, cliquer sur **Développer avec le Runner**. L'écran propose deux voies :
 
-```json
-[["python3", "-m", "pytest", "tests"]]
-```
+- **Nouveau projet** (par défaut) : le dossier du projet est `code/` dans la mission (à côté de la
+  conception si elle est indépendante). Rien n'est à créer à la main : le Runner y initialise Git
+  et y crée un commit initial **vide** avec l'identité Git déjà configurée sur ce poste. Si le
+  dossier contient déjà des fichiers ou un historique, ou si aucune identité n'est configurée
+  (`user.name`, `user.email`), le lancement s'arrête avant toute écriture et dit quoi faire ; il
+  n'invente jamais d'identité et ne touche jamais à la configuration Git globale.
+- **Dépôt existant** : on choisit le dépôt et le commit de départ (`HEAD` par défaut). Seuls les
+  fichiers **committés** entrent dans le clone ; les changements de l'utilisateur ne sont ni
+  nettoyés ni committés.
 
-Le dépôt source et l'export peuvent être sur Windows ; le pont les convertit en chemins WSL.
+Dans les deux cas l'agent travaille dans un clone isolé sous Ubuntu (par défaut
+`~/dialogforge-runs/<mission>-NNN`), jamais dans le dossier du projet. Le clone ne voit pas
+l'identité Windows : elle est reportée dans la configuration **locale** du clone, seulement si
+Ubuntu n'en a aucune, pour que l'agent puisse committer.
+
+Les **validations finales** sont une liste éditable : une ligne par commande, avec l'exécutable et
+ses arguments (guillemets permis), par exemple `node` et `--test`, ou `python3` et
+`-m pytest tests`. Elles se lancent à la racine du dépôt, **sans shell** : le contrat interne reste
+une liste d'arguments. Le texte de la conception acceptée est affiché sous la liste pour y relever
+les commandes ; aucune commande n'est jamais reprise du document sans être saisie par l'utilisateur.
+
 Le dossier Runner doit être sur le système de fichiers Linux, hors de `/mnt`. Ubuntu WSL2 doit
-disposer de Python 3, Git, Claude Code et `srt` tels que qualifiés pour le profil `claude-wsl`.
-Le jeton Claude est saisi dans un champ masqué pour **Exporter et lancer**, transmis au pont par
-son entrée standard et effacé du formulaire après lancement. La GUI exporte d'abord la conception
-acceptée, puis prépare le clone et appelle Claude. Un échec garde le dossier Runner et ses traces.
-Après inspection du clone, **Continuer l'agent** lance un nouvel appel explicite ; **Collecter sans
-appel** valide un candidat déjà committé sans jeton. Le paquet affiché reste à relire et à intégrer
-séparément. La fermeture de la fenêtre pendant l'exécution propose pause ou interruption et attend
-la fin du processus avant de fermer.
+disposer de Python 3, Git, Claude Code et `srt` tels que qualifiés pour le profil `claude-wsl`,
+et de chaque outil de validation **hors du dossier personnel** (illisible sous `srt`). Ces
+prérequis sont vérifiés avant tout appel : un manque laisse une préparation reprenable et un
+message précis. La présence d'un outil ne prouve pas que les tests passeront ; les dépendances du
+projet ne sont pas installées automatiquement.
+
+Le jeton Claude est saisi dans un champ masqué, transmis au pont par son entrée standard seulement
+(jamais en argument, jamais dans un fichier), uniquement pour les actions qui appellent l'agent, et
+effacé du formulaire dès le lancement. **Préparer et lancer** enchaîne : prérequis, export de la
+conception, dépôt initial (projet neuf), clone, puis premier appel. L'export est publié sous
+`developpement/export-NNN` (jamais écrasé : un export identique à la version acceptée est repris,
+une nouvelle acceptation en crée un nouveau). Un échec garde le dossier Runner et ses traces.
+Depuis la GUI, un lancement peut faire **au plus trois appels agent dans la durée totale indiquée**, uniquement
+si une validation finale échoue. Il réutilise le jeton saisi pour ce lancement et joint l'échec
+au prompt de correction. Un paquet réussi arrête immédiatement les appels. Le jeton n'est pas
+conservé après le lancement. Le bilan de l'agent et les validations sont affichés avec le paquet,
+qui reste à relire et à intégrer séparément. La fermeture de la fenêtre pendant
+l'exécution propose pause ou interruption et attend la fin du processus avant de fermer.
+
+### Reprise après fermeture ou incident
+
+`developpement/executions/NNN.json` (dans la mission) garde les paramètres **non secrets** : voie
+choisie, dépôt et base (OID), identité de la base initiale, export et son empreinte, distribution
+WSL, chemin Linux du run, validations, délais, paquets produits. Il est écrit avant l'appel
+fournisseur. Il ne copie pas l'état du run : à la réouverture, l'écran relit le dossier Linux
+(`dialogforge-run inspect`) et ne propose que le départ qui convient. Les paramètres figés dans
+le clone ne sont plus modifiables.
+
+| Situation lue | Départ proposé |
+|---|---|
+| Export publié, clone absent | **Préparer et lancer** : l'export est repris ; un dépôt initial déjà créé n'est reconnu que s'il est intact (un seul commit vide, même identité), jamais recréé |
+| Clone préparé, agent non lancé | **Lancer l'agent** sur cette préparation |
+| Appel interrompu ou résultat incertain | **Continuer l'agent** (explicite) ou **Vérifier le candidat sans agent** |
+| Validations échouées sans paquet antérieur | **Continuer l'agent** (explicite) ou **Vérifier le candidat sans agent** |
+| Validations échouées après un paquet | **Demander une correction** précise ou **Vérifier le candidat sans agent** ; le paquet antérieur reste affiché |
+| Paquet prêt | **Poursuivre : examiner le paquet** le rapatrie, vérifie son identité et ouvre sa revue sans jeton ; une correction exige un défaut précis |
+
+Aucune reprise après fermeture ne relance l'agent d'elle-même, ne recrée le dépôt initial ni ne
+refait le clone. Après un paquet, « Continuer » ne répète plus le travail achevé : l'action
+« Demander une correction » transmet l'objectif saisi à un nouvel appel explicite.
+Si ce nouvel appel ne crée aucun commit, aucun paquet supplémentaire n'est produit.
+Le paquet est copié sous `developpement/paquets/NNN` et sa revue sous
+`developpement/revues/NNN`. Les deux sont repris après fermeture : un second clic ouvre la même
+revue. La revue suit le cycle documentaire ordinaire ; après sa décision d'acceptation,
+**Intégrer ce candidat** affiche dépôt, base et tête avant confirmation. DialogForge transporte
+les commits exacts dans un bundle Git, exige un dépôt propre à la base attendue et avance en
+fast-forward seulement. Le reçu se trouve dans `developpement/integrations/`. Aucun jeton Claude
+n'est requis pour le rapatriement, la lecture ou l'intégration ; la revue, elle, appelle ses agents
+au lancement explicite du cycle documentaire.
 
 ## Depuis la CLI
 
@@ -41,9 +95,15 @@ d'arguments (sans shell implicite) :
 Puis, dans un environnement Python où le paquet est installé :
 
 ```text
+dialogforge-run init-project PROJET
 dialogforge-run prepare --export EXPORT --repo REPO --base COMMIT --checks checks.json --output RUN
+dialogforge-run inspect RUN
 dialogforge-run collect RUN
 ```
+
+`init-project` crée le dépôt d'un projet neuf (dossier absent ou vide) avec un commit initial vide
+et rend son OID et son auteur ; il refuse un dossier occupé ou une identité Git absente avant
+toute écriture. `inspect` lit l'état d'un dossier Runner sans rien écrire ni lancer.
 
 `prepare` copie l'export, crée un clone indépendant sans remote et le place sur le commit demandé.
 Il ne reprend pas les changements non committés du dépôt source et n'installe rien. `collect`
@@ -70,7 +130,9 @@ au clone, la lecture du dossier personnel fermée sauf pour le clone, et le rés
 environnement de test doit donc se trouver dans le clone ou dans les outils système accessibles.
 Le jeton de l'agent n'est pas transmis aux validations. Chaque tentative garde ses
 traces. Après un appel échoué ou interrompu, examiner les traces et le clone, puis utiliser
-`run-claude RUN --timeout 3600 --continue` seulement pour une continuation voulue.
+`run-claude RUN --timeout 3600 --continue` seulement pour une continuation voulue. Si un paquet
+existe déjà, fournir `--correction "objectif précis"` ; sans objectif, la commande refuse de
+répéter l'appel.
 
 `python3 /mnt/c/Projets/DialogForge_2/tools/qualify_runner_wsl.py` exerce sous Ubuntu le passage
 complet avec un faux agent : commit dans le clone, validation sous `srt`, paquet pour le même

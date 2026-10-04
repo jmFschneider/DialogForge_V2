@@ -150,6 +150,11 @@ def _outside(output: Path, *sources: Path) -> None:
 
 def export_conception(collab: Path, output: Path) -> None:
     _outside(output, collab)
+    _publish(output, export_files(collab))
+
+
+def export_files(collab: Path) -> dict[str, bytes]:
+    """Le contenu exact qu'exporterait la version actuellement acceptée, sans rien écrire."""
     with lock.acquire(collab / "verrou.json", "dev-export"):
         state = State.from_dict(_json((collab / "etat.json").read_bytes()))
         decision = decisions.latest(collab)
@@ -166,7 +171,10 @@ def export_conception(collab: Path, output: Path) -> None:
             f"# Mandat de développement — {collab.name}\n\n## Demande\n\n{request}\n"
             f"## Conception acceptée\n\n{document}\n## Décision et réserves\n\n"
             f"```json\n{_display(decision)}```\n\n## Constats ouverts\n\n"
-            f"```json\n{_display(opened)}```\n\n## Passage de relais\n\n"
+            f"```json\n{_display(opened)}```\n\n"
+            "Ces constats restent ouverts malgré l'acceptation : les traiter dans le candidat "
+            "ou expliquer pourquoi ils ne le sont pas. La revue du candidat les réexaminera.\n\n"
+            "## Passage de relais\n\n"
             "L'agent extérieur développe avec PWF, Git et les validations du projet. "
             "DialogForge ne développe, ne teste, ne commit et ne déploie rien. "
             "Fournir une base et une tête committées ; tester cette tête exacte. "
@@ -184,7 +192,7 @@ def export_conception(collab: Path, output: Path) -> None:
             "review_sha256": version["revue_sha256"], "decision_sha256": _sha(_dump(decision)),
             "export_md_sha256": _sha(text),
         }
-        _publish(output, {"export.md": text, "export.json": _dump(metadata)})
+        return {"export.md": text, "export.json": _dump(metadata)}
 
 
 def _export(files: dict[str, bytes]) -> None:

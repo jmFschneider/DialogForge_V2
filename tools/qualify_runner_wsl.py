@@ -127,19 +127,27 @@ def main() -> None:
                 ).stdout.strip()
 
             second_run = root / "run-from-gui"
-            response = subprocess.run(
-                [sys.executable, str(bridge)],
-                input=json.dumps({
-                    "action": "start", "run": str(second_run),
-                    "export": windows(windows_export), "repo": windows(windows_repo),
-                    "base": base, "validations": [["python3", "-c", "print('ok')"]],
-                    "validation_timeout": 30, "timeout": 30, "token": "",
-                }) + "\n",
-                text=True, capture_output=True, check=False, timeout=120,
+
+            def bridge_events(**request: object) -> list[dict[str, str]]:
+                response = subprocess.run(
+                    [sys.executable, str(bridge)], input=json.dumps(request) + "\n",
+                    text=True, capture_output=True, check=False, timeout=120,
+                )
+                return [json.loads(line) for line in response.stdout.splitlines()]
+
+            events = bridge_events(
+                action="prepare", run=str(second_run), export=windows(windows_export),
+                repo=windows(windows_repo), base=base,
+                validations=[["python3", "-c", "print('ok')"]], validation_timeout=30,
+                identity=["Runner Qualification", "runner@example.invalid"],
             )
-            events = [json.loads(line) for line in response.stdout.splitlines()]
-            assert [event["event"] for event in events] == ["prepared", "error"]
+            assert [event["event"] for event in events] == ["prepared"], events
+            assert events[0]["base_oid"] == base
+            events = bridge_events(action="launch", run=str(second_run), timeout=30, token="")
+            assert [event["event"] for event in events] == ["error"]
             assert "jeton Claude absent" in events[-1]["message"]
+            state = bridge_events(action="inspect", run=str(second_run))[0]
+            assert (state["stage"], state["calls"]) == ("prepare", 0), state
             assert (second_run / "workspace" / "code.txt").read_text() == "base\n"
             print("Pont GUI Windows → WSL : export et clone vérifiés sans appel Claude")
 

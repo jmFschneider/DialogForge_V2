@@ -438,6 +438,47 @@ Décidés à l'implémentation, sans changer le contrat ci-dessus :
 - Non fait au lot 2 : création d'une **nouvelle mission** depuis la GUI (la CLI `new --mission` la crée) ; la conception d'une recherche rattachée se range, elle, dans la mission. Ligne « Développement » de l'en-tête : lots 3 et 4.
 - La conception réelle `Mastermind-conception` n'a pas de `provenance_transition.json` (créée avant le lot 1) : voir `reference/REGROUPEMENT_MASTERMIND.md`.
 
+## Écarts de mise en œuvre du lot 3 (2026-10-03)
+
+Décidés à l'implémentation, sans changer le contrat ci-dessus :
+
+- **Le dépôt initial est créé côté Windows**, par le composant Runner (`core.init_project`, appelé par la session GUI), et non par le pont Ubuntu : Ubuntu n'a **aucune** identité Git (mesuré le 2026-10-03, `git config --get user.name` vide), l'identité « déjà configurée » est celle de Windows. Le clone isolé, lui, est préparé sous Ubuntu à partir de ce commit ; il reçoit l'identité en configuration **locale**, seulement si Ubuntu n'en voit aucune, sinon l'agent ne pourrait pas committer. Rien n'est inventé, rien n'est écrit en global.
+- Le pont ne fait plus « start » : `check` (prérequis, sans écriture), `prepare` (clone), `launch` (premier appel), `continue` (appel suivant explicite), `collect`, `inspect` (lecture). Le jeton n'accompagne que `launch` et `continue`. « Préparer et lancer » est un enchaînement de la session, ce qui rend chaque état intermédiaire reprenable.
+- La **référence d'exécution** (`developpement/executions/NNN.json`, module `executions.py`) n'a aucun champ de statut : l'état se lit sur le dossier Linux (`inspect_run`). Elle est créée avec l'export avant tout appel, complétée par le pont (base OID, chemin Linux absolu, distribution) puis par les paquets produits. Ces derniers sont des chemins Linux : le rapatriement vers `developpement/paquets/` reste au lot 4.
+- Une base initiale n'est reconnue que si la référence l'a enregistrée **et** si le dépôt est intact (un seul commit, arbre vide, même auteur). Un dépôt initialisé sans commit (arrêt entre `git init` et le commit) est complété, jamais réinitialisé.
+- Prérequis des outils de validation : un nom nu est cherché dans le `PATH` d'Ubuntu et refusé s'il se trouve dans le dossier personnel (illisible sous `srt`) ; un chemin avec séparateur n'est vérifié qu'à la collecte, dans le clone.
+- « Le texte des validations de la conception est accessible à côté » : la conception acceptée est affichée en entier, en lecture seule. Le logiciel n'en extrait aucune commande.
+- Sans mission, les dossiers sont voisins de la conception : `<nom>-developpement` et `<nom>-code`.
+- Le mandat exporté dit désormais, sous « Constats ouverts », que ces constats restent ouverts malgré l'acceptation et seront réexaminés par la revue du candidat (B-recette-003 de Mastermind y figure, `OPEN`, avec son historique).
+- Non fait : `Mastermind/code` réel (premier lancement depuis la GUI) ; rapatriement du paquet, revue liée, transport Git et intégration (lot 4).
+
+### Ajustement après la première exécution réelle de Mastermind
+
+Quatre paquets successifs ont été produits pour la même tête Git `dde9eaa` après des clics
+« Continuer » sans correction demandée. Un paquet valide devient donc un arrêt lisible : bilan
+et validations affichés, continuation ordinaire désactivée. Une correction nouvelle demande un
+objectif explicite, qui rejoint le prompt suivant. Dans un lancement autorisé, une validation
+finale échouée peut provoquer au plus deux appels correctifs automatiques, avec le jeton gardé
+seulement en mémoire et un délai total borné par la durée saisie. Aucun appel automatique ne suit
+un paquet réussi, et la reprise après fermeture reste explicite. Le lot 4 doit livrer et faire
+revoir le candidat existant sans demander un autre appel agent.
+
+### Mise en œuvre du lot 4 (2026-10-04)
+
+Un paquet terminé propose « Poursuivre : examiner le paquet ». DialogForge lit le paquet par le
+partage WSL, vérifie son identité, sa base et son export, puis publie une copie atomique sous
+`developpement/paquets/NNN`. La revue documentaire est créée sous `developpement/revues/NNN`
+avec la demande et le corpus exacts du paquet. Un second passage retrouve le même paquet et la
+même revue ; `provenance_runner.json` lie la revue à la conception et au paquet. Dans une mission,
+la revue est rattachée au registre avec la conception pour source.
+
+Après acceptation actuelle de la revue, « Intégrer ce candidat » affiche dépôt, base, tête et
+revue avant confirmation. Le Runner construit un bundle Git du commit exact, sans nouvel appel
+agent. L'import exige un dépôt cible propre, à la base attendue, puis avance en fast-forward.
+Un reçu reprend une intégration déjà faite à la même tête ; une divergence est refusée. Le bilan
+visible choisit le dernier appel agent réussi : un appel ultérieur échoué en authentification ne
+devient plus le « bilan » d'un paquet dont les validations ont réussi.
+
 ## 12. Taille, documentation et sortie
 
 Le relevé précédent est de 2 216 lignes effectives pour façade + GUI, sur un plafond de 2 400 ;

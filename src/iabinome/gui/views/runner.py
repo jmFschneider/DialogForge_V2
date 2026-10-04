@@ -1,13 +1,17 @@
-"""Passage d'une conception acceptée au développement dans Ubuntu WSL2."""
+"""Passage d'une conception acceptée au développement dans Ubuntu WSL2.
+
+L'écran reprend ce que la référence d'exécution a enregistré : après une fermeture ou un incident,
+il relit le dossier Runner (sans rien relancer) et ne propose que le départ qui convient.
+"""
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from tkinter import Misc, StringVar, filedialog, ttk
 from tkinter.scrolledtext import ScrolledText
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from ... import decisions, delivery, executions
 from ...models import positive_seconds
 from ..runner_session import RunnerRequest, RunnerSession
 
@@ -15,6 +19,10 @@ if TYPE_CHECKING:
     from ..controller import Controller
 
 _POLL_MS = 500
+_LABELS = {
+    "start": "Préparer et lancer", "launch": "Lancer l'agent", "continue": "Continuer l'agent",
+    "correct": "Demander une correction",
+}
 
 
 class RunnerView(ttk.Frame):
@@ -24,30 +32,55 @@ class RunnerView(ttk.Frame):
         self._collaboration = collaboration
         self._session: RunnerSession | None = None
         self._after_id: str | None = None
-        self._repo = StringVar()
-        self._base = StringVar(value="HEAD")
-        self._export = StringVar(
-            value=str(collaboration.parent / f"{collaboration.name}-dev-export")
+        self._primary_action: str | None = None
+        self._note = ""
+        self._editable: list[ttk.Widget] = []
+        self._unlocked = True
+        self._pairs: list[tuple[StringVar, StringVar]] = []
+        self._found: executions.Found | None = None
+        self._runner_state: dict[str, Any] | None = None
+        self._find()
+        shown = executions.parameters(collaboration, self._found)
+        self._mode, self._repo, self._base = (
+            StringVar(value=shown.mode), StringVar(value=shown.repo), StringVar(value=shown.base),
         )
-        self._run = StringVar(value=f"~/dialogforge-runs/{collaboration.name}")
-        self._timeout = StringVar(value="3600")
-        self._validation_timeout = StringVar(value="300")
+        self._run = StringVar(value=shown.run)
+        self._timeout = StringVar(value=str(shown.agent_timeout))
+        self._validation_timeout = StringVar(value=str(shown.validation_timeout))
         self._token = StringVar()
-        self._build()
+        self._build(shown.validations)
+        self._refresh()
 
     def destroy(self) -> None:
         if self._after_id is not None:
             self.after_cancel(self._after_id)
         super().destroy()
 
-    def _field(self, parent: ttk.Frame, label: str, value: StringVar) -> ttk.Frame:
+    def _find(self) -> None:
+        """Relit l'export et la référence de la version acceptée actuelle."""
+        try:
+            self._found = executions.find(self._collaboration)
+        except (ValueError, RuntimeError, OSError) as exc:
+            self._found, self._note = None, f"Version acceptée illisible : {exc}"
+
+    def _field(
+        self, parent: ttk.Frame, label: str, value: StringVar, *, lock: bool = True,
+    ) -> ttk.Entry:
         row = ttk.Frame(parent)
         row.pack(fill="x", pady=2)
         ttk.Label(row, text=label, width=25).pack(side="left")
-        ttk.Entry(row, textvariable=value).pack(side="left", fill="x", expand=True)
-        return row
+        entry = ttk.Entry(row, textvariable=value)
+        entry.pack(side="left", fill="x", expand=True)
+        if lock:
+            self._editable.append(entry)
+        return entry
 
-    def _build(self) -> None:
+    def _button(self, parent: Misc, text: str, command: Any) -> ttk.Button:
+        button = ttk.Button(parent, text=text, command=command)
+        self._editable.append(button)
+        return button
+
+    def _build(self, saved: list[list[str]]) -> None:
         ttk.Label(self, text="Développer avec le Runner", font=("", 13, "bold")).pack(
             anchor="w", padx=16, pady=(16, 4),
         )
@@ -55,23 +88,58 @@ class RunnerView(ttk.Frame):
             self, text=f"Conception acceptée : {self._collaboration}", wraplength=650,
         ).pack(anchor="w", padx=16)
         ttk.Label(
-            self, text="Le Runner crée un clone isolé sous Ubuntu, puis un paquet à relire. "
-            "Aucun code n'est intégré automatiquement.", wraplength=650,
+            self, text="Le Runner développe dans un clone isolé sous Ubuntu, jamais dans votre "
+            "dossier, puis produit un paquet à relire. En cas d'échec des tests, un lancement "
+            "peut faire jusqu'à 3 appels dans la durée indiquée. "
+            "Aucun code n'est intégré automatiquement.",
+            wraplength=650,
         ).pack(anchor="w", padx=16, pady=(4, 8))
         body = ttk.Frame(self)
         body.pack(fill="both", expand=True, padx=16)
-        repo_row = self._field(body, "Dépôt source", self._repo)
-        ttk.Button(repo_row, text="Choisir…", command=self._choose_repo).pack(side="left")
-        self._field(body, "Commit de départ", self._base)
-        self._field(body, "Export de la conception", self._export)
+        modes = ttk.Frame(body)
+        modes.pack(fill="x")
+        for value, label in (("nouveau", "Nouveau projet (dépôt créé pour vous)"),
+                             ("existant", "Dépôt existant")):
+            choice = ttk.Radiobutton(
+                modes, text=label, value=value, variable=self._mode, command=self._mode_changed,
+            )
+            choice.pack(side="left", padx=(0, 16))
+            self._editable.append(choice)
+        self._repo_entry = self._field(body, "Dossier du projet", self._repo)
+        self._button(self._repo_entry.master, "Choisir…", self._choose_repo).pack(side="left")
+        self._base_entry = self._field(body, "Commit de départ", self._base)
         self._field(body, "Dossier Runner dans Ubuntu", self._run)
-        self._field(body, "Durée maximale agent (s)", self._timeout)
+        self._field(body, "Durée maximale agent (s)", self._timeout, lock=False)
         self._field(body, "Délai par validation (s)", self._validation_timeout)
-        ttk.Label(body, text="Validations finales — JSON, une liste d'arguments par commande").pack(
-            anchor="w", pady=(8, 0),
+        ttk.Label(
+            body, text="Validations finales — exécutable et arguments, lancés à la racine du "
+            "dépôt, sans shell (ex. : node  --test)",
+        ).pack(anchor="w", pady=(8, 0))
+        self._rows = ttk.Frame(body)
+        self._rows.pack(fill="x")
+        for executable, arguments in executions.rows_from_validations(saved) or [("", "")]:
+            self._add_row(executable, arguments)
+        self._button(body, "Ajouter une validation", self._add_row).pack(anchor="w", pady=2)
+        ttk.Label(body, text="Conception acceptée — les validations à recopier ci-dessus :").pack(
+            anchor="w", pady=(6, 0),
         )
-        self._validations = ScrolledText(body, height=4, wrap="word")
-        self._validations.pack(fill="x")
+        conception = ScrolledText(body, height=6, wrap="word")
+        try:
+            conception.insert("1.0", (self._collaboration / decisions.DELIVERED).read_text("utf-8"))
+        except OSError as exc:
+            conception.insert("1.0", f"Conception illisible : {exc}")
+        conception.configure(state="disabled")
+        conception.pack(fill="x")
+        ttk.Label(body, text="Correction demandée après un paquet (objectif précis) :").pack(
+            anchor="w", pady=(6, 0),
+        )
+        self._correction = ScrolledText(body, height=3, wrap="word", state="disabled")
+        self._correction.pack(fill="x")
+        ttk.Label(body, text="Bilan du paquet et vérifications restantes :").pack(
+            anchor="w", pady=(6, 0),
+        )
+        self._report = ScrolledText(body, height=7, wrap="word", state="disabled")
+        self._report.pack(fill="x")
         token_row = ttk.Frame(body)
         token_row.pack(fill="x", pady=(8, 0))
         ttk.Label(token_row, text="Jeton Claude (non conservé)", width=25).pack(side="left")
@@ -84,54 +152,119 @@ class RunnerView(ttk.Frame):
         actions.pack(fill="x", padx=16, pady=16)
         self._back_button = ttk.Button(actions, text="Retour au suivi", command=self._back)
         self._back_button.pack(side="left")
-        self._start = ttk.Button(
-            actions, text="Exporter et lancer", command=lambda: self._launch("start"),
+        self._review_button = ttk.Button(
+            actions, text="Poursuivre : examiner le paquet", state="disabled",
+            command=self._open_review,
         )
-        self._start.pack(side="right")
-        self._continue = ttk.Button(
-            actions, text="Continuer l'agent", command=lambda: self._launch("continue"),
+        self._review_button.pack(side="right")
+        self._primary = ttk.Button(
+            actions, text=_LABELS["start"], state="disabled",
+            command=lambda: self._begin(self._primary_action),
         )
-        self._continue.pack(side="right", padx=(0, 8))
+        self._primary.pack(side="right")
         self._collect = ttk.Button(
-            actions, text="Collecter sans appel", command=lambda: self._launch("collect"),
+            actions, text="Vérifier le candidat sans agent", state="disabled",
+            command=lambda: self._begin("collect"),
         )
         self._collect.pack(side="right", padx=(0, 8))
+        self._mode_changed()
+
+    def _add_row(self, executable: str = "", arguments: str = "") -> None:
+        row = ttk.Frame(self._rows)
+        row.pack(fill="x", pady=1)
+        pair = (StringVar(value=executable), StringVar(value=arguments))
+        self._pairs.append(pair)
+        first = ttk.Entry(row, textvariable=pair[0], width=16)
+        first.pack(side="left")
+        second = ttk.Entry(row, textvariable=pair[1])
+        second.pack(side="left", fill="x", expand=True, padx=4)
+        self._button(row, "Retirer", lambda: self._drop(row, pair)).pack(side="left")
+        self._editable.extend((first, second))
+
+    def _drop(self, row: ttk.Frame, pair: tuple[StringVar, StringVar]) -> None:
+        self._pairs.remove(pair)
+        row.destroy()
+
+    def _mode_changed(self) -> None:
+        code = str(executions.default_code(self._collaboration))
+        existing = self._mode.get() == "existant"
+        if existing and self._repo.get() == code:
+            self._repo.set("")
+        elif not existing and not self._repo.get():
+            self._repo.set(code)
+        self._sync_base()
+
+    def _sync_base(self) -> None:
+        self._base_entry.state(
+            ["!disabled"] if self._unlocked and self._mode.get() == "existant" else ["disabled"]
+        )
 
     def _choose_repo(self) -> None:
-        chosen = filedialog.askdirectory(title="Dépôt source Git")
+        chosen = filedialog.askdirectory(title="Dossier du projet")
         if chosen:
             self._repo.set(chosen)
 
     def _back(self) -> None:
         self._controller.show_suivi(self._collaboration)
 
-    def _request(self, action: str) -> RunnerRequest:
-        run = self._run.get().strip()
-        if not run or (action == "start" and not self._repo.get().strip()):
-            raise ValueError("indiquer le dépôt source et le dossier Runner")
+    def _open_review(self) -> None:
+        if self._found is None or self._runner_state is None:
+            return
+        self._review_button.configure(state="disabled")
+        self._status.configure(text="Rapatriement et vérification du paquet…")
+        self.update_idletasks()
         try:
-            commands = json.loads(self._validations.get("1.0", "end-1c") or "[]")
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"validations JSON invalides : {exc}") from exc
-        if action == "start" and (not isinstance(commands, list) or not commands or not all(
-            isinstance(command, list) and command and all(
-                isinstance(arg, str) and arg for arg in command
-            ) for command in commands
-        )):
-            raise ValueError("indiquer au moins une validation comme liste d'arguments")
-        token = self._token.get()
-        if action != "collect" and not token:
+            package = delivery.receive_package(self._collaboration, self._found, self._runner_state)
+            review = delivery.create_review(self._collaboration, package)
+        except (OSError, ValueError, RuntimeError) as exc:
+            self._status.configure(text=f"Paquet non ouvert : {exc}")
+            self._review_button.configure(state="normal")
+            return
+        self._controller.record_created(review)
+        self._controller.show_suivi(review)
+
+    def _request(self, action: str) -> RunnerRequest:
+        if self._found is None:
+            raise ValueError("la version acceptée n'est pas lisible")
+        if action == "start":
+            if not self._run.get().strip() or not self._repo.get().strip():
+                raise ValueError("indiquer le dossier du projet et le dossier Runner")
+            mode = self._mode.get()
+            shown = executions.Parameters(
+                mode, self._repo.get().strip(),
+                self._base.get().strip() if mode == "existant" else "HEAD", self._run.get().strip(),
+                executions.validations_from_rows([(a.get(), b.get()) for a, b in self._pairs]),
+                0.0, positive_seconds(float(self._validation_timeout.get())),
+                self._found.data["wsl"]["distribution"] if self._found.data else None,
+            )
+        else:
+            shown = executions.parameters(self._collaboration, self._found)
+        calls = action in _LABELS
+        correction = self._correction.get("1.0", "end").strip() if action == "correct" else ""
+        if action == "correct" and not correction:
+            raise ValueError("décrire la correction attendue avant un nouvel appel")
+        if calls and not self._token.get():
             raise ValueError("saisir le jeton Claude pour l'appel agent")
         return RunnerRequest(
-            action=action, collaboration=self._collaboration,
-            export=Path(self._export.get()), repo=Path(self._repo.get()),
-            base=self._base.get().strip(), validations=commands,
-            run=run, token=token,
+            action=action, collaboration=self._collaboration, found=self._found, mode=shown.mode,
+            repo=Path(shown.repo), base=shown.base, validations=shown.validations, run=shown.run,
+            token=self._token.get() if calls else "",
             timeout=positive_seconds(float(self._timeout.get())),
-            validation_timeout=positive_seconds(float(self._validation_timeout.get())),
+            validation_timeout=shown.validation_timeout, distro=shown.distro,
+            correction=correction,
         )
 
-    def _launch(self, action: str) -> None:
+    def _refresh(self) -> None:
+        """Relit la référence puis le dossier Linux ; sans référence : préparation neuve."""
+        if self._found is None:
+            self._apply(None, locked=True)
+        elif self._found.data is None:
+            self._apply(None)
+        else:
+            self._begin("inspect")
+
+    def _begin(self, action: str | None) -> None:
+        assert action is not None
         try:
             request = self._request(action)
         except (ValueError, TypeError) as exc:
@@ -143,11 +276,45 @@ class RunnerView(ttk.Frame):
             return
         self._token.set("")
         self._session = session
-        self._start.configure(state="disabled")
-        self._continue.configure(state="disabled")
-        self._collect.configure(state="disabled")
-        self._back_button.configure(state="disabled")
+        if action != "inspect":
+            self._note = ""
+        for button in (self._primary, self._collect, self._back_button, self._review_button):
+            button.configure(state="disabled")
         self._poll()
+
+    def _apply(self, state: dict[str, Any] | None, *, locked: bool = False) -> None:
+        self._runner_state = state
+        allowed = () if locked else executions.actions(state)
+        self._primary_action = next((a for a in _LABELS if a in allowed), None)
+        self._primary.configure(
+            text=_LABELS.get(self._primary_action or "", _LABELS["start"]),
+            state="normal" if self._primary_action else "disabled",
+        )
+        self._collect.configure(state="normal" if "collect" in allowed else "disabled")
+        self._review_button.configure(
+            state="normal" if state and state.get("stage") == "paquet"
+            and state.get("package") and not state.get("locked") else "disabled",
+        )
+        self._back_button.configure(state="normal")
+        self._unlocked = not locked and (state is None or state["stage"] == "absent")
+        for widget in self._editable:
+            if widget.winfo_exists():
+                widget.state(["!disabled"] if self._unlocked else ["disabled"])
+        self._sync_base()
+        self._correction.configure(state="normal" if "correct" in allowed else "disabled")
+        report = state.get("report", "") if state else ""
+        checks = state.get("checks", []) if state else []
+        results = "\n".join(
+            f"{' '.join(check['command'])} : {check['outcome']}"
+            for check in checks if isinstance(check, dict)
+            and isinstance(check.get("command"), list) and "outcome" in check
+        )
+        self._report.configure(state="normal")
+        self._report.delete("1.0", "end")
+        self._report.insert("1.0", "\n\n".join(filter(None, (results, report))))
+        self._report.configure(state="disabled")
+        described = "" if locked else executions.describe(state)
+        self._status.configure(text="\n".join(filter(None, (self._note, described))))
 
     def _poll(self) -> None:
         self._after_id = None
@@ -162,8 +329,11 @@ class RunnerView(ttk.Frame):
         self._status.configure(text=text)
         if session.thread.is_alive():
             self._after_id = self.after(_POLL_MS, self._poll)
+        elif session.request.action != "inspect":
+            self._find()
+            self._note = "\n".join(filter(None, (text, self._note)))
+            self._refresh()
         else:
-            self._start.configure(state="normal")
-            self._continue.configure(state="normal")
-            self._collect.configure(state="normal")
-            self._back_button.configure(state="normal")
+            self._apply(session.state if session.error is None else {
+                "stage": "invalide", "detail": session.error,
+            })

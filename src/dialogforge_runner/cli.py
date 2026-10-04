@@ -25,12 +25,19 @@ def main(argv: list[str] | None = None) -> int:
     prepare.add_argument("--lot", type=Path)
     prepare.add_argument("--output", type=Path, required=True)
     prepare.add_argument("--profile", choices=("local", "claude-wsl"), default="local")
+    init = commands.add_parser(
+        "init-project", help="créer le dépôt d'un projet neuf avec un commit initial vide",
+    )
+    init.add_argument("project", type=Path)
+    inspect = commands.add_parser("inspect", help="lire l'état d'un dossier Runner")
+    inspect.add_argument("run", type=Path)
     collect = commands.add_parser("collect", help="valider le candidat et créer un paquet")
     collect.add_argument("run", type=Path)
     launch = commands.add_parser("run-claude", help="lancer Claude dans Ubuntu WSL2")
     launch.add_argument("run", type=Path)
     launch.add_argument("--timeout", type=float, required=True)
     launch.add_argument("--continue", dest="continue_existing", action="store_true")
+    launch.add_argument("--correction", help="objectif explicite après un paquet déjà produit")
     args = parser.parse_args(argv)
     try:
         if args.command == "prepare":
@@ -44,10 +51,15 @@ def main(argv: list[str] | None = None) -> int:
                          validations=checks, validation_timeout=args.validation_timeout,
                          lot=args.lot, profile=args.profile)
             print(f"Dossier préparé : {args.output.resolve()}")
+        elif args.command == "init-project":
+            oid, author = core.init_project(args.project)
+            print(f"Projet créé : {args.project.resolve()}\nBase : {oid}\nAuteur : {author}")
+        elif args.command == "inspect":
+            print(json.dumps(core.inspect_run(args.run), ensure_ascii=False, indent=2))
         elif args.command == "run-claude":
             package = core.run_claude(
                 args.run, timeout_seconds=args.timeout,
-                continue_existing=args.continue_existing,
+                continue_existing=args.continue_existing, correction=args.correction or "",
             )
             print(f"Paquet créé : {package.resolve()}")
         else:

@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import uuid
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -35,6 +36,224 @@ def _write_json(path: Path, value: dict[str, Any]) -> None:
     storage.write_atomic_text(path, json.dumps(value, ensure_ascii=False, indent=2) + "\n")
 
 
+SRT = "/usr/local/bin/srt"
+
+
+class ValidationFailed(ValueError):
+    """Une validation finale a échoué ; le candidat peut être corrigé dans le clone."""
+
+
+def _claude() -> Path:
+    return Path.home() / ".local" / "bin" / "claude"
+
+
+def _folder(path: Path) -> Path:
+    """Le dossier existant le plus proche : où lire une configuration Git avant de créer `path`."""
+    return next((p for p in (path, *path.parents) if p.is_dir()), Path.home())
+
+
+def _inside_repo(folder: Path) -> bool:
+    try:
+        _git(folder, "rev-parse", "--show-toplevel")
+    except ValueError:
+        return False
+    return True
+
+
+def git_identity(where: Path | None = None) -> tuple[str, str] | None:
+    """L'identité Git **déjà configurée** à cet endroit ; jamais inventée, jamais écrite."""
+    folder = _folder(where) if where is not None else Path.home()
+    values = []
+    for key in ("user.name", "user.email"):
+        try:
+            values.append(_git(folder, "config", "--get", key))
+        except ValueError:
+            return None
+    return (values[0], values[1]) if all(values) else None
+
+
+def check_new_project(path: Path) -> None:
+    """Refus avant toute mutation : dossier absent ou vide (ou dépôt sans commit), Git, identité."""
+    if shutil.which("git") is None:
+        raise ValueError("Git est introuvable : l'installer avant de créer un projet")
+    if path.exists():
+        content = [entry.name for entry in path.iterdir() if entry.name != ".git"]
+        has_git = (path / ".git").exists()
+        if not path.is_dir() or content or (has_git and (
+            not (path / ".git").is_dir() or _has_commit(path)
+        )):
+            raise ValueError(
+                f"{path} contient déjà des fichiers ou un historique Git : "
+                "choisir « Dépôt existant » ou un dossier vide"
+            )
+        if not has_git and _inside_repo(path):
+            raise ValueError(f"{path} est dans un dépôt Git existant : choisir un autre dossier")
+    elif _inside_repo(_folder(path)):
+        raise ValueError(f"{path} serait dans un dépôt Git existant : choisir un autre dossier")
+    if git_identity(path) is None:
+        raise ValueError(
+            "identité Git absente : configurer user.name et user.email "
+            "(git config --global ...) avant de créer le projet ; rien n'est inventé"
+        )
+
+
+def _has_commit(repo: Path) -> bool:
+    try:
+        _git(repo, "rev-parse", "--verify", "HEAD")
+    except ValueError:
+        return False
+    return True
+
+
+def init_project(path: Path) -> tuple[str, str]:
+    """Initialise le dépôt d'un projet neuf et y crée un commit initial vide, avec l'identité
+    déjà configurée. Rend l'OID et l'auteur de ce commit ; un échec rend le dossier comme avant."""
+    check_new_project(path)
+    created, had_git = not path.exists(), (path / ".git").exists()
+    path.mkdir(parents=True, exist_ok=True)
+    try:
+        if not had_git:
+            _git(path, "init", "--quiet")
+        _git(path, "commit", "--quiet", "--allow-empty", "-m", "Commit initial vide")
+        return _git(path, "rev-parse", "HEAD"), _git(path, "log", "-1", "--format=%an <%ae>")
+    except BaseException:
+        if not had_git:
+            shutil.rmtree(path / ".git", ignore_errors=True)
+        if created:
+            shutil.rmtree(path, ignore_errors=True)
+        raise
+
+
+def reuse_initial_base(path: Path, oid: str, author: str) -> None:
+    """Ne reconnaît que la base initiale enregistrée, intacte ; jamais un autre dépôt."""
+    try:
+        intact = (
+            (path / ".git").is_dir() and _git(path, "rev-parse", "HEAD") == oid
+            and _git(path, "rev-list", "--all", "--count") == "1"
+            and not _git(path, "ls-tree", "-r", "--name-only", oid)
+            and not _git(path, "status", "--porcelain", "--untracked-files=normal")
+            and _git(path, "log", "-1", "--format=%an <%ae>", oid) == author
+        )
+    except ValueError:
+        intact = False
+    if not intact:
+        raise ValueError(
+            f"{path} n'est plus le dépôt initial créé pour ce projet : "
+            "choisir « Dépôt existant » pour l'utiliser tel qu'il est"
+        )
+
+
+def preflight(run: Path, validations: Sequence[Sequence[str]], profile: str) -> None:
+    """Prérequis de l'exécution, sans rien écrire : Git, Claude et srt pour le profil Ubuntu,
+    chaque exécutable de validation. Un prérequis présent ne prouve pas que les tests passeront."""
+    if shutil.which("git") is None:
+        raise ValueError("Git est introuvable dans cet environnement")
+    if profile == "claude-wsl":
+        _require_linux_run(run)
+        for name, tool in (("srt", Path(SRT)), ("Claude", _claude())):
+            if not tool.is_file():
+                raise ValueError(f"{name} est absent dans Ubuntu : {tool}")
+    path_env = _validation_env().get("PATH", "")
+    for command in validations:
+        executable = command[0]
+        if "/" in executable or "\\" in executable:
+            continue  # chemin dans le clone : vérifié à la collecte
+        found = shutil.which(executable, path=path_env)
+        if found is None:
+            raise ValueError(
+                f"validation « {' '.join(command)} » : {executable} est introuvable "
+                f"dans le PATH d'Ubuntu ({path_env})"
+            )
+        if profile == "claude-wsl" and Path(found).resolve().is_relative_to(Path.home()):
+            raise ValueError(
+                f"validation « {' '.join(command)} » : {found} est dans le dossier personnel, "
+                "illisible sous srt ; installer l'outil pour le système (hors du dossier personnel)"
+            )
+
+
+def inspect_run(run: Path) -> dict[str, Any]:
+    """L'état d'un dossier Runner, lu sur ses artefacts : rien n'est écrit, rien n'est relancé."""
+    if not run.exists():
+        return {"stage": "absent"}
+    try:
+        config = _config(run)
+    except (OSError, ValueError) as exc:
+        return {"stage": "invalide", "detail": f"run.json illisible : {exc}"}
+    calls = sorted((run / "calls").glob("call-*"))
+    attempts = sorted((run / "results").glob("collect-*"))
+    valid: list[str] = []
+    report = ""
+    checks: list[dict[str, Any]] = []
+    for attempt in attempts:
+        try:
+            files, _ = development.read_package(attempt / "package")
+            valid.append(str(attempt / "package"))
+            notes = sorted(name for name in files if name.startswith("developer-notes/"))
+            report = files[notes[-1]].decode("utf-8", "replace")[:8000] if notes else ""
+            checks = [json.loads(data) for name, data in files.items()
+                      if name.startswith("validations/") and name.endswith(".json")]
+        except (OSError, ValueError):
+            pass
+    for call in reversed(calls):
+        result = call / "resultat.json"
+        output = call / "stdout.txt"
+        try:
+            if json.loads(result.read_text("utf-8"))["return_code"] == 0 and output.is_file():
+                report = output.read_bytes().decode("utf-8", "replace")[:8000]
+                break
+        except (OSError, ValueError, KeyError):
+            continue
+    last_ok = bool(attempts) and valid[-1:] == [str(attempts[-1] / "package")]
+    last_call = calls[-1] / "resultat.json" if calls else None
+    if last_call is not None and not last_call.exists():
+        last_call = calls[-1]
+    later_call = last_call is not None and (
+        not attempts or last_call.stat().st_mtime_ns > attempts[-1].stat().st_mtime_ns
+    )
+    stage = "appel" if later_call else (
+        "paquet" if last_ok else "validations" if attempts else "prepare"
+    )
+    return {
+        "stage": stage, "calls": len(calls), "collects": len(attempts),
+        "last_collect": None if not attempts else "reussie" if last_ok else "echouee",
+        "package": valid[-1] if valid else None,
+        "report": report, "checks": checks,
+        "base_oid": config["base_oid"], "locked": (run / "verrou.json").exists(),
+        "last_call_complete": bool(calls) and (calls[-1] / "resultat.json").exists(),
+    }
+
+
+def bundle_candidate(run: Path, package: Path, package_id: str) -> Path:
+    """Transporte uniquement les commits du candidat exact d'un paquet terminé."""
+    with lock.acquire(run / "verrou.json", "runner-bundle"):
+        state = inspect_run(run)
+        if state["stage"] != "paquet" or not package.is_relative_to(run / "results"):
+            raise ValueError("le dossier Runner n'a pas de paquet terminé à transporter")
+        _, metadata = development.read_package(package)
+        if metadata["package_id"] != package_id:
+            raise ValueError("identité du paquet différente de la revue")
+        base, head = metadata["identity"]["base_oid"], metadata["identity"]["head_oid"]
+        if base != _config(run)["base_oid"]:
+            raise ValueError("base du paquet différente du dossier Runner")
+        if _candidate(run, base) != head:
+            raise ValueError("le clone a changé depuis le paquet")
+        folder = run / "transport"
+        folder.mkdir(exist_ok=True)
+        target = folder / f"{package_id}.bundle"
+        if not target.exists():
+            temporary = folder / f".new-{uuid.uuid4().hex}.bundle"
+            try:
+                _git(run / "workspace", "bundle", "create", str(temporary), "HEAD", f"^{base}")
+                _git(run / "workspace", "bundle", "verify", str(temporary))
+                temporary.rename(target)
+            finally:
+                temporary.unlink(missing_ok=True)
+        _git(run / "workspace", "bundle", "verify", str(target))
+        if head not in _git(run / "workspace", "bundle", "list-heads", str(target)):
+            raise ValueError("le bundle ne désigne pas la tête du paquet")
+        return target
+
+
 def _config(run: Path) -> dict[str, Any]:
     value = json.loads((run / "run.json").read_text(encoding="utf-8"))
     if not isinstance(value, dict) or value.get("schema_version") != 1:
@@ -52,8 +271,13 @@ def prepare(
     validation_timeout: float = 300,
     lot: Path | None = None,
     profile: str = "local",
-) -> None:
-    """Copie le mandat et un commit dans un dossier de travail indépendant."""
+    identity: tuple[str, str] | None = None,
+) -> str:
+    """Copie le mandat et un commit dans un dossier de travail indépendant ; rend l'OID de base.
+
+    `identity` (nom, courriel déjà configurés ailleurs) n'est posée dans la configuration locale
+    du clone que s'il n'en voit aucune : l'agent doit pouvoir committer, sans rien inventer.
+    """
     development.validate_export(export)
     if not validations or any(not command or not all(command) for command in validations):
         raise ValueError("au moins une commande de validation complète est requise")
@@ -102,6 +326,9 @@ def prepare(
         workspace = target / "workspace"
         _git(workspace, "remote", "remove", "origin")
         _git(workspace, "checkout", "--quiet", "--detach", oid)
+        if identity is not None and git_identity(workspace) is None:
+            _git(workspace, "config", "user.name", identity[0])
+            _git(workspace, "config", "user.email", identity[1])
         _write_json(
             target / "run.json",
             {
@@ -118,6 +345,7 @@ def prepare(
     except BaseException:
         shutil.rmtree(target)
         raise
+    return oid
 
 
 def _candidate(run: Path, base: str) -> str:
@@ -146,7 +374,7 @@ def _validation_command(run: Path, config: dict[str, Any], command: list[str]) -
                        "allowWrite": ["."], "denyWrite": []},
         "network": {"allowedDomains": [], "deniedDomains": []},
     })
-    return ["/usr/local/bin/srt", "--settings", str(settings), "--", *command]
+    return [SRT, "--settings", str(settings), "--", *command]
 
 
 def _validation_env() -> dict[str, str]:
@@ -229,7 +457,7 @@ def _collect_locked(run: Path, control: transport.ExecutionControl | None = None
         _write_json(path, record)
         validations.append(path)
         if record["outcome"] != "PASSED":
-            raise ValueError(f"validation {index} échouée ; traces : {call}")
+            raise ValidationFailed(f"validation {index} échouée ; traces : {call}")
         try:
             current = _candidate(run, base)
         except ValueError as exc:
@@ -242,11 +470,18 @@ def _collect_locked(run: Path, control: transport.ExecutionControl | None = None
         raise ValueError("candidat modifié pendant la collecte")
     notes = [run / "input" / "lot.md"] if (run / "input" / "lot.md").exists() else []
     calls = sorted((run / "calls").glob("call-*"))
-    if calls and (calls[-1] / "stdout.txt").exists():
-        summary = attempt / "agent-bilan.md"
-        text = (calls[-1] / "stdout.txt").read_bytes().decode("utf-8", "replace")
-        storage.write_atomic_text(summary, "# Bilan déclaré par l'agent\n\n" + text)
-        notes.append(summary)
+    for call in reversed(calls):
+        output, result = call / "stdout.txt", call / "resultat.json"
+        try:
+            succeeded = json.loads(result.read_text("utf-8"))["return_code"] == 0
+        except (OSError, ValueError, KeyError):
+            succeeded = False
+        if succeeded and output.is_file():
+            summary = attempt / "agent-bilan.md"
+            text = output.read_bytes().decode("utf-8", "replace")
+            storage.write_atomic_text(summary, "# Bilan déclaré par l'agent\n\n" + text)
+            notes.append(summary)
+            break
     package = attempt / "package"
     development.build_package(
         run / "input" / "export",
@@ -267,6 +502,7 @@ def run_agent(
     timeout_seconds: float,
     env: Mapping[str, str] | None = None,
     continue_existing: bool = False,
+    correction: str = "",
     control: transport.ExecutionControl | None = None,
 ) -> Path:
     """Lance un agent fourni par l'appelant, puis collecte sans fenêtre concurrente.
@@ -283,6 +519,11 @@ def run_agent(
             raise ValueError("appel déjà tenté ; continuation explicite requise")
         if not previous and continue_existing:
             raise ValueError("aucun appel à continuer")
+        if correction and not continue_existing:
+            raise ValueError("une correction exige un appel de continuation")
+        prior = inspect_run(run) if continue_existing else None
+        if prior and prior["package"] and not correction:
+            raise ValueError("un paquet existe déjà : préciser la correction demandée")
         call = calls / f"call-{len(previous) + 1:04d}"
         call.mkdir()
         mandate = (run / "input" / "export" / "export.md").read_text(encoding="utf-8")
@@ -301,6 +542,16 @@ def run_agent(
             prompt += f"\n# Lot choisi\n{lot.read_text(encoding='utf-8')}\n"
         if previous:
             prompt += "\nExamine l'état Git et le travail présent avant de continuer.\n"
+            attempts = sorted((run / "results").glob("collect-*"))
+            if attempts:
+                records = sorted(attempts[-1].glob("validation-*/validation.json"))
+                for record in records:
+                    result = json.loads(record.read_text(encoding="utf-8"))
+                    if result.get("outcome") != "PASSED":
+                        prompt += ("\n# Validation finale à corriger\n"
+                                   + str(result.get("summary", ""))[:4000] + "\n")
+        if correction:
+            prompt += f"\n# Correction demandée par l'utilisateur\n{correction}\n"
         storage.write_atomic_text(call / "prompt.md", prompt)
         result = transport.run(
             command,
@@ -312,7 +563,20 @@ def run_agent(
             control=control,
         )
         if result.outcome is not transport.Outcome.COMPLETED or result.return_code:
+            output = call / "stdout.txt"
+            if output.is_file():
+                with output.open("rb") as stream:
+                    if b"OAuth access token is invalid" in stream.read(4096):
+                        raise ValueError(
+                            "authentification de l'agent refusée (401) ; vérifier le jeton"
+                        )
             raise ValueError(f"appel agent interrompu ou échoué ; traces : {call}")
+        if (prior and prior["stage"] == "paquet" and
+                _git(run / "workspace", "rev-parse", "HEAD") ==
+                development.read_package(Path(prior["package"]))[1]["identity"]["head_oid"]):
+            raise ValueError(
+                "la correction n'a produit aucun nouveau commit ; paquet précédent conservé"
+            )
         if control is not None and control.pause_requested.is_set():
             raise ValueError(f"appel terminé ; collecte à lancer séparément ; traces : {call}")
         if control is not None and control.interrupt_requested.is_set():
@@ -322,6 +586,7 @@ def run_agent(
 
 def run_claude(
     run: Path, *, timeout_seconds: float, continue_existing: bool = False,
+    correction: str = "",
     control: transport.ExecutionControl | None = None,
 ) -> Path:
     """Lance Claude dans le profil WSL mesuré, puis valide sous srt."""
@@ -331,8 +596,8 @@ def run_claude(
     token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
     if not token:
         raise ValueError("CLAUDE_CODE_OAUTH_TOKEN absent du processus Runner")
-    claude = Path.home() / ".local" / "bin" / "claude"
-    if not claude.is_file() or not Path("/usr/local/bin/srt").is_file():
+    claude = _claude()
+    if not claude.is_file() or not Path(SRT).is_file():
         raise ValueError("Claude ou srt absent dans Ubuntu")
     settings = json.dumps({
         "sandbox": {"enabled": True, "failIfUnavailable": True,
@@ -350,5 +615,5 @@ def run_claude(
          "--strict-mcp-config", "--no-session-persistence", "--disable-slash-commands",
          "--settings", settings],
         timeout_seconds=timeout_seconds, env=env, continue_existing=continue_existing,
-        control=control,
+        correction=correction, control=control,
     )
