@@ -77,6 +77,23 @@ les valeurs par défaut, et `new` se réduit alors à un dossier et une demande.
 dialogforge new ./plan --demande ./exemples/demande-conception.md --kind conception --reviewer-access consult --agent-a claude --agent-b codex --source-root ./exemples --source-list ./exemples/corpus.txt --max-revisions 1
 ```
 
+Pour travailler sur un projet qui évolue, choisissez plutôt son dossier avec
+`--project-root`. F, A et B en consultation peuvent alors découvrir les fichiers
+actuels sans liste préalable. Le projet reste en place ; le Runner travaille
+ensuite dans son clone séparé. La GUI propose le même choix sous « Projet à lire
+directement ». L'écran de suivi et `status` montrent le chemin retenu. Ce mode
+peut être combiné avec un corpus figé de documents complémentaires :
+
+```
+dialogforge new C:/Projets/DialogForge_missions/plan --demande ./demande.md --kind conception --reviewer-access consult --agent-a codex --agent-b claude --project-root C:/Projets/MonProjet
+```
+
+Le dossier de projet doit exister et rester accessible à chaque appel. Les
+fichiers ajoutés après la création deviennent visibles au prochain appel ; A et
+B peuvent donc lire des versions différentes si le projet change entre leurs
+appels. Le chemin est local à cette machine. Gardez les collaborations hors du
+dossier du projet pour ne pas rendre leurs échanges accessibles aux agents.
+
 Une fois une recherche **acceptée**, `--depuis <recherche>` en fait directement le dossier d'entrée
 d'une conception : sa demande, son livrable, son bilan et sa décision deviennent le corpus, et un
 mandat complet tient lieu de demande si vous n'en fournissez pas (les hypothèses de la recherche y

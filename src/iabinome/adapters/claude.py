@@ -92,6 +92,8 @@ class ClaudeAdapter:
         else:
             tools = _READ_TOOLS
         cmd += ["--tools", tools]
+        if call.project_root is not None and tools:
+            cmd += ["--add-dir", str(call.project_root)]
         if tools and call.web_access:
             # Sans cette autorisation, l'appel non interactif refuse ces deux outils faute
             # de personne pour approuver. Vérifié le 2026-09-20 : un `WebSearch` réel, des
@@ -118,6 +120,8 @@ class ClaudeAdapter:
         ]
         if session is not None:
             cmd += ["--resume", session]
+        if spec.project_root is not None:
+            cmd += ["--add-dir", str(spec.project_root)]
         if spec.effort is not None:
             cmd += ["--effort", spec.effort]
         return cmd

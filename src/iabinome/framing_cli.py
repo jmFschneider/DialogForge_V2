@@ -37,6 +37,7 @@ def run(
         root = framing.prepare(
             base.kind, base.source_root, base.source_list, base.source_label, base.web_access,
             preloaded=base.follow_up.corpus if base.follow_up else None,
+            project_root=base.project_root,
         )
     except (facade.CreationError, framing.FramingError, settings.SettingsError) as exc:
         return _fail(str(exc))
@@ -47,7 +48,10 @@ def run(
     except (EOFError, KeyboardInterrupt):
         shutil.rmtree(root, ignore_errors=True)
         return _fail("cadrage interrompu : rien n'a été créé")
-    spec = FramingSessionSpec(model, timeout, root / "travail", args.effort_cadrage)
+    spec = FramingSessionSpec(
+        model, timeout, root / "travail", args.effort_cadrage, base.project_root,
+        (root / "corpus" / "manifeste.json").is_file(),
+    )
     others = [a.env for key, a in adapters.items() if key != args.agent_cadrage]
     session = framing.open_session(adapters[args.agent_cadrage], spec, others=others)
     f = Framing(session, root, idea, kind=base.kind, complement=base.follow_up is not None)

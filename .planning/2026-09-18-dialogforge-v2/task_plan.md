@@ -6,6 +6,30 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
+**Accès au projet vivant demandé le 2026-10-05.** La liste de corpus déposée dans
+`echanges/` n'a jamais rendu le dépôt lisible : la mission concernée n'avait aucun
+corpus importé. Le PO écarte la réparation de cette mission et demande que F, A
+et B puissent lire directement un projet choisi, sans liste à maintenir.
+`conception/ACCES_DEPOT_VIVANT.md` décrit le contrat. Le raccordement CLI, GUI,
+cadrage, A/B et transition est en cours dans l'arbre de travail ; les tests locaux
+à faux agents passent. Codex utilise `--cd` pour un projet sans corpus.
+**Prochain pas : qualifier l'accès réel en lecture seule avec Claude et Codex avant une mission
+payante sur ce mode.** L'absence de CLI Codex dans le shell Windows actuel laisse
+cette qualification ouverte. Le Runner conserve son clone distinct.
+
+**Reprise après quota — enquête ouverte par le PO le 2026-10-04.** Périmètre : cadrage,
+recherche, conception et Runner de code, pendant que DialogForge reste ouvert.
+`conception/REPRISE_QUOTA.md` inventorie les messages et codes connus, les preuves
+simulées et la forme Codex `exec` réelle encore à qualifier. `project/RULES.md`
+porte l'exception autorisée ; aucun code d'exécution n'est engagé. La demande
+`conception/DEMANDE_REPRISE_QUOTA.md` reste le mandat de conception, après
+qualification de l'accès au dépôt ; la liste manuelle de corpus n'est plus le
+mode retenu pour ce travail. **Ensuite : produire et accepter cette conception**, puis
+qualifier une trace réelle anonymisée du refus Codex `exec` dans le profil V2
+et, si disponible, du profil Claude Runner, avant d'activer leur reprise dans
+le code. Fixer aussi la conduite sans heure exploitable. La lisibilité des
+sorties demeure en attente.
+
 **Runner agent unique — mise en œuvre engagée par le PO le 2026-10-04** (`conception/RUNNER_AGENT_UNIQUE.md`,
 phase 8 ci-dessous ; un commit par lot, sur demande du PO). **R1 fait** (remise dans `code/`,
 acceptation du commit essayé ; Mastermind remis puis accepté sur copie, 23 tests Node verts).
@@ -19,9 +43,10 @@ remis, essayé et accepté ; puis correction réelle demandée à A — appel 9 
 ligne finale `RUNNER: CANDIDAT`, `node --test` 23/23 sur `4298969`, remise automatique sur
 `dialogforge/candidat-002` — et version corrigée acceptée (`master` = `4298969`, second reçu).
 `feat/runner-v1` fusionnée dans `main` en avance rapide puis poussée (PO, 2026-10-04) ; analyses préparatoires rangées dans `conception/analyses_runner/`, branche locale supprimée.
-**Prochaine étape : à choisir avec le PO.** En attente : lisibilité des sorties, « plus tard »
+**Suites antérieures à l'enquête quota :** lisibilité des sorties, « plus tard »
 selon le PO (`project/retour_essais_2026-10-04.md`) ; mesure d'utilité (7.5).
-Façade + GUI : **2 699 / 2 700** — toute nouvelle fonction GUI demande une re-décision du plafond.
+Façade + GUI : **2 748 / 2 800** après l'accès au projet vivant ; `creation.py`
+**399 / 400**, plafond total **3 000**.
 Les mentions de suite ci-dessous décrivent le parcours antérieur.
 
 **Parcours de mission — ajustement du Runner après la recette Mastermind (2026-10-03).**
@@ -630,6 +655,17 @@ du plan de finalisation, critère de sortie compris. **Ouvert par le PO le 2026-
 
 Également conditionnelle après J3, et non engagée : recherche externe. (L'interface graphique
 légère est engagée depuis le 2026-09-23 : phase 5.)
+
+## Backlog — recherche différée, non engagée
+
+- **Prochaine session (PO, 2026-10-05) :** rechercher sur le Web ce qui est connu de la
+  surconception par agents de conception et de revue, des consignes de simplicité efficaces
+  et des moyens de juger la complexité totale d'une solution. Partir du cas mesuré
+  `Reprise_Quota_2` (premier brouillon de 52 Ko pour « reconnaître, attendre, relancer »).
+  Livrer une synthèse courte avec sources et une proposition pour les prompts effectifs de A
+  et B ; examiner aussi les consignes actuelles qui poussent à l'exhaustivité. Le PO relira
+  la proposition avant toute modification des prompts. **Aucune recherche ni modification
+  des prompts engagée dans cette session.**
 
 ## Decisions Made
 | Decision | Rationale |

@@ -42,6 +42,7 @@ vérifié avant toute écriture : un refus ne laisse rien derrière lui, un cadr
 | `--source-root <dossier>` | Le dossier des sources. Va avec `--source-list`. |
 | `--source-list <fichier>` | Un chemin par ligne, relatif à `--source-root`. Va avec `--source-root`. |
 | `--source-label <nom>` | Nom du corpus ; défaut : le nom de `--source-root`. |
+| `--project-root <dossier>` | Projet vivant lu directement par F, A et B en consultation, sans liste ; peut accompagner un corpus figé. |
 | `--model-a`, `--model-b` | Modèle de chaque rôle ; défaut : celui de l'adaptateur. |
 | `--effort-a`, `--effort-b` | Effort de raisonnement, facultatif. Le vocabulaire est celui de l'outil ([détail](CONFIGURATION.md#effort-de-raisonnement)). |
 | `--depuis <recherche>` | Poursuivre une recherche **acceptée** en conception : sa demande, son livrable, son bilan et sa décision deviennent le corpus, copiés et hachés sous le verrou de la recherche ; le manifeste nomme la recherche d'origine, `provenance_transition.json` sa décision. Les réglages de la recherche (outils, modèles, révisions, accès web) sont repris sauf ceux que vous donnez, et affichés. Sans `--demande`, le **mandat de transition** généré sert de demande ; avec `--cadrer-avec-agent`, F le complète. Sans autre corpus. Si la recherche change avant la création, `new` refuse : recommencer. |
@@ -61,7 +62,7 @@ exigée, sauf avec `--depuis`, qui apporte la sienne.
 ### Cadrage avec agent
 
 Avec `--cadrer-avec-agent`, un agent (F) lit une **copie** des sources données par `--source-root` /
-`--source-list` (facultatives, sauf en recherche sans web), puis vous pose ses questions une par une. Votre idée se
+`--source-list`, ou consulte directement le dossier donné par `--project-root`, puis vous pose ses questions une par une. Votre idée se
 saisit sur plusieurs lignes, close par une ligne ne contenant qu'un point ; vos réponses aussi. À
 tout moment : `/clore` (rédiger maintenant) ou `/annuler`. F propose la clôture au plus tard après
 trois réponses, puis toutes les deux ; vous choisissez de continuer, corriger un point, rédiger ou

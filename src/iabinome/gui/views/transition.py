@@ -8,6 +8,7 @@ from tkinter import ttk
 from typing import TYPE_CHECKING
 
 from ... import facade, model_catalog
+from .. import widgets
 
 if TYPE_CHECKING:
     from .creation import CreationView
@@ -38,12 +39,21 @@ def fill(view: CreationView, follow_up: facade.FollowUp) -> None:
     view._revisions.set(str(config.max_revisions))
     view._reviewer.set(next(k for k, v in _ACCESS.items() if v is config.reviewer_access))
     view._web_access.set(config.web_access)
+    view._project_root.set(config.project_root or "")
     view._sync_model("A")
     view._sync_model("B")
     for child in view._corpus_frame.winfo_children():
         child.destroy()
     label = facade.follow_up_label(follow_up)
     ttk.Label(view._corpus_frame, text=label, wraplength=560).pack(anchor="w")
+    row = ttk.Frame(view._corpus_frame)
+    row.pack(fill="x")
+    ttk.Label(row, text="Projet vivant").pack(side="left")
+    ttk.Entry(row, textvariable=view._project_root).pack(side="left", fill="x", expand=True)
+    ttk.Button(
+        row, text="Choisir…",
+        command=widgets.browse(view._project_root, "Dossier du projet", folder=True),
+    ).pack(side="left")
 
 
 def sync_idea(view: CreationView) -> None:

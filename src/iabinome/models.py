@@ -46,14 +46,14 @@ class MissionKind(Enum):
     CONCEPTION = "CONCEPTION"
     RECHERCHE = "RECHERCHE"
 
-    def missing_source(self, *, corpus: bool, web: bool) -> str | None:
+    def missing_source(self, *, corpus: bool, web: bool, project: bool = False) -> str | None:
         """Le refus de création, ou `None` : contrôlé à la création seulement (D3). Seule la
         recherche exige une source ; la conception part d'une demande, corpus facultatif
         (`conception/PARCOURS_MISSION_CONCEPTION.md` §4.1, qui amende D1)."""
-        if self is MissionKind.RECHERCHE and not (corpus or web):
+        if self is MissionKind.RECHERCHE and not (corpus or web or project):
             return (
-                "recherche sans source : ouvrir l'accès web, ou fournir un corpus"
-                " (--source-root et --source-list)"
+                "recherche sans source : ouvrir l'accès web, choisir --project-root,"
+                " ou fournir un corpus (--source-root et --source-list)"
             )
         return None
 
@@ -351,6 +351,8 @@ class Configuration:
     # Accès web des agents : **fermé par défaut**, même politique pour A et B. La clé n'est
     # écrite que si elle est vraie ; une collaboration sans clé vaut `False`.
     web_access: bool = False
+    # Dossier vivant choisi par l'humain. Absent des collaborations historiques.
+    project_root: str | None = None
 
     def __post_init__(self) -> None:
         """Un plafond de révisions négatif n'a pas de sens : la promotion serait
@@ -363,15 +365,20 @@ class Configuration:
     @staticmethod
     def from_dict(d: dict[str, Any]) -> Configuration:
         with_web = isinstance(d, dict) and "web_access" in d
-        fields = (
-            (*_CONFIGURATION_FIELDS, ("web_access", _bool)) if with_web else _CONFIGURATION_FIELDS
-        )
+        with_project = isinstance(d, dict) and "project_root" in d
+        fields = _CONFIGURATION_FIELDS
+        if with_web:
+            fields += (("web_access", _bool),)
+        if with_project:
+            fields += (("project_root", _str),)
         return Configuration(**_decode(d, fields, "configuration"))
 
     def to_dict(self) -> dict[str, Any]:
         out = _encode(self, _CONFIGURATION_FIELDS)
         if self.web_access:
             out["web_access"] = True
+        if self.project_root is not None:
+            out["project_root"] = self.project_root
         return out
 
 

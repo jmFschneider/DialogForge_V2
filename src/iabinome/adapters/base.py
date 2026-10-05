@@ -92,6 +92,8 @@ class CallSpec:
     effort: str | None = None
     # Même politique pour A et B ; `CONTEXT_ONLY` reste sans aucun outil, web compris.
     web_access: bool = False
+    project_root: Path | None = None
+    corpus_present: bool = False
 
 
 @dataclass(frozen=True)
@@ -103,6 +105,8 @@ class FramingSessionSpec:
     timeout_seconds: float
     work_root: Path
     effort: str | None = None
+    project_root: Path | None = None
+    corpus_present: bool = False
 
 
 class AgentAdapter(Protocol):

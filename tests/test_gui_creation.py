@@ -95,6 +95,16 @@ class TestTheDemandeIsAlwaysVisible(CreationCase):
 
 
 class TestTheCorpusBlock(CreationCase):
+    def test_project_folder_is_sent_to_shared_creation(self) -> None:
+        view = self.view()
+        self.fill_minimum(view)
+        project = self.root_dir / "project"
+        project.mkdir()
+        view._project_root.set(str(project))
+        request = view._build_request()
+        assert request is not None
+        self.assertEqual(request.project_root, project)
+
     def test_research_is_the_default_and_the_corpus_block_is_always_shown(self) -> None:
         """`TYPES_DE_MISSION.md` D1 : le corpus sert aux deux types."""
         view = CreationView(_ROOT, self.controller)

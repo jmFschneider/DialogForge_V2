@@ -256,6 +256,11 @@ def _request(
         source_root=Path(args.source_root) if args.source_root else None,
         source_list=Path(args.source_list) if args.source_list else None,
         source_label=args.source_label,
+        project_root=(
+            Path(args.project_root) if args.project_root else
+            Path(follow_up.config.project_root) if follow_up and follow_up.config.project_root
+            else None
+        ),
         follow_up=follow_up, mission=Path(args.mission) if args.mission else None,
         new_version=bool(args.nouvelle_version),
     )
@@ -414,6 +419,7 @@ def _status(collab: Path, *, json_output: bool) -> int:
         "reviewer_access": config.reviewer_access.value, "status": state.status.value,
         "phase": state.phase.value, "revision": state.revision,
         "open_findings": len(state.open_finding_ids), "corpus_age_days": corpus_age_days,
+        "project_root": config.project_root,
         "last_incident": state.last_incident,
         # Lisible sans ouvrir un journal : la décision, l'incident, la suite.
         "decision": decisions.describe(collab, state),
@@ -673,8 +679,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_new.add_argument("--config", help=_CONFIG_HELP)
     p_new.add_argument(
         "--kind", choices=sorted(_KIND),
-        help="recherche (étude sourcée : web ou corpus) ou conception (plan de réalisation,"
-        " corpus facultatif)",
+        help="recherche (étude sourcée : web, projet ou corpus) ou conception"
+        " (plan de réalisation)",
     )
     p_new.add_argument(
         "--reviewer-access", choices=sorted(_ACCESS),
@@ -688,6 +694,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="fichier qui liste les sources, un chemin par ligne relatif à --source-root",
     )
     p_new.add_argument("--source-label", help="nom du corpus (défaut : nom de --source-root)")
+    p_new.add_argument(
+        "--project-root",
+        help="dossier vivant du projet, lisible par les agents sans liste de fichiers",
+    )
     p_new.add_argument(
         "--depuis", metavar="RECHERCHE",
         help="poursuivre une recherche acceptée : sa demande, son livrable, son bilan et sa"

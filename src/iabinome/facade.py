@@ -397,6 +397,7 @@ class CreationRequest:
     source_root: Path | None = None
     source_list: Path | None = None
     source_label: str | None = None
+    project_root: Path | None = None
     # Cadrage avec agent F (`conception/CADRAGE_AGENT.md` §10) : le brouillon de F, sa
     # provenance, et le corpus déjà préparé — jamais relu depuis le projet d'origine.
     framing: FramingArtifacts | None = None
@@ -491,6 +492,18 @@ def check_creation(
         raise CreationError(f"{dest} existe deja")
     if bool(request.source_root) != bool(request.source_list):
         raise CreationError("--source-root et --source-list vont ensemble")
+    if request.project_root is not None:
+        try:
+            project = request.project_root.resolve(strict=True)
+        except OSError as exc:
+            raise CreationError(f"dossier du projet introuvable : {exc}") from exc
+        if not project.is_dir():
+            raise CreationError(f"dossier du projet invalide : {project}")
+        dest = request.collab.resolve()
+        if dest.is_relative_to(project) or project.is_relative_to(dest):
+            raise CreationError(
+                "le projet et la collaboration doivent être dans des dossiers distincts"
+            )
     if request.framing is not None and request.source_root:
         raise CreationError("sources déjà copiées par le cadrage : elles ne sont pas relues")
     framed_corpus = request.framing is not None and (
@@ -501,6 +514,7 @@ def check_creation(
     problem = request.kind.missing_source(
         corpus=bool(request.source_root) or framed_corpus or request.follow_up is not None,
         web=request.web_access,
+        project=request.project_root is not None,
     )
     if problem:
         raise CreationError(problem)
@@ -670,6 +684,7 @@ def _write_collaboration(
         ),
         initial_demande_sha256=normalized.sha256, corpus_manifest_sha256=corpus_sha,
         created_at=_now(), web_access=request.web_access,
+        project_root=str(request.project_root.resolve()) if request.project_root else None,
     )
     state = State(
         schema_version=SCHEMA_VERSION, status=Status.READY, phase=Phase.PROPOSAL_A, revision=0,

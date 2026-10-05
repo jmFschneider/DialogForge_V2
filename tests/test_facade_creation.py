@@ -44,6 +44,12 @@ class CreationCase(unittest.TestCase):
 
 
 class TestRefusalsLeaveNothingBehind(CreationCase):
+    def test_project_must_not_contain_the_collaboration(self) -> None:
+        self.assertIn(
+            "dossiers distincts", self.refused(project_root=self.root),
+        )
+        self.assertFalse((self.root / "collab").exists())
+
     def test_an_existing_destination_is_refused(self) -> None:
         dest = self.root / "collab"
         dest.mkdir()
@@ -113,6 +119,37 @@ class TestRefusalsLeaveNothingBehind(CreationCase):
 
 
 class TestASuccessfulCreation(CreationCase):
+    def test_live_project_is_a_source_without_a_file_list(self) -> None:
+        project = self.root / "project"
+        project.mkdir()
+        (project / "first.py").write_text("pass\n", encoding="utf-8")
+        result = facade.create_collaboration(
+            self.request(project_root=project, web_access=False), adapters=self.adapters,
+        )
+        self.assertTrue(result.path.is_dir())
+        config = fakes.read_json(result.path / "configuration.json")
+        self.assertEqual(config["project_root"], str(project.resolve()))
+        self.assertIsNone(config["corpus_manifest_sha256"])
+        (project / "added_later.py").write_text("pass\n", encoding="utf-8")
+        self.a.responses.append("IABINOME:DOCUMENT\n# Étude\nLe fichier ajouté existe.")
+        self.b.responses.append(fakes.review("ACCEPTER"))
+        workflow.run(result.path, adapters=self.adapters, timeout_seconds=30.0)
+        self.assertIn(str(project.resolve()), self.a.prompts[0])
+        intent = fakes.read_json(next((result.path / "appels").iterdir()) / "intention.json")
+        self.assertEqual(intent["project_root"], str(project.resolve()))
+
+    def test_missing_live_project_stops_before_any_agent_call(self) -> None:
+        project = self.root / "project"
+        project.mkdir()
+        result = facade.create_collaboration(
+            self.request(project_root=project, web_access=False), adapters=self.adapters,
+        )
+        project.rmdir()
+        with self.assertRaises(workflow.WorkflowError):
+            workflow.run(result.path, adapters=self.adapters, timeout_seconds=30.0)
+        self.assertEqual(self.a.calls, 0)
+        self.assertEqual(self.b.calls, 0)
+
     def test_a_conception_without_any_corpus_is_created_ready(self) -> None:
         """AC01 : ni corpus ni web exigés — la demande suffit."""
         result = facade.create_collaboration(

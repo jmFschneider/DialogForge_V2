@@ -137,8 +137,12 @@ def begin(
     root = framing.prepare(
         base.kind, base.source_root, base.source_list, base.source_label, base.web_access,
         preloaded=base.follow_up.corpus if base.follow_up else None,
+        project_root=base.project_root,
     )
-    spec = FramingSessionSpec(model, timeout, root / "travail", effort)
+    spec = FramingSessionSpec(
+        model, timeout, root / "travail", effort, base.project_root,
+        (root / "corpus" / "manifeste.json").is_file(),
+    )
     return controller.open_framing(
         ADAPTERS[agent], spec, root, idea, kind=base.kind, complement=base.follow_up is not None,
     )

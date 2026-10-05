@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import unittest
 from dataclasses import replace
+from pathlib import Path
 from unittest import mock
 
 from iabinome.adapters import claude, codex
@@ -47,6 +48,20 @@ _CODEX_OUT = "\n".join([
 
 
 class TestClaudeAdapter(unittest.TestCase):
+    def test_live_project_is_added_for_read_tools_only(self) -> None:
+        project = Path("C:/projects/example")
+        with mock.patch.object(shutil, "which", return_value="claude"):
+            consult = self.adapter.command(replace(_SPEC, project_root=project))
+            context = self.adapter.command(replace(
+                _SPEC, project_root=project, reviewer_access=ReviewerAccess.CONTEXT_ONLY,
+            ))
+            framing = self.adapter.framing_command(
+                replace(_FRAMING, project_root=project), None, "prompt",
+            )
+        self.assertEqual(consult[consult.index("--add-dir") + 1], str(project))
+        self.assertNotIn("--add-dir", context)
+        self.assertEqual(framing[framing.index("--add-dir") + 1], str(project))
+
     def setUp(self) -> None:
         self.adapter = claude.ClaudeAdapter()
 
@@ -191,6 +206,25 @@ class TestClaudeAdapter(unittest.TestCase):
 class TestCodexAdapter(unittest.TestCase):
     def setUp(self) -> None:
         self.adapter = codex.CodexAdapter()
+
+    def test_live_project_is_the_working_directory_without_a_corpus(self) -> None:
+        project = Path("C:/projects/example")
+        with mock.patch.object(shutil, "which", return_value="codex"):
+            call = self.adapter.command(replace(_SPEC, project_root=project))
+            with_corpus = self.adapter.command(replace(
+                _SPEC, project_root=project, corpus_present=True,
+            ))
+            context = self.adapter.command(replace(
+                _SPEC, project_root=project, reviewer_access=ReviewerAccess.CONTEXT_ONLY,
+            ))
+            framing = self.adapter.framing_command(
+                replace(_FRAMING, project_root=project), None, "prompt",
+            )
+        self.assertEqual(call[1:4], ["--cd", str(project), "exec"])
+        self.assertIn("read-only", call)
+        self.assertNotIn("--cd", with_corpus)
+        self.assertNotIn("--cd", context)
+        self.assertEqual(framing[1:4], ["--cd", str(project), "exec"])
 
     def test_default_model_is_the_same_for_both_roles(self) -> None:
         self.assertEqual(

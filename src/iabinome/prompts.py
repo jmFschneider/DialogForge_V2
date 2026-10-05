@@ -114,14 +114,21 @@ _CORPUS = (
     "Le corpus local est un instantané du {date}, à lire sous corpus/fichiers/ : c'est"
     " ta matière, et la seule."
 )
+_PROJECT = (
+    "Le projet vivant est accessible en lecture dans {path}. Explore ses fichiers utiles ;"
+    " aucun inventaire préalable ne limite ce que tu peux consulter. Son contenu peut changer"
+    " entre deux appels : indique les fichiers réellement consultés."
+)
 _CONTEXT_ONLY = (
     "Tu ne disposes que des éléments ci-dessous ; qualifie ce que tu ne peux pas vérifier."
 )
 
 
-def build_proposal(demande: str, kind: MissionKind, corpus_date: str | None) -> str:
+def build_proposal(
+    demande: str, kind: MissionKind, corpus_date: str | None, project_root: str | None = None,
+) -> str:
     blocks = [_A_PROPOSAL, _KIND_BLOCK[kind]]
-    return _assemble(blocks, corpus_date, {"DEMANDE": demande})
+    return _assemble(blocks, corpus_date, {"DEMANDE": demande}, project_root)
 
 
 def build_review(
@@ -132,6 +139,7 @@ def build_review(
     corpus_date: str | None,
     targeted: bool = False,
     kind: MissionKind | None = None,
+    project_root: str | None = None,
 ) -> str:
     """`targeted` : la revue suit une correction de A (1.3), et se limite aux
     objections traitées et aux régressions. `kind` : le livrable de l'étape à juger."""
@@ -141,6 +149,7 @@ def build_review(
     if access is ReviewerAccess.CONTEXT_ONLY:
         blocks.append(_CONTEXT_ONLY)
         corpus_date = None
+        project_root = None
     if targeted:
         blocks.append(_B_TARGETED)
     blocks.append(_B_RULES)
@@ -148,13 +157,15 @@ def build_review(
         blocks,
         corpus_date,
         {"DEMANDE": demande, "DOCUMENT COURANT": document, "CONSTATS ANTÉRIEURS": prior_findings},
+        project_root,
     )
 
 
 def build_revision(
-    demande: str, document: str, review: str, kind: MissionKind, corpus_date: str | None
+    demande: str, document: str, review: str, kind: MissionKind, corpus_date: str | None,
+    project_root: str | None = None,
 ) -> str:
-    return _a_on_document(_A_REVISION, demande, document, review, kind, corpus_date)
+    return _a_on_document(_A_REVISION, demande, document, review, kind, corpus_date, project_root)
 
 
 def _a_on_document(
@@ -164,6 +175,7 @@ def _a_on_document(
     review: str,
     kind: MissionKind,
     corpus_date: str | None,
+    project_root: str | None = None,
 ) -> str:
     """§9 ne donne que le bloc de consignes pour la révision. Les trois sections
     de charge sont les mêmes que pour B : sans elles, A n'aurait ni l'autorité,
@@ -174,13 +186,19 @@ def _a_on_document(
         blocks,
         corpus_date,
         {"DEMANDE": demande, "DOCUMENT COURANT": document, "CRITIQUE": review},
+        project_root,
     )
 
 
-def _assemble(blocks: list[str], corpus_date: str | None, sections: dict[str, str]) -> str:
+def _assemble(
+    blocks: list[str], corpus_date: str | None, sections: dict[str, str],
+    project_root: str | None = None,
+) -> str:
     parts = list(blocks)
     if corpus_date is not None:
         parts.append(_CORPUS.format(date=corpus_date))
+    if project_root is not None:
+        parts.append(_PROJECT.format(path=project_root))
     parts.extend(f"{title}\n{body}" for title, body in sections.items())
     return "\n\n".join(parts) + "\n"
 
@@ -297,7 +315,7 @@ def _counters(group: int, answers: int, limit: int) -> dict[str, str]:
 
 def build_framing_start(
     idea: str, *, draft: bool = False, kind: MissionKind | None = None,
-    complement: bool = False,
+    complement: bool = False, project_root: str | None = None,
 ) -> str:
     """Le seul envoi qui porte l'idée et la consultation du corpus (§6.2). `draft` :
     `/clore` avant tout échange — la rédaction suit dans le même envoi (A2). `kind` :
@@ -310,6 +328,7 @@ def build_framing_start(
         blocks.append(_F_COMPLEMENT)
     text = _assemble(
         blocks, None, {"IDEE": idea, **_counters(1, 0, 3), "CONTRATS": _F_CONTRACTS},
+        project_root,
     )
     return text + "\n" + _F_DRAFT + "\n" if draft else text
 

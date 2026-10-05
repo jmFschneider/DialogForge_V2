@@ -74,6 +74,10 @@ class CodexAdapter:
             exe, "exec", "-m", call.model, "--sandbox", "read-only", "--skip-git-repo-check",
             "--ephemeral", "--ignore-user-config", "--ignore-rules",
         ]
+        if call.project_root is not None and not call.corpus_present and (
+            call.reviewer_access is not ReviewerAccess.CONTEXT_ONLY
+        ):
+            cmd[1:1] = ["--cd", str(call.project_root)]
         # `--ignore-user-config` écarte le réglage personnel : sélectionner explicitement
         # le backend Windows natif. Les autres plateformes conservent leur argv.
         if sys.platform == "win32":
@@ -105,6 +109,8 @@ class CodexAdapter:
         par le PO le 2026-09-25 (`reference/PROTOCOLE_CADRAGE_LOT4.md`, 0.155.0) : même
         identifiant, contexte rappelé, écriture tentée et refusée par le bac à sable."""
         cmd = [_resolve(), "exec"]
+        if spec.project_root is not None and not spec.corpus_present:
+            cmd[1:1] = ["--cd", str(spec.project_root)]
         if session is None:
             cmd += ["-m", spec.model, "--sandbox", "read-only"]
         else:

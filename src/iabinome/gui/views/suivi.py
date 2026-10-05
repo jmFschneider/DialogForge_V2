@@ -50,6 +50,8 @@ class SuiviView(ttk.Frame):
         self._title.pack(anchor="w")
         self._subtitle = ttk.Label(header)
         self._subtitle.pack(anchor="w")
+        self._project = ttk.Label(header, wraplength=560)
+        self._project.pack(anchor="w")
         self._steps = ttk.Frame(header)  # l'en-tête de la mission, quand il y en a une
         self._steps.pack(fill="x", pady=(4, 0))
         # Le dossier se voit dès l'ouverture, incident compris (retour d'usage du 2026-09-28).
@@ -127,6 +129,10 @@ class SuiviView(ttk.Frame):
         self._title.configure(text=f"{snapshot.name} — {snapshot.presentation.status_label}")
         self._subtitle.configure(
             text=f"{snapshot.presentation.phase_label} · {snapshot.presentation.activity_label}"
+        )
+        self._project.configure(
+            text=f"Projet vivant : {snapshot.configuration.project_root}"
+            if snapshot.configuration.project_root else "Projet vivant : aucun",
         )
         self._show_progress(snapshot.presentation.progress)
         self._trace = snapshot.presentation.trace_dir

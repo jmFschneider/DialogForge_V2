@@ -27,7 +27,7 @@ _KIND = {_RESEARCH: MissionKind.RECHERCHE, _DESIGN: MissionKind.CONCEPTION}
 _ACCESS = {"Consultation": ReviewerAccess.CONSULT, "Contexte seul": ReviewerAccess.CONTEXT_ONLY}
 _NON_SPECIFIE = "(non spécifié)"
 _KIND_HINT = {
-    _RESEARCH: "Livrable : une étude sourcée — accès web ouvert, ou corpus à fournir.",
+    _RESEARCH: "Livrable : une étude sourcée — web, projet vivant ou corpus.",
     _DESIGN: "Livrable : un plan de réalisation avant le code — documentation facultative.",
 }
 
@@ -58,6 +58,7 @@ class CreationView(ttk.Frame):
         self._source_root = StringVar()
         self._source_list = StringVar()
         self._source_label = StringVar()
+        self._project_root = StringVar()
         self._model_a = StringVar(value=model_catalog.DEFAULT)
         self._model_b = StringVar(value=model_catalog.DEFAULT)
         self._effort_a = StringVar(value=_NON_SPECIFIE)
@@ -182,7 +183,19 @@ class CreationView(ttk.Frame):
 
     def _build_corpus(self, parent: ttk.Frame) -> None:
         ttk.Label(
-            parent, text="Corpus local — facultatif ; en recherche, exigé si le web est fermé",
+            parent,
+            text="Projet à lire directement — y compris les fichiers ajoutés ensuite",
+        ).pack(anchor="w", pady=(12, 0))
+        row = ttk.Frame(parent)
+        row.pack(fill="x")
+        ttk.Label(row, text="Projet", width=8).pack(side="left")
+        ttk.Entry(row, textvariable=self._project_root).pack(side="left", fill="x", expand=True)
+        ttk.Button(
+            row, text="Choisir…",
+            command=widgets.browse(self._project_root, "Dossier du projet", folder=True),
+        ).pack(side="left")
+        ttk.Label(
+            parent, text="Documents figés facultatifs — racine et liste des fichiers à copier",
         ).pack(anchor="w", pady=(12, 0))
         for label, var, browse in (
             ("Racine", self._source_root,
@@ -358,6 +371,7 @@ class CreationView(ttk.Frame):
             source_list=Path(self._source_list.get()) if sources and self._source_list.get()
             else None,
             source_label=(self._source_label.get() or None) if sources else None,
+            project_root=Path(self._project_root.get()) if self._project_root.get() else None,
             framing=framed, follow_up=self._follow_up, mission=self._mission,
             new_version=self._new_version,
         )

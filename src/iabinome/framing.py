@@ -248,6 +248,7 @@ def parse_reply(text: str, expected: tuple[str, ...]) -> Reply:
 def prepare(
     kind: MissionKind, source_root: Path | None = None, source_list: Path | None = None,
     source_label: str | None = None, web_access: bool = False, preloaded: Path | None = None,
+    project_root: Path | None = None,
 ) -> Path:
     """Le dossier jetable du cadrage (§5.1, §8.1), avant toute session. F travaille dans
     `travail/`, qui ne contient que la copie `corpus/fichiers/` ; manifeste, traces et
@@ -274,7 +275,9 @@ def prepare(
                 )
         if entries:
             shutil.copytree(root / "corpus" / "fichiers", root / "travail" / "corpus" / "fichiers")
-        problem = kind.missing_source(corpus=bool(entries), web=web_access)
+        problem = kind.missing_source(
+            corpus=bool(entries), web=web_access, project=project_root is not None,
+        )
         if problem:
             raise FramingError(problem)
     except (corpus.CorpusError, OSError) as exc:
@@ -298,7 +301,10 @@ class Framing:
         kind: MissionKind | None = None, complement: bool = False,
     ) -> None:
         self.session, self.root, self.idea = session, root, idea
-        self._start = partial(prompts.build_framing_start, kind=kind, complement=complement)
+        self._start = partial(
+            prompts.build_framing_start, kind=kind, complement=complement,
+            project_root=str(session.spec.project_root) if session.spec.project_root else None,
+        )
         self.group, self.answers = 1, 0
         self.draft: str | None = None
         self.last: Turn | None = None

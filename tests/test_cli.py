@@ -100,6 +100,16 @@ class TestNewRequiredOptions(CliCase):
 
 
 class TestNewCorpus(CliCase):
+    def test_research_can_read_a_live_project_without_a_list(self) -> None:
+        project = self.root / "project"
+        project.mkdir()
+        self.assertEqual(cli.main([
+            "new", *self.bare_args(**{"--project-root": str(project)}),
+        ]), 0)
+        config = fakes.read_json(self.collab / "configuration.json")
+        self.assertEqual(config["project_root"], str(project.resolve()))
+        self.assertFalse((self.collab / "corpus").exists())
+
     def test_research_without_any_source_is_refused(self) -> None:
         code = cli.main(["new", *self.bare_args(**{"--kind": "recherche"})])
         self.assertEqual(code, 1)

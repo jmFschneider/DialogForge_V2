@@ -1,5 +1,39 @@
 # Progress Log — DialogForge V2
 
+## Session 2026-10-04 — demande de conception pour la reprise après quota
+
+- Préparé `conception/DEMANDE_REPRISE_QUOTA.md` pour une collaboration directe
+  de type conception : objectif, trois parcours, preuves disponibles et manquantes,
+  décisions attendues, limites et critères de fin. Le livrable demandé est un
+  plan réalisable par le Runner, sans code à cette étape.
+- Préparé `conception/corpus_reprise_quota.txt` : enquête, règles, documents
+  Runner et sources des trois parcours, copiables avec `--source-root .`.
+- Suite : produire et accepter la conception, puis utiliser cette version
+  acceptée comme mandat complet du Runner pour l'implémentation.
+
+## Session 2026-10-04 — enquête et règles de reprise après quota
+
+- PO : reprise automatique pendant que DialogForge reste ouvert, au cadrage,
+  en recherche, en conception et dans le Runner ; caractériser Claude et Codex
+  avant de coder, en exploitant aussi `C:\Projets\DialogForge`.
+- Relu dans le prédécesseur : classification dans `agents/subprocess_agent.py`,
+  enveloppe Claude dans `agents/claude.py`, attente dans `scheduling.py` ; défaut
+  Codex réel consigné par `ARRET_REFACTORING.md` (date anglaise non comprise,
+  repli de 15 minutes). Les tests de l'ancien dépôt sont des simulations.
+- Sources fournisseur consultées : documentation officielle OpenAI des erreurs
+  et des limites, documentation Anthropic des erreurs, comptes rendus directs
+  dans les dépôts des deux outils. `429` ne suffit pas à conclure à une période
+  de jetons épuisée. Claude disponible localement : 2.1.289 ; `codex` absent
+  du PATH de ce shell. Aucun appel payant provoqué.
+- Trace réelle V2 retrouvée dans `Peinture_application_2`, appel `0005-A` du
+  2026-10-01 : Claude écrit « You've hit your session limit · resets 8:50pm
+  (Europe/Paris) » sur `stdout`, rend le code 1 et laisse `stderr` vide ; le
+  moteur le classe aujourd'hui `CLI_FAILED`. Aucun refus Codex `exec` V2 trouvé
+  dans les traces accessibles.
+- Ajout de `conception/REPRISE_QUOTA.md` et amendements datés de
+  `project/RULES.md`. La forme réelle du refus Codex `exec` V2 reste à relever
+  avant activation de sa reprise. Aucun code d'exécution modifié.
+
 ## Session 2026-10-04 — relecture Codex et première correction réelle
 
 - PO : Codex a relu R1 à R3 sans remarque, hormis « terminer Mastermind ».
@@ -2315,3 +2349,10 @@ Note `conception/TYPES_DE_MISSION.md` écrite puis validée telle quelle par le 
 - Vérifications ciblées : transfert, revue, bundle, intégration et GUI verts ; Ruff et mypy verts. Suite `tests/` : 1 025 passés, 8 ignorés, un échec de fixture Tk connu (`workflow.decide` sur `INTERRUPTED`) sous charge ; `test_gui_runner.py` isolé vert. La fixture GUI force désormais la collecte des variables Tk avant son fil moteur ; suite complète à rejouer après cet ajustement.
 - Taille avec `measure_development.py` : `src/` 9 131 lignes effectives (+1 008 depuis HEAD, lots 3, correction et 4 mêlés). Façade + GUI : **2 700 / 2 700** ; vues Runner et suivi sous 400. Aucun commit ni push.
 - Après collecte des variables Tk avant la fixture GUI, **suite complète `pytest tests -q` : 1 027 passés, 8 ignorés, 706 sous-tests**, code 0 (4 min 19 s). Un dernier ajustement de visibilité du bouton d'intégration exige une décision applicable ; ses tests ciblés passent. Ruff et mypy verts. Façade + GUI finale : 2 698 / 2 700.
+## Session 2026-10-05 — accès au projet vivant
+
+- Incident de conception observé sur `Reprise_Quota` : `corpus_manifest_sha256: null` ; la liste placée dans `echanges/` n'est pas l'import des fichiers. Le PO demande d'oublier cette mission et rejette aussi la sélection/copie de fichiers comme réponse générale aux manques répétés.
+- Contrat préparé dans `conception/ACCES_DEPOT_VIVANT.md` : dossier de projet choisi, lu directement par F et A/B, avec corpus documentaire figé possible en parallèle ; Runner inchangé sur son clone.
+- Raccordement local : `new --project-root`, champ GUI et suivi, chemin explicite en configuration et dans l'intention de chaque appel, validation du dossier avant appel, projet conservé dans le cadrage et dans une transition recherche → conception, prompt du mode vivant. Claude reçoit `--add-dir` avec ses outils de lecture ; l'aide locale de Claude 2.1.289 confirme que `--restricted` accepte ce dossier. Codex utilise `--cd` sur un projet sans corpus, toujours en `read-only` ; la combinaison projet + corpus demeure à qualifier en réel pour la lecture d'un chemin externe depuis le dossier neutre.
+- Vérifications : 151 tests ciblés initiaux, puis 76 tests ciblés après les nouveaux scénarios, puis 75 tests CLI/cadrage/GUI et 155 tests de compatibilité passent avec faux agents. Suite complète avant l'ajustement de Codex : **1 049 passés, 8 ignorés, 719 sous-tests** ; après l'ajustement, tests ciblés des adaptateurs, de la création, du cadrage et de la CLI verts. Ruff et mypy `src tests` passent ; `git diff --check` sans erreur. Mesure finale : `src/` 9 306 lignes effectives (+130 depuis HEAD) ; façade + GUI 2 748 / 2 800 ; `creation.py` 399 / 400. Aucun appel fournisseur, aucune modification de la mission réelle.
+- La demande de reprise quota est reformulée pour le dépôt vivant. La liste manuelle de corpus préparée pour cette conception est retirée. Reste à vérifier le mode vivant sur les deux CLI réelles et à reprendre ensuite la conception quota.

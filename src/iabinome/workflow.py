@@ -542,6 +542,9 @@ class _Engine:
         role = _ROLE_OF_PHASE.get(state.phase)
         if role is None:
             raise WorkflowError(f"phase {state.phase.value} : aucun appel n'y est prévu")
+        project = self.project_root() if role is Role.A or (
+            self.config.reviewer_access is ReviewerAccess.CONSULT
+        ) else None
         agent = self.config.agent_a if role is Role.A else self.config.agent_b
         sequence, call_id = self.next_sequence(), uuid.uuid4().hex
         rel_dir = f"appels/{sequence:04d}-{role.value}-{call_id}"
@@ -552,6 +555,8 @@ class _Engine:
             work_root=self.collab,
             reviewer_access=self.config.reviewer_access if role is Role.B else None,
             effort=agent.effort, web_access=self.config.web_access,
+            project_root=project,
+            corpus_present=self.config.corpus_manifest_sha256 is not None,
         )
         adapter = self.adapters[agent.adapter_id]
         others = [a.env for key, a in self.adapters.items() if key != agent.adapter_id]
@@ -580,7 +585,7 @@ class _Engine:
             "invocation_args": list(argv[1:]),
             # 2.2 : dossier de travail **neutre** (copie du corpus seule) et noms —
             # jamais les valeurs — des variables de l'hôte retirées de l'environnement.
-            "workdir": "neutre",
+            "workdir": "neutre", "project_root": str(project) if project else None,
             "env_removed": removed,
             "retries": None if retry is None else retry.call_id,
             "retry_reason": None if retry is None else retry.reason, "created_at": _now(),
@@ -796,8 +801,9 @@ class _Engine:
 
     def build_prompt(self, state: State) -> str:
         date = self.corpus_date()
+        project = self.config.project_root
         if state.phase is Phase.PROPOSAL_A:
-            return prompts.build_proposal(self.demande, self.config.mission_kind, date)
+            return prompts.build_proposal(self.demande, self.config.mission_kind, date, project)
         document = self.read_relative(state.current_document)
         if state.current_document == decisions.DELIVERED:
             # Après une correction ciblée, A repart du livrable : son **corps**, sans
@@ -812,11 +818,32 @@ class _Engine:
             return prompts.build_review(
                 self.demande, document, prior, self.config.reviewer_access, date,
                 targeted=state.revision >= 1, kind=self.config.mission_kind,
+                project_root=project,
             )
         review = self.read_relative(state.latest_review)
         return prompts.build_revision(
-            self.demande, document, review, self.config.mission_kind, date
+            self.demande, document, review, self.config.mission_kind, date, project
         )
+
+    def project_root(self) -> Path | None:
+        """Refuse un chemin disparu avant de publier CALLING ou de payer un appel."""
+        if self.config.project_root is None:
+            return None
+        path = Path(self.config.project_root)
+        if not path.is_absolute():
+            raise WorkflowError(f"dossier du projet local non valide : {path}")
+        try:
+            resolved = path.resolve(strict=True)
+        except OSError as exc:
+            raise WorkflowError(f"dossier du projet introuvable : {path} ({exc})") from exc
+        if not resolved.is_dir():
+            raise WorkflowError(f"dossier du projet invalide : {path}")
+        collab = self.collab.resolve()
+        if collab.is_relative_to(resolved) or resolved.is_relative_to(collab):
+            raise WorkflowError(
+                "le projet et la collaboration doivent être dans des dossiers distincts"
+            )
+        return resolved
 
     def replies_to(self, state: State) -> dict[str, contracts.ObjectionResponse]:
         """Les réponses de A à la revue précédente, par identifiant — vides pour
