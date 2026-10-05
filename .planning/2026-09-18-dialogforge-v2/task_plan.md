@@ -6,29 +6,21 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
-**Accès au projet vivant demandé le 2026-10-05.** La liste de corpus déposée dans
-`echanges/` n'a jamais rendu le dépôt lisible : la mission concernée n'avait aucun
-corpus importé. Le PO écarte la réparation de cette mission et demande que F, A
-et B puissent lire directement un projet choisi, sans liste à maintenir.
-`conception/ACCES_DEPOT_VIVANT.md` décrit le contrat. Le raccordement CLI, GUI,
-cadrage, A/B et transition est en cours dans l'arbre de travail ; les tests locaux
-à faux agents passent. Codex utilise `--cd` pour un projet sans corpus.
-**Prochain pas : qualifier l'accès réel en lecture seule avec Claude et Codex avant une mission
-payante sur ce mode.** L'absence de CLI Codex dans le shell Windows actuel laisse
-cette qualification ouverte. Le Runner conserve son clone distinct.
+**Reprise après quota — conception V3 acceptée par le PO le 2026-10-05, implémentation engagée.**
+`conception/REPRISE_QUOTA_V3.md` est le mandat : continuer **la même session fournisseur** par son
+identifiant après l'heure annoncée + 2 min, jamais rejouer le prompt dans une session neuve
+(A/B, cadrage, Runner, DialogForge ouvert). Décisions du PO du 2026-10-05 : continuation et non
+rejeu ; **session introuvable → arrêt, message conservé pour analyse** ; sans heure fiable → arrêt.
+La V2 de Codex et son prompt sont retirés (historique : `d54f5e4`). Le prédécesseur a été analysé :
+il ne continuait aucune session Claude (rejeu de phase) ; son calcul d'heure et son attente
+interrompable sont repris, ses reconnaissances larges (429 seul, mots-clés) et son repli aveugle
+écartés. **Prochain pas : implémenter la V3** ; en parallèle, le PO fait les qualifications réelles
+du §7 (reprise Claude même dossier / autre dossier, reprise Codex sans `--ephemeral`).
+Reconnaissance Codex inactive tant qu'aucune trace réelle de refus n'existe.
 
-**Reprise après quota — enquête ouverte par le PO le 2026-10-04.** Périmètre : cadrage,
-recherche, conception et Runner de code, pendant que DialogForge reste ouvert.
-`conception/REPRISE_QUOTA.md` inventorie les messages et codes connus, les preuves
-simulées et la forme Codex `exec` réelle encore à qualifier. `project/RULES.md`
-porte l'exception autorisée ; aucun code d'exécution n'est engagé. La demande
-`conception/DEMANDE_REPRISE_QUOTA.md` reste le mandat de conception, après
-qualification de l'accès au dépôt ; la liste manuelle de corpus n'est plus le
-mode retenu pour ce travail. **Ensuite : produire et accepter cette conception**, puis
-qualifier une trace réelle anonymisée du refus Codex `exec` dans le profil V2
-et, si disponible, du profil Claude Runner, avant d'activer leur reprise dans
-le code. Fixer aussi la conduite sans heure exploitable. La lisibilité des
-sorties demeure en attente.
+**Accès au projet vivant — commité le 2026-10-05.** F, A et B lisent directement un projet
+choisi (`conception/ACCES_DEPOT_VIVANT.md`). Suite : 1 056 réussis, 2 ignorés. **Reste ouvert :
+qualifier l'accès réel en lecture seule avec Claude et Codex avant une mission payante sur ce mode.**
 
 **Runner agent unique — mise en œuvre engagée par le PO le 2026-10-04** (`conception/RUNNER_AGENT_UNIQUE.md`,
 phase 8 ci-dessous ; un commit par lot, sur demande du PO). **R1 fait** (remise dans `code/`,
@@ -133,6 +125,19 @@ PO. Ses résultats choisissent la prochaine phase.
 du PO seulement ; relecture palier par palier : voir `project/RULES.md` (rouverte le 2026-09-05).
 
 ## Historique des étapes (anciens « Next Step », datés, conservés tels quels)
+
+**Reprise après quota — enquête ouverte par le PO le 2026-10-04.** Périmètre : cadrage,
+recherche, conception et Runner de code, pendant que DialogForge reste ouvert.
+`conception/REPRISE_QUOTA.md` inventorie les messages et codes connus, les preuves
+simulées et la forme Codex `exec` réelle encore à qualifier. `project/RULES.md`
+porte l'exception autorisée ; aucun code d'exécution n'est engagé. La demande
+`conception/DEMANDE_REPRISE_QUOTA.md` reste le mandat de conception, après
+qualification de l'accès au dépôt ; la liste manuelle de corpus n'est plus le
+mode retenu pour ce travail. **Ensuite : produire et accepter cette conception**, puis
+qualifier une trace réelle anonymisée du refus Codex `exec` dans le profil V2
+et, si disponible, du profil Claude Runner, avant d'activer leur reprise dans
+le code. Fixer aussi la conduite sans heure exploitable. La lisibilité des
+sorties demeure en attente.
 
 **Types de mission redéfinis — `conception/TYPES_DE_MISSION.md`, D1 à D6 validés par le PO le
 2026-10-01**, à implémenter **avant toute nouvelle phase de développement** (PO : « remettre le
