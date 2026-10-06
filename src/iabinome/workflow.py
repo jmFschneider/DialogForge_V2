@@ -25,7 +25,7 @@ import hashlib
 import json
 import os
 import uuid
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -40,6 +40,7 @@ from . import (
     lock,
     objections,
     prompts,
+    quota,
     storage,
     transport,
 )
@@ -63,7 +64,7 @@ from .models import (
     Status,
     positive_seconds,
 )
-from .transport import ExecutionControl, Outcome
+from .transport import CallResult, ExecutionControl, Outcome
 
 
 class WorkflowError(RuntimeError):
@@ -121,6 +122,17 @@ class _Retry:
     reason: str
 
 
+@dataclass(frozen=True)
+class _Launch:
+    """Ce qu'un appel et sa continuation après quota partagent : l'outil, son
+    environnement filtré et le **même** dossier neutre."""
+
+    adapter: AgentAdapter
+    env: dict[str, str]
+    removed: list[str]
+    workdir: Path
+
+
 _ROLE_OF_PHASE = {
     Phase.PROPOSAL_A: Role.A,
     Phase.REVIEW_B: Role.B,
@@ -151,6 +163,7 @@ def run(
     command_label: str = "run",
     intervention: Intervention | None = None,
     control: ExecutionControl | None = None,
+    notify: Callable[[str], None] | None = None,
 ) -> State:
     """L'unique moteur synchrone. Il enchaîne les appels tant que l'état reste
     `READY` ; toute autre valeur rend la main à l'humain.
@@ -169,13 +182,16 @@ def run(
     La boucle est bornée par la machine à états elle-même — `max_revisions`
     plafonne les allers-retours et la promotion (`CLOSED`) est terminale. **Aucun compteur de
     garde n'est ajouté** : ce serait un quota interne.
+
+    `notify` reçoit le message d'une attente de quota (REPRISE_QUOTA_V3.md) : le refus
+    tel quel et l'heure de continuation, pendant que le moteur garde la main.
     """
     # Surface appelée directement — par les tests, et par quiconque importe le
     # moteur : le délai y est validé avant toute publication de `CALLING`.
     timeout_seconds = positive_seconds(timeout_seconds)
     while True:
         engine, state = _preflight(collab, adapters, timeout_seconds, intervention)
-        engine = replace(engine, control=control)
+        engine = replace(engine, control=control, notify=notify)
         with lock.acquire(collab / "verrou.json", command_label):      # étape 2
             engine.recheck(state)                                      # étape 3
             # Avant l'intervention, donc **avant toute mutation** : un corpus qui
@@ -318,6 +334,7 @@ class _Engine:
     answer_source: str | None = None
     composed: contracts.Normalized | None = None
     control: ExecutionControl | None = None
+    notify: Callable[[str], None] | None = None
 
     # -- Prévol et relecture sous verrou --
 
@@ -546,17 +563,16 @@ class _Engine:
             self.config.reviewer_access is ReviewerAccess.CONSULT
         ) else None
         agent = self.config.agent_a if role is Role.A else self.config.agent_b
-        sequence, call_id = self.next_sequence(), uuid.uuid4().hex
-        rel_dir = f"appels/{sequence:04d}-{role.value}-{call_id}"
-        prompt = self.build_prompt(state)
-        digest = contracts.normalize(prompt).sha256
         spec = CallSpec(
-            prompt=prompt, model=agent.model, timeout_seconds=self.timeout_seconds,
-            work_root=self.collab,
+            prompt=self.build_prompt(state), model=agent.model,
+            timeout_seconds=self.timeout_seconds, work_root=self.collab,
             reviewer_access=self.config.reviewer_access if role is Role.B else None,
             effort=agent.effort, web_access=self.config.web_access,
             project_root=project,
             corpus_present=self.config.corpus_manifest_sha256 is not None,
+            # Une session neuve par tour ; son identifiant n'est repris que par la
+            # continuation de ce tour après un quota (REPRISE_QUOTA_V3.md).
+            session_id=str(uuid.uuid4()),
         )
         adapter = self.adapters[agent.adapter_id]
         others = [a.env for key, a in self.adapters.items() if key != agent.adapter_id]
@@ -567,54 +583,23 @@ class _Engine:
         # rien derrière lui, et non un faux « possiblement payé » sur un appel
         # jamais parti. Résoudre après le `mkdir` laissait un dossier d'appel et
         # un `prompt.txt` orphelins.
-        argv = self.adapters[agent.adapter_id].command(spec)
-        (self.collab / rel_dir).mkdir(parents=True)
-        storage.write_atomic_text(self.collab / rel_dir / "prompt.txt", prompt)
-        _write_json(self.collab / rel_dir / "intention.json", {
-            "schema_version": SCHEMA_VERSION, "call_id": call_id, "sequence": sequence,
-            "role": role.value, "phase": state.phase.value,
-            "adapter_id": agent.adapter_id, "model": agent.model,
-            "observed_version": self.observed[agent.adapter_id].version,
-            "reviewer_access": self.config.reviewer_access.value, "prompt_sha256": digest,
-            # Trace de l'**argv demandé**, `argv[0]` retiré : jamais une preuve
-            # des capacités effectives — la configuration utilisateur, les
-            # hooks et l'évolution de la CLI restent hors de portée. Sans
-            # `argv[0]`, la règle « aucun chemin absolu persisté » n'a pas à
-            # être rouverte, et aucun futur adaptateur ne peut y déposer un
-            # secret (D-6b).
-            "invocation_args": list(argv[1:]),
-            # 2.2 : dossier de travail **neutre** (copie du corpus seule) et noms —
-            # jamais les valeurs — des variables de l'hôte retirées de l'environnement.
-            "workdir": "neutre", "project_root": str(project) if project else None,
-            "env_removed": removed,
-            "retries": None if retry is None else retry.call_id,
-            "retry_reason": None if retry is None else retry.reason, "created_at": _now(),
-        })
-        call = CallState(
-            call_id=call_id, sequence=sequence, role=role, phase=state.phase,
-            status=CallStatus.CALLING, call_dir=rel_dir, prompt_sha256=digest,
-            response_sha256=None, started_at=_now(), completed_at=None,
-        )
-        # Étape 4 : CALLING publié AVANT Popen. Un crash ici est déjà interprétable.
-        state = self.publish(replace(state, status=Status.RUNNING, current_call=call))
-        # Le prompt passe par stdin, jamais par la ligne de commande : mesuré le
-        # 2026-09-03, argv plafonne à 32 767 caractères sous Windows, et une CLI
-        # qui voit `DEVNULL` sur son entrée la lit comme un flux vide et dégrade
-        # sa réponse (`conception/CARACTERISATION_CLI.md`, point 1).
+        argv = adapter.command(spec)
+        state = self.open_call(state, role, spec, argv, retry, removed)
         try:
             with isolation.neutral_workdir(self.collab) as workdir:
-                result = transport.run(
-                    argv, cwd=workdir, call_dir=self.collab / rel_dir,
-                    timeout_seconds=self.timeout_seconds, stdin_text=prompt,
-                    env=env, control=self.control,
-                )
+                result = self.launch(state, argv, spec, env, workdir)
+                launch = _Launch(adapter, env, removed, workdir)
+                state, continued = self.continue_after_quota(state, spec, launch, result)
         except transport.TransportError as exc:
             # `Popen` a échoué : l'appel **n'est pas parti**. Le déclarer
             # « possiblement payé » ferait payer au lancement suivant une
             # prudence que rien ne justifie.
             return self.incident(
-                state, rel_dir, "LAUNCH_FAILED", Status.INTERRUPTED, str(exc)
+                state, _current(state).call_dir, "LAUNCH_FAILED", Status.INTERRUPTED, str(exc)
             )
+        if continued is None:
+            return state  # attente ou continuation arrêtée : l'état publié le dit
+        result, rel_dir = continued, _current(state).call_dir
         # 2.2 : les sources n'ont pas à bouger pendant un appel. Le contrôle passe
         # **avant** toute lecture de la réponse : une réponse produite sur des
         # sources changées n'est plus celle qu'on croyait examiner. Il constate, il
@@ -638,6 +623,144 @@ class _Engine:
                 f"code de retour {result.return_code}",
             )
         return self.store_response(state)
+
+    def open_call(
+        self, state: State, role: Role, spec: CallSpec, argv: list[str],
+        retry: _Retry | None, removed: list[str],
+    ) -> State:
+        """Étape 4 : dossier, prompt et intention, puis `CALLING` publié **avant** `Popen`
+        — un crash ici est déjà interprétable."""
+        agent = self.config.agent_a if role is Role.A else self.config.agent_b
+        sequence, call_id = self.next_sequence(), uuid.uuid4().hex
+        rel_dir = f"appels/{sequence:04d}-{role.value}-{call_id}"
+        digest = contracts.normalize(spec.prompt).sha256
+        (self.collab / rel_dir).mkdir(parents=True)
+        storage.write_atomic_text(self.collab / rel_dir / "prompt.txt", spec.prompt)
+        _write_json(self.collab / rel_dir / "intention.json", {
+            "schema_version": SCHEMA_VERSION, "call_id": call_id, "sequence": sequence,
+            "role": role.value, "phase": state.phase.value,
+            "adapter_id": agent.adapter_id, "model": agent.model,
+            "observed_version": self.observed[agent.adapter_id].version,
+            "reviewer_access": self.config.reviewer_access.value, "prompt_sha256": digest,
+            # Trace de l'**argv demandé**, `argv[0]` retiré : jamais une preuve
+            # des capacités effectives — la configuration utilisateur, les
+            # hooks et l'évolution de la CLI restent hors de portée. Sans
+            # `argv[0]`, la règle « aucun chemin absolu persisté » n'a pas à
+            # être rouverte, et aucun futur adaptateur ne peut y déposer un
+            # secret (D-6b).
+            "invocation_args": list(argv[1:]),
+            # 2.2 : dossier de travail **neutre** (copie du corpus seule) et noms —
+            # jamais les valeurs — des variables de l'hôte retirées de l'environnement.
+            "workdir": "neutre",
+            "project_root": str(spec.project_root) if spec.project_root else None,
+            "env_removed": removed,
+            # L'identifiant proposé à l'outil ; Codex déclare le sien dans ses flux.
+            "session_id": spec.session_id,
+            "session": "continuation" if spec.resume else "neuve",
+            "retries": None if retry is None else retry.call_id,
+            "retry_reason": None if retry is None else retry.reason, "created_at": _now(),
+        })
+        call = CallState(
+            call_id=call_id, sequence=sequence, role=role, phase=state.phase,
+            status=CallStatus.CALLING, call_dir=rel_dir, prompt_sha256=digest,
+            response_sha256=None, started_at=_now(), completed_at=None,
+        )
+        return self.publish(replace(state, status=Status.RUNNING, current_call=call))
+
+    def launch(
+        self, state: State, argv: list[str], spec: CallSpec, env: dict[str, str], workdir: Path
+    ) -> CallResult:
+        """Le prompt passe par stdin, jamais par la ligne de commande : mesuré le
+        2026-09-03, argv plafonne à 32 767 caractères sous Windows, et une CLI qui voit
+        `DEVNULL` sur son entrée la lit comme un flux vide et dégrade sa réponse
+        (`conception/CARACTERISATION_CLI.md`, point 1)."""
+        return transport.run(
+            argv, cwd=workdir, call_dir=self.collab / _current(state).call_dir,
+            timeout_seconds=self.timeout_seconds, stdin_text=spec.prompt,
+            env=env, control=self.control,
+        )
+
+    def continue_after_quota(
+        self, state: State, spec: CallSpec, launch: _Launch, result: CallResult
+    ) -> tuple[State, CallResult | None]:
+        """Un refus de période reconnu par l'adaptateur : attendre l'heure annoncée plus
+        deux minutes, puis **continuer la même session** par une consigne courte, dans le
+        même dossier neutre — Claude range ses sessions par dossier. Jamais le prompt
+        d'origine dans une session neuve (`conception/REPRISE_QUOTA_V3.md`).
+
+        Rend le résultat à juger par le chemin ordinaire, ou `None` quand l'attente ou la
+        continuation s'arrête : l'état publié porte alors l'incident. Une continuation qui
+        échoue autrement (session introuvable, par exemple) sort par ce même chemin
+        ordinaire, `CLI_FAILED`, flux conservés pour analyse. Un nouveau refus n'est
+        attendu que s'il annonce une heure plus tardive : aucun compteur.
+        """
+        previous: datetime | None = None
+        while result.outcome is Outcome.COMPLETED and result.return_code != 0:
+            call = _current(state)
+            call_dir = self.collab / call.call_dir
+            out = (call_dir / "stdout.txt").read_bytes()
+            err = (call_dir / "stderr.txt").read_bytes()
+            announced = launch.adapter.quota_reset(out, err)
+            if announced is None:
+                break
+            seen = f"code de retour {result.return_code}, refus de période (« {announced} »)"
+            try:
+                target = quota.resume_at(announced, quota.now())
+            except quota.QuotaError as exc:
+                return self.incident(
+                    state, call.call_dir, "CLI_FAILED", Status.INTERRUPTED,
+                    f"{seen} ; {exc} : aucune continuation",
+                ), None
+            if previous is not None and target <= previous:
+                return self.incident(
+                    state, call.call_dir, "CLI_FAILED", Status.INTERRUPTED,
+                    f"{seen} ; nouveau refus sans heure plus tardive : aucune continuation",
+                ), None
+            session = launch.adapter.session_of(spec.session_id, out, err)
+            if session is None:
+                return self.incident(
+                    state, call.call_dir, "CLI_FAILED", Status.INTERRUPTED,
+                    f"{seen} ; session de l'appel inconnue : aucune continuation",
+                ), None
+            local = target.astimezone().strftime("%H:%M")
+            _write_json(call_dir / "incident.json", {
+                "schema_version": SCHEMA_VERSION, "kind": "QUOTA", "at": _now(),
+                "detail": f"{seen} ; continuation de la session prévue à {local}",
+                "announced": announced, "resume_at": target.isoformat(),
+                "session_id": session,
+            })
+            if self.notify is not None:
+                self.notify(f"quota : « {announced} » — continuation de la session à {local}")
+            if not quota.wait_until(target, self.control):
+                return self.publish(replace(
+                    state, status=Status.INTERRUPTED,
+                    last_incident=f"{call.call_dir}/incident.json",
+                )), None
+            try:
+                self.check_corpus()
+            except WorkflowError as exc:
+                return self.incident(
+                    state, call.call_dir, "SOURCES_MODIFIED", Status.INTERRUPTED, str(exc)
+                ), None
+            spec = replace(spec, prompt=quota.CONTINUATION, session_id=session, resume=True)
+            argv = launch.adapter.command(spec)
+            reason = f"quota : continuation de la session interrompue (« {announced} »)"
+            state = self.open_call(
+                state, call.role, spec, argv, _Retry(call.call_id, reason), launch.removed
+            )
+            result = self.launch(state, argv, spec, launch.env, launch.workdir)
+            previous = target
+            done = self.collab / _current(state).call_dir
+            if result.outcome is Outcome.COMPLETED and result.return_code == 0 and (
+                launch.adapter.session_of(
+                    session, (done / "stdout.txt").read_bytes(), (done / "stderr.txt").read_bytes()
+                ) != session
+            ):
+                return self.incident(
+                    state, _current(state).call_dir, "SESSION_LOST", Status.INTERRUPTED,
+                    f"l'outil n'a pas continué la session {session} : réponse non retenue",
+                ), None
+        return state, result
 
     def store_response(self, state: State) -> State:
         """Étape 7 : extraction de la réponse, publication de `RESPONSE_STORED`."""

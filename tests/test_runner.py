@@ -8,12 +8,14 @@ import shutil
 import subprocess
 import sys
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from dialogforge_runner import cli, core
-from iabinome import development, transport
+from iabinome import development, quota, transport
+from tests import fakes
 
 
 @unittest.skipUnless(shutil.which("git"), "Git requis")
@@ -177,6 +179,66 @@ class RunnerTest(unittest.TestCase):
             timeout_seconds=10, continue_existing=True,
         )
         self.assertTrue(package.exists())
+
+    def quota_agent(self, after_refusal: str) -> Path:
+        """A refusé par un quota au premier appel, puis `after_refusal` à la continuation —
+        qui doit reprendre **la même session**, avec la seule consigne."""
+        script = self.root / "quota_agent.py"
+        seen = self.root / "session.txt"
+        script.write_text(
+            "import pathlib, subprocess, sys\n"
+            "prompt = sys.stdin.buffer.read().decode('utf-8')\n"
+            f"seen = pathlib.Path({str(seen)!r})\n"
+            "if '--session-id' in sys.argv:\n"
+            "    seen.write_text(sys.argv[sys.argv.index('--session-id') + 1])\n"
+            "    print('LIMITE resets 8:50pm')\n"
+            "    raise SystemExit(1)\n"
+            "assert sys.argv[sys.argv.index('--resume') + 1] == seen.read_text()\n"
+            f"assert prompt == {quota.CONTINUATION!r}\n"
+            + after_refusal,
+            encoding="utf-8",
+        )
+        return script
+
+    def test_a_quota_refusal_continues_the_same_session(self) -> None:
+        workspace = self.prepare()
+        self.candidate(workspace)
+        script = self.quota_agent("print('repris\\nRUNNER: CANDIDAT')\n")
+        sessions = core.Sessions("--session-id", "--resume", fakes.FakeAdapter().quota_reset)
+        notices: list[str] = []
+        start = datetime(2026, 10, 5, 20, 0).astimezone()
+        clock = {"at": start}
+        with patch.object(quota, "now", lambda: clock["at"]), patch.object(
+            quota, "sleep", lambda s: clock.update(at=clock["at"] + timedelta(seconds=s))
+        ):
+            package = core.run_agent(
+                self.run_dir, [sys.executable, str(script)], timeout_seconds=30,
+                sessions=sessions, notify=notices.append,
+            )
+        self.assertTrue(package.exists())
+        self.assertEqual(clock["at"], start.replace(minute=52))
+        first, second = sorted((self.run_dir / "calls").glob("call-*"))
+        self.assertFalse(json.loads((first / "session.json").read_text())["continuation"])
+        self.assertTrue(json.loads((second / "session.json").read_text())["continuation"])
+        self.assertEqual((second / "prompt.md").read_text(encoding="utf-8"), quota.CONTINUATION)
+        self.assertEqual(len(notices), 1)
+
+    def test_a_missing_session_on_continuation_stops_with_traces(self) -> None:
+        """Décision du PO (2026-10-05) : session introuvable → arrêt, message conservé."""
+        self.prepare()
+        script = self.quota_agent("print('No conversation found')\nraise SystemExit(1)\n")
+        sessions = core.Sessions("--session-id", "--resume", fakes.FakeAdapter().quota_reset)
+        start = datetime(2026, 10, 5, 20, 0).astimezone()
+        clock = {"at": start}
+        with patch.object(quota, "now", lambda: clock["at"]), patch.object(
+            quota, "sleep", lambda s: clock.update(at=clock["at"] + timedelta(seconds=s))
+        ), self.assertRaisesRegex(ValueError, "appel agent interrompu ou échoué"):
+            core.run_agent(
+                self.run_dir, [sys.executable, str(script)], timeout_seconds=30,
+                sessions=sessions,
+            )
+        second = self.run_dir / "calls" / "call-0002"
+        self.assertIn(b"No conversation found", (second / "stdout.txt").read_bytes())
 
     def test_the_final_line_is_read_strictly(self) -> None:
         for text, expected in (

@@ -1,7 +1,9 @@
 """Le protocole d'adaptateur — capacités communes aux deux outils, rien de plus.
 
-`CallSpec` ne porte **ni fournisseur, ni budget, ni session, ni rôle métier** : le
-rôle n'intervient que dans le prompt et le nom logique de l'appel. Ce qui est
+`CallSpec` ne porte **ni fournisseur, ni budget, ni rôle métier** : le rôle
+n'intervient que dans le prompt et le nom logique de l'appel. Il porte l'identifiant
+de session de l'appel, pour la seule continuation d'un tour interrompu par un quota
+(`conception/REPRISE_QUOTA_V3.md`) : chaque nouveau tour reste une session neuve. Ce qui est
 propre à un outil — sortie structurée native, session persistante, erreur de quota
 typée — est un bonus, jamais un prérequis (CONCEPTION_FINALE.md §8).
 
@@ -34,9 +36,11 @@ class Capabilities:
     point par point, jamais par extension : `docs/LIMITES.md` §2 dit lesquelles.
 
     `enforces_read_only` : aucun outil d'écriture ni d'exécution n'est offert à
-    l'agent. `fresh_session` : rien n'est repris d'une session précédente, rien
-    n'est conservé pour la suivante. Le prévol refuse un adaptateur qui ne les
-    déclare pas : on ne lance pas un rôle sans sa séparation (plan V2, 2.2).
+    l'agent. `fresh_session` : chaque tour ouvre une session neuve, que rien ne
+    reprend — sauf la continuation de ce même tour après un quota (amendement du
+    2026-10-05 : la session est donc conservée par l'outil). Le prévol refuse un
+    adaptateur qui ne les déclare pas : on ne lance pas un rôle sans sa séparation
+    (plan V2, 2.2).
     """
 
     supports_context_only: bool
@@ -94,6 +98,11 @@ class CallSpec:
     web_access: bool = False
     project_root: Path | None = None
     corpus_present: bool = False
+    # Identifiant proposé par le noyau : l'outil qui sait l'imposer l'impose, l'autre
+    # déclare le sien (`session_of`). `resume` continue cette session au lieu d'en
+    # ouvrir une — seulement après un refus de période (REPRISE_QUOTA_V3.md).
+    session_id: str | None = None
+    resume: bool = False
 
 
 @dataclass(frozen=True)
@@ -107,6 +116,9 @@ class FramingSessionSpec:
     effort: str | None = None
     project_root: Path | None = None
     corpus_present: bool = False
+    # Proposé pour le premier tour, comme `CallSpec.session_id` : connu même si ce tour
+    # est refusé avant que l'outil ait rien déclaré.
+    session_id: str | None = None
 
 
 class AgentAdapter(Protocol):
@@ -134,6 +146,15 @@ class AgentAdapter(Protocol):
     def framing_extract(self, stdout: bytes, stderr: bytes) -> tuple[str, str | None]:
         """La réponse de F, et l'identifiant de session que l'outil a déclaré.
         Opaque pour le noyau, qui ne l'interprète ni ne le persiste (§6.1)."""
+
+    def quota_reset(self, stdout: bytes, stderr: bytes) -> str | None:
+        """L'heure de réinitialisation annoncée, telle quelle, si la sortie d'un appel
+        échoué est un refus de période **sous une forme réellement observée** ; sinon
+        `None`. Jamais un code de retour seul, un 429 ou une liste de mots-clés."""
+
+    def session_of(self, preset: str | None, stdout: bytes, stderr: bytes) -> str | None:
+        """La session de cet appel : celle que l'outil déclare dans ses flux, ou
+        `preset` s'il l'a imposée. `None` : inconnue — aucune continuation possible."""
 
 
 class AdapterError(RuntimeError):

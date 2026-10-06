@@ -9,12 +9,14 @@ import shutil
 import subprocess
 import time
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from iabinome import development, lock, storage, transport
+from iabinome import development, lock, quota, storage, transport
+from iabinome.adapters.claude import ClaudeAdapter
 from iabinome.models import positive_seconds
 
 
@@ -48,6 +50,24 @@ class ValidationFailed(ValueError):
 class Paused(ValueError):
     """A attend l'utilisateur, n'a pas conclu lisiblement, ou la durée est atteinte : le travail
     est conservé et rien n'est relancé sans action explicite."""
+
+
+@dataclass(frozen=True)
+class Sessions:
+    """Comment l'outil de A ouvre une session sous un identifiant imposé, la continue, et
+    reconnaît un refus de période (`conception/REPRISE_QUOTA_V3.md`)."""
+
+    start: str
+    resume: str
+    quota_reset: Callable[[bytes, bytes], str | None]
+
+
+class _QuotaRefused(Exception):
+    """Refus de période reconnu : `run_agent` attend l'heure annoncée, puis continue."""
+
+    def __init__(self, announced: str, session: str, call: Path) -> None:
+        super().__init__(announced)
+        self.announced, self.session, self.call = announced, session, call
 
 
 FINAL_LINE = re.compile(r"RUNNER: (CANDIDAT|RESTE|INTERVENTION)")
@@ -552,6 +572,8 @@ def run_agent(
     continue_existing: bool = False,
     correction: str = "",
     control: transport.ExecutionControl | None = None,
+    sessions: Sessions | None = None,
+    notify: Callable[[str], None] | None = None,
 ) -> Path:
     """Confie toute la conception à A et le suit jusqu'à un paquet, dans la durée choisie.
 
@@ -559,6 +581,10 @@ def run_agent(
     (un défaut du candidat lui est renvoyé), `INTERVENTION` ou une ligne illisible met en pause.
     Un incident (interruption, authentification, validation non lancée) arrête aussi. Une seule
     boucle pour la CLI, le pont et la GUI ; aucun autre agent n'est appelé.
+
+    Avec `sessions`, un refus de période qui annonce son heure est attendu (heure plus deux
+    minutes, hors durée de travail), puis **la même session** de A continue par une consigne,
+    dans le même clone ; une session introuvable ou une autre erreur arrête, traces gardées.
     """
     deadline = time.monotonic() + positive_seconds(timeout_seconds)
     with lock.acquire(run / "verrou.json", "runner-run"):
@@ -579,9 +605,30 @@ def run_agent(
         prior_head = development.read_package(Path(prior))[1]["identity"]["head_oid"] if (
             prior) else None
         defect = ""
+        resume: tuple[str, datetime] | None = None
         while True:
-            call = _call_agent(run, config, command, _remaining(deadline, float("inf")), env,
-                               control, correction, defect)
+            try:
+                call = _call_agent(run, config, command, _remaining(deadline, float("inf")), env,
+                                   control, correction, defect, sessions,
+                                   resume[0] if resume else None)
+            except _QuotaRefused as refusal:
+                seen = f"refus de période (« {refusal.announced} ») ; traces : {refusal.call}"
+                try:
+                    target = quota.resume_at(refusal.announced, quota.now())
+                except quota.QuotaError as exc:
+                    raise ValueError(f"{seen} ; {exc} : aucune continuation") from exc
+                if resume is not None and target <= resume[1]:
+                    raise ValueError(f"{seen} ; nouveau refus sans heure plus tardive") from None
+                if notify is not None:
+                    notify(f"quota : « {refusal.announced} » — continuation de la session à "
+                           f"{target.astimezone():%H:%M}")
+                waited = time.monotonic()
+                if not quota.wait_until(target, control):
+                    raise Paused(f"{seen} ; attente interrompue avant la continuation") from None
+                deadline += time.monotonic() - waited  # l'attente ne consomme pas la durée
+                resume = (refusal.session, target)
+                continue
+            resume = None
             if control is not None and (control.pause_requested.is_set()
                                         or control.interrupt_requested.is_set()):
                 raise Paused(f"appel terminé, suite arrêtée à la demande ; traces : {call}")
@@ -607,13 +654,24 @@ def run_agent(
 def _call_agent(
     run: Path, config: dict[str, Any], command: Sequence[str], timeout: float,
     env: Mapping[str, str] | None, control: transport.ExecutionControl | None,
-    correction: str, defect: str,
+    correction: str, defect: str, sessions: Sessions | None = None, resume: str | None = None,
 ) -> Path:
-    """Un appel de A : prompt écrit avant l'appel, sortie conservée ; un échec est un incident."""
+    """Un appel de A : prompt écrit avant l'appel, sortie conservée ; un échec est un incident.
+    `resume` : la session refusée à continuer, par la seule consigne de continuation."""
     calls = run / "calls"
     previous = sorted(calls.glob("call-*"))
     call = calls / f"call-{len(previous) + 1:04d}"
     call.mkdir()
+    argv, session = list(command), resume
+    if sessions is not None:
+        session = resume or str(uuid.uuid4())
+        argv += [sessions.resume if resume else sessions.start, session]
+        storage.write_atomic_text(call / "session.json", json.dumps(
+            {"session_id": session, "continuation": resume is not None}) + "\n")
+    if resume is not None:
+        storage.write_atomic_text(call / "prompt.md", quota.CONTINUATION)
+        return _launch_agent(run, call, argv, quota.CONTINUATION, timeout, env, control,
+                             sessions, session)
     mandate = (run / "input" / "export" / "export.md").read_text(encoding="utf-8")
     prompt = (
         INSTRUCTIONS.format(base=config["base_oid"]) + f"\n# Mandat\n{mandate}\n"
@@ -634,8 +692,16 @@ def _call_agent(
     if correction:
         prompt += f"\n# Message de l'utilisateur (correction ou réponse)\n{correction}\n"
     storage.write_atomic_text(call / "prompt.md", prompt)
+    return _launch_agent(run, call, argv, prompt, timeout, env, control, sessions, session)
+
+
+def _launch_agent(
+    run: Path, call: Path, argv: list[str], prompt: str, timeout: float,
+    env: Mapping[str, str] | None, control: transport.ExecutionControl | None,
+    sessions: Sessions | None, session: str | None,
+) -> Path:
     result = transport.run(
-        command, cwd=run / "workspace", call_dir=call, timeout_seconds=timeout,
+        argv, cwd=run / "workspace", call_dir=call, timeout_seconds=timeout,
         stdin_text=prompt, env=env, control=control,
     )
     if result.outcome is not transport.Outcome.COMPLETED or result.return_code:
@@ -646,6 +712,14 @@ def _call_agent(
                     raise ValueError(
                         "authentification de l'agent refusée (401) ; vérifier le jeton"
                     )
+        if sessions is not None and session is not None and (
+            result.outcome is transport.Outcome.COMPLETED
+        ):
+            announced = sessions.quota_reset(
+                output.read_bytes(), (call / "stderr.txt").read_bytes()
+            )
+            if announced is not None:
+                raise _QuotaRefused(announced, session, call)
         if result.outcome is transport.Outcome.TIMEOUT:
             raise Paused(f"durée choisie atteinte pendant l'appel ; traces : {call}")
         raise ValueError(f"appel agent interrompu ou échoué ; traces : {call}")
@@ -656,6 +730,7 @@ def run_claude(
     run: Path, *, timeout_seconds: float, continue_existing: bool = False,
     correction: str = "",
     control: transport.ExecutionControl | None = None,
+    notify: Callable[[str], None] | None = None,
 ) -> Path:
     """Lance Claude dans le profil WSL mesuré, puis valide sous srt."""
     _require_linux_run(run)
@@ -676,12 +751,15 @@ def run_claude(
     })
     env = _validation_env()
     env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    # Session conservée sous un identifiant imposé par appel, pour la seule continuation
+    # après un refus de période : même message et même sortie texte que A/B.
+    sessions = Sessions("--session-id", "--resume", ClaudeAdapter().quota_reset)
     return run_agent(
         run,
         [str(claude), "-p", "--restricted", "--permission-mode", "dontAsk",
          "--tools", CLAUDE_TOOLS, "--allowedTools", "Bash,Write,Edit",
-         "--strict-mcp-config", "--no-session-persistence", "--disable-slash-commands",
+         "--strict-mcp-config", "--disable-slash-commands",
          "--settings", settings],
         timeout_seconds=timeout_seconds, env=env, continue_existing=continue_existing,
-        correction=correction, control=control,
+        correction=correction, control=control, sessions=sessions, notify=notify,
     )

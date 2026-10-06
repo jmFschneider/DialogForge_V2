@@ -9,7 +9,9 @@ processus (§6.1).
 sur la même session fournisseur, par le transport commun — délai dur, flux bornés,
 arbre terminé, `resultat.json` seulement pour une sortie propre. Le premier tour en
 ouvre une neuve ; l'identifiant que l'outil déclare est gardé **en mémoire** pour les
-suivants, masqué dans les traces, et oublié à la fermeture.
+suivants, masqué dans les traces, et oublié à la fermeture. Le premier tour l'impose
+quand l'outil le permet : il est ainsi connu même si ce tour est refusé par un quota,
+que la session continue après l'heure annoncée (`conception/REPRISE_QUOTA_V3.md`).
 
 **La conversation** (`Framing`) se mène par étapes, une opération à la fois, pour que
 la CLI et le fil moteur de la GUI l'appellent pareil. Le programme ne classe jamais les
@@ -26,14 +28,14 @@ import os
 import shutil
 import tempfile
 import uuid
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 from typing import Any
 
-from . import contracts, corpus, isolation, prompts, storage, transport
+from . import contracts, corpus, isolation, prompts, quota, storage, transport
 from .adapters.base import AgentAdapter, EnvPolicy, FramingSessionSpec, ObservedCli
 from .demande import validate_framed
 from .models import SCHEMA_VERSION, AgentPurpose, MissionKind
@@ -105,8 +107,10 @@ class FramingSession:
     def __init__(
         self, adapter: AgentAdapter, spec: FramingSessionSpec, *,
         others: Iterable[EnvPolicy] = (), control: transport.ExecutionControl | None = None,
+        notify: Callable[[str], None] | None = None,
     ) -> None:
-        self._adapter, self.spec, self._control = adapter, spec, control
+        self._adapter, self._control, self._notify = adapter, control, notify
+        self.spec = replace(spec, session_id=spec.session_id or str(uuid.uuid4()))
         self.adapter_id = adapter.adapter_id
         rest = tuple(others)
         self._env = isolation.clean_env(os.environ, adapter.env, rest)
@@ -115,8 +119,9 @@ class FramingSession:
         self.exchanges = 0
         self.closed = False
 
-    def send(self, prompt: str, call_dir: Path) -> Exchange:
-        """Un tour : le prompt par stdin, les traces sous `call_dir` (§8.1)."""
+    def send(self, prompt: str, call_dir: Path, *, after: datetime | None = None) -> Exchange:
+        """Un tour : le prompt par stdin, les traces sous `call_dir` (§8.1). `after` :
+        l'heure de reprise déjà attendue, qu'un nouveau refus doit dépasser."""
         if self.closed:
             raise FramingError("session de cadrage fermée : elle ne se reprend pas")
         # Résolu avant le premier octet écrit, comme pour A et B : un exécutable disparu
@@ -148,7 +153,9 @@ class FramingSession:
         if result.outcome is not transport.Outcome.COMPLETED:
             return Exchange(call_dir, result.outcome.value)
         if result.return_code != 0:
-            return Exchange(call_dir, "CLI_FAILED", detail=f"code de retour {result.return_code}")
+            return self._after_refusal(call_dir, result.return_code, after) or Exchange(
+                call_dir, "CLI_FAILED", detail=f"code de retour {result.return_code}"
+            )
         try:
             text, session = self._adapter.framing_extract(
                 (call_dir / "stdout.txt").read_bytes(), (call_dir / "stderr.txt").read_bytes()
@@ -170,19 +177,60 @@ class FramingSession:
         self._session = None
         self.closed = True
 
+    def _after_refusal(self, call_dir: Path, code: int, after: datetime | None) -> Exchange | None:
+        """Refus de période reconnu : attendre l'heure annoncée plus deux minutes, puis
+        continuer **ce tour dans la même session** par une consigne — jamais le prompt
+        d'origine dans une session neuve. `None` : ce n'est pas un refus de période."""
+        out, err = (call_dir / "stdout.txt").read_bytes(), (call_dir / "stderr.txt").read_bytes()
+        announced = self._adapter.quota_reset(out, err)
+        if announced is None:
+            return None
+        seen = f"code de retour {code}, refus de période (« {announced} »)"
+        try:
+            target = quota.resume_at(announced, quota.now())
+        except quota.QuotaError as exc:
+            return Exchange(call_dir, "CLI_FAILED", detail=f"{seen} ; {exc} : aucune continuation")
+        if after is not None and target <= after:
+            return Exchange(call_dir, "CLI_FAILED", detail=(
+                f"{seen} ; nouveau refus sans heure plus tardive : aucune continuation"
+            ))
+        session = self._session or self._adapter.session_of(self.spec.session_id, out, err)
+        if session is None:
+            return Exchange(call_dir, "CLI_FAILED", detail=(
+                f"{seen} ; session inconnue : aucune continuation"
+            ))
+        local = target.astimezone().strftime("%H:%M")
+        # L'identifiant reste masqué, comme dans l'intention (§6.1).
+        _write_json(call_dir / "incident.json", {
+            "schema_version": SCHEMA_VERSION, "kind": "QUOTA", "announced": announced,
+            "resume_at": target.isoformat(),
+            "detail": f"{seen} ; continuation de la session prévue à {local}",
+        })
+        if self._notify is not None:
+            self._notify(f"quota : « {announced} » — continuation de la session à {local}")
+        self._session = session
+        if not quota.wait_until(target, self._control):
+            return Exchange(call_dir, "QUOTA", detail=f"{seen} ; attente interrompue")
+        following = call_dir.parent / f"{self.exchanges + 1:04d}-{uuid.uuid4().hex}"
+        return self.send(quota.CONTINUATION, following, after=target)
+
     def _mask(self, arg: str) -> str:
-        return arg if self._session is None else arg.replace(self._session, _MASK)
+        for secret in (self._session, self.spec.session_id):
+            if secret:
+                arg = arg.replace(secret, _MASK)
+        return arg
 
 
 def open_session(
     adapter: AgentAdapter, spec: FramingSessionSpec, *,
     others: Iterable[EnvPolicy] = (), control: transport.ExecutionControl | None = None,
+    notify: Callable[[str], None] | None = None,
 ) -> FramingSession:
     """Ouvre une session **neuve** : rien n'est repris d'un cadrage antérieur (§5.2).
     L'outil ne la crée qu'au premier `send` — ouvrir ne coûte aucun appel."""
     if not adapter.capabilities.supports_persistent_framing_session:
         raise FramingError(f"{adapter.adapter_id} : session persistante de cadrage non supportée")
-    return FramingSession(adapter, spec, others=others, control=control)
+    return FramingSession(adapter, spec, others=others, control=control, notify=notify)
 
 
 def _write_json(path: Path, payload: dict[str, object]) -> None:

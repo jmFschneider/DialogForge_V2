@@ -12,6 +12,11 @@ Trois choses qu'un incident peut être, et qu'il ne faut pas confondre :
 distingue pas un quota épuisé d'une erreur de configuration : le message de
 l'outil est montré **tel quel**, et aucun coût ni aucune heure de reprise n'est
 déduit ou inventé. Rien ici n'est relancé automatiquement.
+
+Seule exception, à la frontière de l'adaptateur : un refus de période sous une forme
+réellement observée, qui annonce son heure. Le moteur attend alors et continue la même
+session (`conception/REPRISE_QUOTA_V3.md`) ; `QUOTA` dit que cette attente a été
+interrompue, `SESSION_LOST` que la continuation n'a pas repris la session.
 """
 
 from __future__ import annotations
@@ -66,6 +71,16 @@ KINDS = {
         "inconnu",
         "l'outil a rendu un code de retour non nul ; ce code ne distingue pas un quota épuisé"
         " d'une erreur de configuration ou de modèle",
+    ),
+    "QUOTA": Kind(
+        "inconnu",
+        "l'outil a refusé l'appel, période d'usage épuisée ; l'attente de l'heure annoncée"
+        " a été interrompue avant la continuation de la session",
+    ),
+    "SESSION_LOST": Kind(
+        "inconnu",
+        "la continuation après quota n'a pas repris la session interrompue : sa réponse"
+        " n'est pas retenue",
     ),
     "INTEGRITY_MISMATCH": Kind(
         "inconnu",
@@ -150,6 +165,8 @@ def explain(collab: Path, state: State) -> list[str]:
         lines += _tool_message(collab, state) or ["  (l'outil n'a rien écrit)"]
         lines.append("  Aucun coût ni aucune heure de reprise n'est déduit de ce code.")
         lines += _same_call_again(collab, state)
+    elif found["kind"] == "QUOTA":
+        lines += _tool_message(collab, state)
     return lines
 
 

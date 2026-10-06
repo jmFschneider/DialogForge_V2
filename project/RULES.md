@@ -2,7 +2,7 @@
 
 > Une règle par constat, avec son motif. **Sans doublon.**
 > Les règles fondatrices, elles, sont dans `POURQUOI.md` et n'ont pas à être répétées ici.
-> Dernière mise à jour : 2026-10-04 (reprise après quota, conception à préparer)
+> Dernière mise à jour : 2026-10-05 (reprise après quota, continuation de la session — V3)
 
 ## Index
 
@@ -35,6 +35,7 @@
 **Un incident dit s'il est payé — « non », « peut-être », « inconnu » ou « oui » — sans inventer un montant ni une heure de reprise.**
 *Motif (2.1) : un code de retour non nul ne distingue pas un quota d'une erreur de configuration (mesuré des deux côtés, règle sur les codes de retour). Le message de l'outil est conservé tel quel ; sans preuve plus précise, aucune heure ni relance ne se déduit du seul code.*
 *Amendement du 2026-10-04 (PO) : la reprise automatique après épuisement d'une période fournisseur est autorisée pendant que DialogForge reste ouvert, pour le cadrage, les appels A/B de recherche et conception, et le Runner de code. Avant de coder, caractériser séparément les sorties réelles de Claude et Codex, leurs codes de sortie, leurs éventuels champs structurés et les formats d'heure ; `conception/REPRISE_QUOTA.md` en tient l'inventaire. Seul un refus de période confirmé avec une heure de réinitialisation interprétable permet de programmer un nouvel appel une ou deux minutes après cette heure. Un code de sortie non nul, HTTP 429 seul, une erreur réseau, une saturation temporaire ou un crédit à acheter ne suffisent pas. Sans heure exploitable, la conduite reste à décider sur preuves ; aucun délai de repli aveugle n'est adopté par cet amendement. Le message brut et l'incertitude sur le coût de l'appel restent visibles.*
+*Amendement du 2026-10-05 (PO), `conception/REPRISE_QUOTA_V3.md` : la reprise **continue la session interrompue** par son identifiant, avec une consigne courte ; le prompt d'origine n'est jamais renvoyé dans une session neuve. L'identifiant est connu avant tout refus (imposé par `--session-id` chez Claude, lu dans la bannière chez Codex). **Sans heure exploitable : arrêt.** **Session introuvable ou non reprise : arrêt**, message de l'outil conservé pour analyse. Un nouveau refus n'est attendu que s'il annonce une heure plus tardive ; aucun compteur. Le coût d'un appel refusé reste « inconnu ». Seules les formes réellement observées activent la continuation : aujourd'hui le message Claude ; la reconnaissance Codex reste inactive faute de trace.*
 
 **Relire une réponse déjà payée ne coûte pas un appel.**
 *Motif (2.1) : sur `CONTRACT_ERROR` et `DECODE_FAILED` la seule sortie était `--retry-call`, un nouvel appel payant, alors que la réponse brute était sur disque — et que le code disait lui-même « aucun appel n'est nécessaire pour retenter l'extraction ». `--reprocess` relit localement, trace l'opération et laisse les données brutes intactes ; s'il échoue encore, l'état reste `ERROR` : jamais un avis favorable par défaut.*
@@ -156,6 +157,7 @@
 **Le cycle ne dépend que des capacités présentes chez les deux outils ; ce qui est propre à l'un est un bonus, jamais un prérequis.**
 *Motif : DialogForge a bâti sa reprise après quota sur l'erreur typée de Claude ; Codex ne la produit pas, et la reprise n'a jamais marché de ce côté.*
 *Exception écrite du 2026-09-24 (PO), pour l'agent de cadrage F seul (`conception/CADRAGE_AGENT.md`) : F exige une session persistante pendant tout un cadrage, et un adaptateur qui ne la déclare pas (`supports_persistent_framing_session`) est refusé avant tout appel. Il ne s'agit pas d'un bonus devenu prérequis en silence : les deux outils offrent la reprise par identifiant, qui est le mécanisme retenu (amendement A3). A et B n'en dépendent pas et gardent `fresh_session`.*
+*Amendement du 2026-10-05 (PO) : `fresh_session` veut dire « chaque tour ouvre une session neuve ». Les sessions de A, B et du Runner sont désormais **conservées** par l'outil, pour la seule continuation du tour interrompu par un quota ; aucun nouveau tour ne reprend une session. Ce n'est pas un prérequis : sans identifiant connu, l'appel refusé s'arrête comme avant.*
 
 **Modèles par défaut, surchargeables : Opus 5 pour A (produit), Fable 5 pour B (critique).**
 *Motif : la critique est l'endroit où la capacité paie. Sur le Lot 0, quatre revues de plan pour une seule exploitable ont coûté 41 % du budget mesuré.*
@@ -228,6 +230,7 @@
 
 **Sur quota, les deux outils rendent un code de retour non nul ; ce qui diffère, c'est le flux.** Outil 1 écrit son message sur `stdout`, outil 2 sur `stderr`. Le test du code de retour attrape donc le quota **des deux côtés** — c'est `extract()` qui ne doit jamais lire `stderr`.
 *Mesuré trois fois : caractérisation du 2026-09-03, puis le 2026-09-05 des deux côtés — outil 1 en `2.1.261` rend `1` avec 146 o sur `stdout` et `stderr` vide ; outil 2 en `0.153.2` rend `1` avec 4 115 o sur `stderr` et `stdout` vide. Dans les deux cas : `CLI_FAILED` → `INTERRUPTED`, relançable, rien de payé.*
+*Depuis le 2026-10-05 : le message de l'outil 1 (`You've hit your session limit · resets <heure> (<fuseau>)`, seul sur `stdout`) est reconnu par son adaptateur et déclenche l'attente puis la continuation ; tout autre code non nul reste `CLI_FAILED`.*
 *La ligne « outil 1 rend `0` » inscrite le 2026-09-04 était **fausse**, et elle a tenu un jour dans quatre fichiers. D-2 disait vrai depuis le début. Voir la règle sur le code de retour lu à travers un tube.*
 
 **Un code de retour lu à travers un tube n'est pas celui de la commande.** Après `cmd | head`, `$?` est celui de `head`. Mesurer un code de retour se fait par redirection vers un fichier, jamais par un pipeline.

@@ -234,6 +234,8 @@ class RunnerSession:
                 executions.update(self.reference, paquets=[self.package])
         elif kind == "state":
             self.state = event
+        elif kind == "notice":  # attente d'un quota fournisseur, puis continuation
+            self.stage = str(event["message"])
         elif kind == "error":
             self.error = str(event["message"])
             self.error_code = str(event.get("code", "error"))

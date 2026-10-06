@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -182,6 +183,10 @@ class FakeAdapter:
         self.framing_specs: list[FramingSessionSpec] = []
         self.framing_drift = False
         self._declared: str | None = None
+        # Reprise après quota : chaque `CallSpec` reçu, et, si on la scripte, la session
+        # que l'outil déclarera à chaque lecture (`None` : inconnue) — sinon l'imposée.
+        self.specs: list[CallSpec] = []
+        self.declared_sessions: list[str | None] = []
 
     def default_model(self, purpose: AgentPurpose) -> str:
         return f"{self.adapter_id}-modele-{purpose.value.lower()}"
@@ -191,6 +196,7 @@ class FakeAdapter:
 
     def command(self, call: CallSpec) -> list[str]:
         self.calls += 1
+        self.specs.append(call)
         self.prompts.append(call.prompt)
         self.efforts.append(call.effort)
         self.web_accesses.append(call.web_access)
@@ -236,6 +242,21 @@ class FakeAdapter:
 
     def framing_extract(self, stdout: bytes, stderr: bytes) -> tuple[str, str | None]:
         return stdout.decode("utf-8"), self._declared
+
+    def quota_reset(self, stdout: bytes, stderr: bytes) -> str | None:
+        """Refus simulé : `stdout` tout entier vaut `LIMITE resets <heure>` (`quota_refusal`)."""
+        found = re.fullmatch(r"LIMITE resets (.+)", stdout.decode("utf-8").strip())
+        return found[1] if found else None
+
+    def session_of(self, preset: str | None, stdout: bytes, stderr: bytes) -> str | None:
+        if self.declared_sessions:
+            return self.declared_sessions.pop(0)
+        return self._declared or preset
+
+
+def quota_refusal(at: str = "8:50pm (Europe/Paris)") -> str:
+    """La sortie d'un refus de période que `FakeAdapter.quota_reset` reconnaît."""
+    return f"LIMITE resets {at}\n"
 
 
 def collaboration(

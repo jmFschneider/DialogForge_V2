@@ -7,6 +7,7 @@ forme de `command()`/`probe()`, pas la présence d'un outil sur la machine.
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import unittest
@@ -129,18 +130,59 @@ class TestClaudeAdapter(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("--effort") + 1], "high")
 
     def test_every_role_is_restricted_and_starts_a_fresh_session(self) -> None:
-        """2.2 : la séparation est dans l'argv, pour chaque rôle et chaque profil."""
+        """2.2 : la séparation est dans l'argv, pour chaque rôle et chaque profil. La
+        session neuve est conservée sous l'identifiant imposé (REPRISE_QUOTA_V3.md)."""
         for access in (None, ReviewerAccess.CONSULT, ReviewerAccess.CONTEXT_ONLY):
-            spec = replace(_SPEC, reviewer_access=access)
+            spec = replace(_SPEC, reviewer_access=access, session_id="11-sess")
             with mock.patch.object(shutil, "which", return_value="claude"):
                 cmd = self.adapter.command(spec)
-            for flag in (
-                "--restricted", "--strict-mcp-config", "--no-session-persistence",
-                "--disable-slash-commands",
-            ):
+            for flag in ("--restricted", "--strict-mcp-config", "--disable-slash-commands"):
                 self.assertIn(flag, cmd, access)
-            for forbidden in ("--resume", "--continue", "-c", "-r", "--session-id"):
+            self.assertEqual(cmd[cmd.index("--session-id") + 1], "11-sess", access)
+            for forbidden in ("--resume", "--continue", "-c", "-r", "--no-session-persistence"):
                 self.assertNotIn(forbidden, cmd, access)
+
+    def test_a_continuation_resumes_the_interrupted_session_only(self) -> None:
+        spec = replace(_SPEC, session_id="11-sess", resume=True)
+        with mock.patch.object(shutil, "which", return_value="claude"):
+            cmd = self.adapter.command(spec)
+            plain = self.adapter.command(_SPEC)
+        self.assertEqual(cmd[cmd.index("--resume") + 1], "11-sess")
+        self.assertNotIn("--session-id", cmd)
+        self.assertNotIn("--output-format", cmd)  # même sortie texte que l'appel refusé
+        for flag in ("--resume", "--session-id"):
+            self.assertNotIn(flag, plain)
+
+    def test_the_observed_session_limit_is_recognized_with_its_hour(self) -> None:
+        """Trace réelle V2 du 2026-10-01 : le message seul sur `stdout`, code 1."""
+        observed = "You've hit your session limit · resets 8:50pm (Europe/Paris)\n"
+        self.assertEqual(
+            self.adapter.quota_reset(observed.encode("utf-8"), b""), "8:50pm (Europe/Paris)"
+        )
+        dashed = b"You've hit your session limit - resets 11:20pm (Europe/Paris)"
+        self.assertEqual(self.adapter.quota_reset(dashed, b""), "11:20pm (Europe/Paris)")
+        framed = json.dumps({"is_error": True, "result": observed.strip()}).encode("utf-8")
+        self.assertEqual(self.adapter.quota_reset(framed, b""), "8:50pm (Europe/Paris)")
+
+    def test_anything_else_is_not_a_quota(self) -> None:
+        """Ni 429, ni mots-clés, ni réponse normale qui parle de limite (le prédécesseur
+        prenait « credit balance » pour un quota)."""
+        for other in (
+            b"",
+            b"API Error: 429 rate_limit_error",
+            b"Credit balance is too low",
+            b"Claude AI usage limit reached|1753290000",
+            "IABINOME:DOCUMENT\nYou've hit your session limit · resets 8:50pm".encode(),
+            b'{"is_error": true, "api_error_status": 429}',
+            b"{pas du json",
+        ):
+            with self.subTest(other):
+                self.assertIsNone(self.adapter.quota_reset(other, b""))
+
+    def test_the_session_is_the_imposed_one_unless_json_declares_it(self) -> None:
+        self.assertEqual(self.adapter.session_of("11-sess", b"texte", b""), "11-sess")
+        self.assertEqual(self.adapter.session_of("11-sess", _CLAUDE_OUT, b""), "8ce4-sess")
+        self.assertIsNone(self.adapter.session_of(None, b"texte", b""))
 
     def test_the_declared_capabilities_match_the_argv(self) -> None:
         self.assertTrue(self.adapter.capabilities.enforces_read_only)
@@ -181,6 +223,15 @@ class TestClaudeAdapter(unittest.TestCase):
             "--disable-slash-commands", "--tools", "Read,Grep,Glob", "--output-format", "json",
         ])
         self.assertEqual(then[len(first):], ["--resume", "8ce4-sess", "--effort", "high"])
+        with mock.patch.object(shutil, "which", return_value="claude"):
+            imposed = self.adapter.framing_command(
+                replace(_FRAMING, session_id="11-sess"), None, "peu importe"
+            )
+            resumed = self.adapter.framing_command(
+                replace(_FRAMING, session_id="11-sess"), "8ce4-sess", "peu importe"
+            )
+        self.assertEqual(imposed[len(first):], ["--session-id", "11-sess"])
+        self.assertNotIn("--session-id", resumed)
         for cmd in (first, then):
             self.assertNotIn("--no-session-persistence", cmd)
             self.assertNotIn("peu importe", cmd)
@@ -259,19 +310,57 @@ class TestCodexAdapter(unittest.TestCase):
                 cmd = self.adapter.command(_SPEC)
         self.assertNotIn("windows.sandbox=elevated", self.values_of_c(cmd))
 
-    def test_every_role_is_read_only_ephemeral_and_ignores_user_config(self) -> None:
-        """2.2, côté Codex : le même résultat par d'autres moyens."""
+    def test_every_role_is_read_only_and_ignores_user_config(self) -> None:
+        """2.2, côté Codex : le même résultat par d'autres moyens. Sans `--ephemeral`
+        depuis le 2026-10-05 : la session est conservée pour la seule continuation."""
         for access in (None, ReviewerAccess.CONSULT, ReviewerAccess.CONTEXT_ONLY):
-            spec = replace(_SPEC, reviewer_access=access)
+            spec = replace(_SPEC, reviewer_access=access, session_id="ignore")
             with mock.patch.object(shutil, "which", return_value="codex"):
                 cmd = self.adapter.command(spec)
             self.assertEqual(cmd[cmd.index("--sandbox") + 1], "read-only", access)
-            for flag in ("--ephemeral", "--ignore-user-config", "--ignore-rules"):
+            for flag in ("--ignore-user-config", "--ignore-rules"):
                 self.assertIn(flag, cmd, access)
-            for forbidden in ("resume", "--last", "danger-full-access", "workspace-write"):
+            for forbidden in (
+                "resume", "--last", "danger-full-access", "workspace-write", "--ephemeral",
+                "ignore",
+            ):
                 self.assertNotIn(forbidden, cmd, access)
         self.assertTrue(self.adapter.capabilities.enforces_read_only)
         self.assertTrue(self.adapter.capabilities.fresh_session)
+
+    def test_a_continuation_resumes_the_session_read_only(self) -> None:
+        """`exec resume` refuse `--sandbox` : la lecture seule passe par `sandbox_mode`,
+        comme pour F ; l'identifiant précède le `-` du prompt."""
+        spec = replace(
+            _SPEC, reviewer_access=ReviewerAccess.CONTEXT_ONLY, session_id="01a0-sess",
+            resume=True,
+        )
+        with mock.patch.object(shutil, "which", return_value="codex"):
+            cmd = self.adapter.command(spec)
+            with self.assertRaises(RuntimeError):
+                self.adapter.command(replace(spec, session_id=None))
+        self.assertEqual(cmd[1:3], ["exec", "resume"])
+        self.assertEqual(cmd[-2:], ["01a0-sess", "-"])
+        self.assertNotIn("--sandbox", cmd)
+        values = self.values_of_c(cmd)
+        for setting in (
+            "sandbox_mode=read-only", "features.shell_tool=false", "web_search=disabled",
+        ):
+            self.assertIn(setting, values)
+
+    def test_the_refusal_is_not_recognized_without_a_real_trace(self) -> None:
+        refusal = b"You've hit your usage limit. Try again at 4:10 PM."
+        self.assertIsNone(self.adapter.quota_reset(b"", refusal))
+
+    def test_the_session_is_read_in_the_banner_or_the_json_events(self) -> None:
+        """Bannière relevée sur une trace réelle (0.159.3), identifiant remplacé."""
+        banner = (
+            b"OpenAI Codex v0.159.3\n--------\nworkdir: C:\\tmp\n"
+            b"session id: 019a-sess\n--------\n"
+        )
+        self.assertEqual(self.adapter.session_of("ignore", b"", banner), "019a-sess")
+        self.assertEqual(self.adapter.session_of("ignore", _CODEX_OUT, b""), "01a0-sess")
+        self.assertIsNone(self.adapter.session_of("ignore", b"texte", b"bruit"))
 
     def values_of_c(self, cmd: list[str]) -> list[str]:
         return [cmd[i + 1] for i, part in enumerate(cmd) if part == "-c"]

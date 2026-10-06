@@ -209,7 +209,9 @@ cas courants :
   demande sous « Précisions n°1 », « n°2 »… : le texte existant reste intact, une réponse courte suffit.
 - **`INTERRUPTED`** — l'appel n'a pas abouti (délai, quota, arrêt brutal). Le message de l'outil est cité
   tel quel ; **le programme ne devine ni le coût ni l'heure de reprise**. Pour relancer, vous motivez
-  par écrit : `resume ./essai --retry-call <uuid> --reason-file ./motif.md`.
+  par écrit : `resume ./essai --retry-call <uuid> --reason-file ./motif.md`. Seule exception : un refus
+  de période reconnu, qui annonce son heure, n'arrête pas `run` — il attend cette heure plus deux
+  minutes, puis continue la même session de l'agent.
 - **`ERROR`** — la réponse est arrivée, donc payée, mais elle ne respecte pas le contrat. Elle est
   conservée : `resume ./essai --reprocess <uuid> --reason-file ./motif.md` la **relit en local, sans
   nouvel appel**.

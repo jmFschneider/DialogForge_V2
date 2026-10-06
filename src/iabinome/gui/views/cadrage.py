@@ -228,6 +228,7 @@ class FramingDialog(Toplevel):
 
     def _poll(self) -> None:
         if self._controller.has_active_run():
+            self._status.configure(text=self._controller.framing_notice or _BUSY)
             self.after(_POLL_MS, self._poll)
             return
         outcome = self._controller.take_framing_outcome()

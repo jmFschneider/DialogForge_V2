@@ -176,7 +176,7 @@ def inspect_collaboration(
     presentation = Presentation(
         status_label=_status_label(state, decision),
         phase_label=_phase_label(state, config),
-        activity_label=_activity_label(state, execution),
+        activity_label=_activity_label(path, state, execution),
         allowed_actions=decisions.allowed_actions(path, state),
         readable_documents=_readable_documents(path, state),
         progress=_progress(state, config, decision),
@@ -243,7 +243,7 @@ def _phase_label(state: State, config: Configuration) -> str:
     return _PHASE_LABELS[state.phase]
 
 
-def _activity_label(state: State, execution: ExecutionObservation) -> str:
+def _activity_label(path: Path, state: State, execution: ExecutionObservation) -> str:
     """§7.2, table d'activité honnête : jamais d'activité affichée sans preuve
     qu'*une* exécution possédée par cette fenêtre en est la source."""
     if state.status is Status.READY:
@@ -253,9 +253,22 @@ def _activity_label(state: State, execution: ExecutionObservation) -> str:
             return "État enregistré : appel en cours ou processus arrêté ; activité non prouvée"
         call = state.current_call
         if call is not None and call.status is CallStatus.CALLING:
-            return "Appel fournisseur en cours"
+            # Refus de période : l'appel refusé reste courant pendant l'attente de
+            # l'heure annoncée, puis la continuation le remplace (REPRISE_QUOTA_V3.md).
+            waiting = _quota_wait(path / call.call_dir / "incident.json")
+            return waiting or "Appel fournisseur en cours"
         return "Réponse reçue, traitement local en cours"
     return _ACTIVITY_BY_STATUS[state.status]
+
+
+def _quota_wait(incident: Path) -> str | None:
+    try:
+        found = _read_json(incident) if incident.is_file() else None
+    except (OSError, ValueError):
+        return None
+    if not isinstance(found, dict) or found.get("kind") != "QUOTA":
+        return None
+    return f"Quota fournisseur, en attente : {found.get('detail')}"
 
 
 def _progress(state: State, config: Configuration, decision: DecisionSummary) -> Progress:

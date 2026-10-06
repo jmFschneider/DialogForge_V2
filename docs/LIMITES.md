@@ -32,9 +32,12 @@ fournisseur** :
 - **Le livrable est ce que B a examiné**, promu octet pour octet ; jamais une réécriture postérieure.
 - **Une décision porte sur une version précise.** Si le livrable change après elle, `status` le dit.
 - **Rien n'est jamais relancé tout seul.** Une relance exige un motif écrit par vous ; une réponse déjà
-  payée se relit en local, sans nouvel appel.
+  payée se relit en local, sans nouvel appel. **Seule exception** (2026-10-05) : un refus de période
+  d'usage reconnu, qui annonce son heure, est attendu jusqu'à cette heure plus deux minutes, puis **la
+  même session** continue par une consigne courte — jamais le prompt d'origine dans une session neuve.
+  Uniquement tant que le programme reste ouvert ; voir `conception/REPRISE_QUOTA_V3.md`.
 - **Un incident dit s'il a pu être payé** (« non », « peut-être », « inconnu », « oui »), jamais un
-  montant ni une heure de reprise.
+  montant ; une heure de reprise seulement quand l'outil l'annonce sous une forme reconnue.
 
 ## 2. Demandé aux outils : ce que l'essai réel a montré
 
@@ -50,7 +53,8 @@ l'outil a fait. Le protocole du 2026-09-20 a mesuré l'effet de plusieurs d'entr
 | Séparation des secrets | rien de Codex | rien de Claude | ✅ Chaque outil garde son authentification sans les variables de l'autre. Ce qui est vérifié : ce que le programme **retire** (`intention.json`), pas ce que l'outil voit |
 | Lire le corpus | `--restricted`, `--tools "Read,Grep,Glob"` | `--sandbox read-only`, backend Windows `elevated` explicite | ✅ Claude lit le corpus. ✅ Codex : fichier témoin le 2026-09-21, puis **un vrai corpus dans un cycle A/B complet le 22** — `Get-Content` réussi en 917 ms sur `corpus/fichiers/…`, dans le dossier jetable du produit, contenu exact retourné |
 | Refuser un chemin hors du dossier | `--restricted` | `--sandbox read-only` | ✅ Claude refuse : « `--restricted` confines the file tools to the working directory ». Codex : **aucune garantie de confinement en lecture** |
-| Session fraîche, réglages ignorés | `--no-session-persistence`, `--restricted` | `--ephemeral`, `--ignore-user-config`, `--ignore-rules` | Acceptées par les deux outils en réel (2026-09-19). **Effet non mesuré** |
+| Session neuve à chaque tour, réglages ignorés | `--session-id <id>` imposé, `--restricted` | `--ignore-user-config`, `--ignore-rules` | Options de réglage acceptées en réel (2026-09-19), **effet non mesuré**. Depuis le 2026-10-05, la session est **conservée** par l'outil (ni `--no-session-persistence` ni `--ephemeral`) : `--session-id` n'a pas encore tourné en réel |
+| Continuation d'un tour refusé par un quota | `--resume <id>`, même sortie texte | `exec resume … -c sandbox_mode=read-only <id>` | **Non mesuré en réel.** Qualification demandée (`REPRISE_QUOTA_V3.md` §7) ; reconnaissance du refus Codex **inactive** faute de trace |
 | Session de l'agent de cadrage F, reprise à chaque tour | `--output-format json`, puis `--resume <id>` | `--json`, puis `exec resume … -c sandbox_mode=read-only <id>` | ✅ 2026-09-25, hors du produit : même identifiant, contexte rappelé, aucune écriture en reprise. Chez Codex, une tentative d'écriture a été refusée par le bac à sable, et l'outil l'a journalisée. ✅ Puis un cadrage réel par le produit et par outil, de 6 échanges chacun : même session du premier au dernier tour |
 
 **Sous Windows, Codex exige le backend natif `elevated`** : l'adaptateur le sélectionne explicitement,
@@ -87,8 +91,9 @@ Une option **inconnue** de l'outil fait échouer l'appel (`CLI_FAILED`), donc se
   variables en `CLAUDE*` / `ANTHROPIC_*` sont à Claude, celles en `CODEX_*` / `OPENAI_*` à Codex. Une clé
   d'un autre nom (`AWS_*`, un jeton générique) passe aux deux.
 - **La mémoire propre au fournisseur** (préférences de compte, mémoire persistante hors session) n'est
-  pas maîtrisée. « Session fraîche » veut dire : le programme ne reprend aucune session et n'en laisse
-  aucune.
+  pas maîtrisée. « Session fraîche » veut dire : chaque tour ouvre une session neuve, que le programme
+  ne reprend que pour continuer ce même tour après un quota. Depuis le 2026-10-05, chaque outil
+  **conserve** ces sessions dans son propre historique, hors du dossier de la collaboration.
 
 ## 4. Déjà observé en réel
 
@@ -104,8 +109,9 @@ Une option **inconnue** de l'outil fait échouer l'appel (`CLI_FAILED`), donc se
 - **Le prompt de B**, relu sur ces essais, contient la demande et la version examinée et ne mentionne
   aucun fichier interne de la collaboration.
 - **Sur quota, les deux outils rendent un code de retour non nul** ; ils ne l'écrivent pas au même
-  endroit (Claude sur `stdout`, Codex sur `stderr`). Dans les deux cas : `CLI_FAILED`, `INTERRUPTED`,
-  relançable.
+  endroit (Claude sur `stdout`, Codex sur `stderr`). Claude : `You've hit your session limit · resets
+  8:50pm (Europe/Paris)`, seul sur `stdout` (trace du 2026-10-01) — **reconnu**, attendu puis continué.
+  Codex : forme non relevée dans ce profil — `CLI_FAILED`, `INTERRUPTED`, relançable, comme avant.
 - **Avant le réglage `web_access`**, Codex a fait des recherches web (six par appel de A) sans que rien
   ne les demande : c'est pourquoi le web est maintenant fermé par défaut et dit explicitement.
 - **Sous les options d'isolation**, Codex a tourné à l'effort `none` et non à celui de votre

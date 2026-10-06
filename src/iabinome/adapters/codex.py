@@ -11,6 +11,7 @@ le profil `CONTEXT_ONLY` de B — équivalent mesuré à `--disable shell_tool`
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 
@@ -66,14 +67,18 @@ class CodexAdapter:
 
     def command(self, call: CallSpec) -> list[str]:
         exe = _resolve()
-        # 2.2 : session éphémère, ni configuration ni règles de l'utilisateur (`auth`
+        # 2.2 : session neuve, ni configuration ni règles de l'utilisateur (`auth`
         # reste lue). Formes lues dans `codex exec --help` 0.155.0, acceptées sur des
         # appels réels au lot 3 ; leur **effet** n'est acquis que là où il a été
-        # mesuré (`docs/LIMITES.md` §2).
-        cmd = [
-            exe, "exec", "-m", call.model, "--sandbox", "read-only", "--skip-git-repo-check",
-            "--ephemeral", "--ignore-user-config", "--ignore-rules",
-        ]
+        # mesuré (`docs/LIMITES.md` §2). Sans `--ephemeral` depuis le 2026-10-05 : la
+        # session est conservée pour la seule continuation après un quota, par
+        # `exec resume`, qui refuse `--sandbox` — d'où `sandbox_mode`, comme pour F.
+        cmd = [exe, "exec"]
+        if call.resume:
+            cmd += ["resume", "-m", call.model, "-c", "sandbox_mode=read-only"]
+        else:
+            cmd += ["-m", call.model, "--sandbox", "read-only"]
+        cmd += ["--skip-git-repo-check", "--ignore-user-config", "--ignore-rules"]
         if call.project_root is not None and not call.corpus_present and (
             call.reviewer_access is not ReviewerAccess.CONTEXT_ONLY
         ):
@@ -94,6 +99,10 @@ class CodexAdapter:
             # Valeur TOML ; si elle n'en est pas une, Codex la prend comme chaîne littérale
             # (`codex exec --help`) : pas de guillemets, que le lanceur `.CMD` abîmerait.
             cmd += ["-c", f"model_reasoning_effort={call.effort}"]
+        if call.resume:
+            if call.session_id is None:
+                raise AdapterError("continuation demandée sans identifiant de session")
+            cmd.append(call.session_id)
         cmd.append("-")
         return cmd
 
@@ -103,8 +112,8 @@ class CodexAdapter:
     def framing_command(
         self, spec: FramingSessionSpec, session: str | None, prompt: str
     ) -> list[str]:
-        """Les arguments de A et B, sans `--ephemeral` pour que la session survive au tour,
-        avec `--json` qui porte son identifiant, puis `exec resume <id>`. `resume` n'accepte
+        """Les arguments de A et B, avec `--json` qui porte l'identifiant de la session,
+        puis `exec resume <id>` pour les tours suivants. `resume` n'accepte
         pas `--sandbox` : la lecture seule y passe par `-c sandbox_mode=read-only`. Mesuré
         par le PO le 2026-09-25 (`reference/PROTOCOLE_CADRAGE_LOT4.md`, 0.155.0) : même
         identifiant, contexte rappelé, écriture tentée et refusée par le bac à sable."""
@@ -150,6 +159,32 @@ class CodexAdapter:
         if not completed or not isinstance(text, str):
             raise ValueError("tour sans turn.completed ni message de l'agent")
         return text, session if isinstance(session, str) and session else None
+
+    def quota_reset(self, stdout: bytes, stderr: bytes) -> str | None:
+        """**Inactif** : aucun refus réel de `codex exec` n'a été relevé dans le profil
+        V2 (`conception/REPRISE_QUOTA.md`). Un motif supposé n'active pas la continuation ;
+        l'identifiant de session est, lui, déjà conservé pour analyser le premier refus."""
+        return None
+
+    def session_of(self, preset: str | None, stdout: bytes, stderr: bytes) -> str | None:
+        """La bannière `stderr` porte `session id: <uuid>` (relevé réel, 0.159.3, appels
+        A/B) ; la sortie `--json` de F, l'événement `thread.started`. Codex n'accepte pas
+        d'identifiant imposé : `preset` est ignoré."""
+        found = _BANNER_SESSION.search(stderr.decode("utf-8", errors="replace"))
+        if found:
+            return found[1]
+        for line in stdout.decode("utf-8", errors="replace").splitlines():
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(event, dict) and event.get("type") == "thread.started":
+                thread = event.get("thread_id")
+                return thread if isinstance(thread, str) and thread else None
+        return None
+
+
+_BANNER_SESSION = re.compile(r"^session id:\s*(\S+)\s*$", re.MULTILINE)
 
 
 def _resolve() -> str:

@@ -75,8 +75,11 @@ message) soit reprenable. Ces deux points se qualifient au §7.
 - La consigne : « Le tour a été interrompu par la limite d'usage. Reprends où tu en étais et rends
   ta réponse **complète**, au format demandé. » Une suite partielle ferait échouer le contrat
   (`CONTRACT_ERROR`).
-- Claude reprend avec `--resume <id> --output-format json`, la forme mesurée au cadrage, et compare
-  le `session_id` rendu.
+- Claude reprend avec `--resume <id>`, **dans la même sortie texte** que l'appel refusé. *Écart
+  d'implémentation du 2026-10-05* : la sortie JSON prévue ici aurait changé la forme du refus, que
+  personne n'a observée en JSON ; un second quota pendant la continuation n'aurait plus été reconnu.
+  En texte, l'identifiant ne se relit pas : la continuité repose sur `--resume` (même identifiant,
+  mesuré au cadrage), et une session introuvable fait échouer l'appel.
 - Codex reprend avec `exec resume … <id> -` et compare l'identifiant de sa bannière.
 - La réponse suit ensuite le chemin normal (`store_response`, contrôles du parcours).
 
@@ -99,9 +102,15 @@ Une nouvelle heure fiable et plus tardive autorise une nouvelle attente. Il n'y 
 - La continuation est un **nouveau dossier d'appel** dont `intention.json` porte les champs déjà
   existants `retries` (appel refusé) et `retry_reason: "quota"`, plus l'identifiant de session repris.
   Son `prompt.txt` contient la consigne de continuation.
-- Session introuvable : `kind: SESSION_INTROUVABLE`, flux de la tentative de reprise conservés.
-- Si DialogForge est fermé pendant l'attente, l'état reste `INTERRUPTED` avec l'incident. La reprise
-  manuelle actuelle (`--retry-call`) est inchangée.
+- Session introuvable : la continuation échoue comme un appel ordinaire, `CLI_FAILED` sur **son**
+  dossier, flux conservés (*écart* : la CLI ne permet pas de distinguer « introuvable » d'une autre
+  erreur sans trace réelle ; le message de l'outil reste lisible tel quel). Un identifiant rendu
+  différent (Codex) : `SESSION_LOST`.
+- Pendant l'attente, l'état reste `RUNNING` sur l'appel refusé ; la GUI lit son `incident.json` pour
+  afficher l'heure de reprise. Pause ou arrêt : `INTERRUPTED`, incident `QUOTA`. Fermeture brutale :
+  au lancement suivant, l'appel refusé est relu comme aujourd'hui (`CLI_FAILED`). La reprise manuelle
+  (`--retry-call`) est inchangée.
+- Runner : `session.json` dans chaque dossier d'appel (identifiant, continuation ou non).
 
 ## 5. Les trois parcours
 
@@ -124,7 +133,7 @@ planifiée, compteur de reprises, état durable nouveau.
 1. **Claude, dans le même dossier** : `claude -p --session-id <uuid> …`, interrompre en cours de tour,
    puis `claude -p --resume <uuid> --output-format json`. Attendu : même `session_id`, contexte rappelé.
 2. **Claude, depuis un autre dossier** : même reprise. Attendu : échec, ce qui confirme la contrainte
-   du §3.5.
+   du §3.5 ; relever son code de sortie et son message, forme réelle de « session introuvable ».
 3. **Codex sans `--ephemeral`** : interrompre, puis `codex exec resume <id> -`. Attendu : même
    identifiant dans la bannière.
 4. **Au prochain refus réel** : rien à faire, les traces sont gardées. On y lit le format Codex et le

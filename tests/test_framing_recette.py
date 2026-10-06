@@ -112,7 +112,10 @@ class TestPerimeter(unittest.TestCase):
 
     _FORBIDDEN = {
         **GuiPerimeter._FORBIDDEN,
-        "coût/jetons/quota": re.compile(r"\btokens?\b|\bquota\b|\bco[uû]t\b|\bprix\b", re.I),
+        # « quota » n'en est plus depuis l'amendement du PO du 2026-10-04 : le cadrage
+        # continue sa session après un refus de période **du fournisseur**
+        # (REPRISE_QUOTA_V3.md). Un quota interne reste exclu : il n'a ni compteur ni coût.
+        "coût/jetons": re.compile(r"\btokens?\b|\bco[uû]t\b|\bprix\b", re.I),
         "moteur A/B": re.compile(r"^\s*from \. import .*\b(workflow|lock)\b", re.MULTILINE),
     }
 

@@ -120,7 +120,7 @@ def main() -> int:
             package = core.run_claude(
                 run, timeout_seconds=float(request["timeout"]),
                 continue_existing=action != "launch", correction=str(request.get("correction", "")),
-                control=control,
+                control=control, notify=lambda message: _event("notice", message=message),
             )
             _event("completed", package=str(package))
         else:

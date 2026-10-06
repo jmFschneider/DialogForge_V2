@@ -9,6 +9,7 @@ dans `--help` — et sert le profil `CONTEXT_ONLY` de B (point 2 du relevé).
 from __future__ import annotations
 
 import json
+import re
 import shutil
 
 from ..models import AgentPurpose, ReviewerAccess
@@ -80,11 +81,14 @@ class ClaudeAdapter:
         # (réglages, hooks, MCP, commandes). Formes lues dans `claude --help`
         # 2.1.278, acceptées sur des appels réels au lot 3 (2026-09-19 et 20) ;
         # leur **effet** n'est acquis que là où il a été mesuré (`LIMITES.md` §2).
+        # La session neuve est **conservée** sous l'identifiant imposé par le noyau,
+        # pour que seul un tour interrompu par un quota la continue (`--resume`).
         cmd = [
             exe, "-p", "--model", call.model,
-            "--restricted", "--strict-mcp-config",
-            "--no-session-persistence", "--disable-slash-commands",
+            "--restricted", "--strict-mcp-config", "--disable-slash-commands",
         ]
+        if call.session_id is not None:
+            cmd += ["--resume" if call.resume else "--session-id", call.session_id]
         if call.reviewer_access is ReviewerAccess.CONTEXT_ONLY:
             tools = ""  # aucun outil, web compris
         elif call.web_access:
@@ -109,8 +113,8 @@ class ClaudeAdapter:
     def framing_command(
         self, spec: FramingSessionSpec, session: str | None, prompt: str
     ) -> list[str]:
-        """Les arguments de A et B, sauf trois : la session persiste, la sortie JSON porte
-        son identifiant, et les tours suivants la reprennent (`--resume`). Mesuré par le PO
+        """Les arguments de A et B, sauf deux : la sortie JSON porte l'identifiant de la
+        session, et les tours suivants la reprennent (`--resume`). Mesuré par le PO
         le 2026-09-25 (`reference/PROTOCOLE_CADRAGE_LOT4.md`, 2.1.282) : même identifiant
         en reprise, contexte rappelé, et `--tools` y vaut encore — aucune écriture."""
         cmd = [
@@ -120,6 +124,8 @@ class ClaudeAdapter:
         ]
         if session is not None:
             cmd += ["--resume", session]
+        elif spec.session_id is not None:
+            cmd += ["--session-id", spec.session_id]
         if spec.project_root is not None:
             cmd += ["--add-dir", str(spec.project_root)]
         if spec.effort is not None:
@@ -135,6 +141,35 @@ class ClaudeAdapter:
             raise ValueError(f"l'outil signale une erreur : {data.get('subtype')}")
         session = data.get("session_id")
         return data["result"], session if isinstance(session, str) and session else None
+
+    def quota_reset(self, stdout: bytes, stderr: bytes) -> str | None:
+        """La seule forme observée (trace V2 du 2026-10-01, code 1, `stderr` vide) :
+        `You've hit your session limit · resets 8:50pm (Europe/Paris)`, **seule** sur
+        `stdout` — ou dans le champ `result` de la sortie JSON du cadrage. Une réponse
+        normale qui parle de quota n'est jamais tout entière ce message."""
+        text = stdout.decode("utf-8", errors="replace").strip()
+        if text.startswith("{"):
+            try:
+                data = json.loads(text)
+            except ValueError:
+                return None
+            result = data.get("result") if isinstance(data, dict) else None
+            text = result.strip() if isinstance(result, str) else ""
+        found = _SESSION_LIMIT.fullmatch(text)
+        return found["at"] if found else None
+
+    def session_of(self, preset: str | None, stdout: bytes, stderr: bytes) -> str | None:
+        """L'identifiant déclaré par la sortie JSON s'il y en a un, sinon celui imposé
+        par `--session-id` : la sortie texte de A et B n'en déclare aucun."""
+        try:
+            data = json.loads(stdout.decode("utf-8"))
+        except ValueError:
+            return preset
+        session = data.get("session_id") if isinstance(data, dict) else None
+        return session if isinstance(session, str) and session else preset
+
+
+_SESSION_LIMIT = re.compile(r"You['’]ve hit your session limit [·-] resets (?P<at>[^\n]+)")
 
 
 def _resolve() -> str:

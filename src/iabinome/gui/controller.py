@@ -15,6 +15,7 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
 from tkinter import Tk, messagebox, ttk
 
@@ -41,6 +42,8 @@ class Controller:
         self.framing: framing.Framing | None = None
         self._framing_control: ExecutionControl | None = None
         self._framing_outcome: framing.Turn | Exception | None = None
+        # Message d'une attente de quota pendant un tour de F, lu par la vue au sondage.
+        self.framing_notice: str | None = None
 
     # -- Navigation : les vues remplacent le contenu de la même fenêtre (§4) --
 
@@ -215,8 +218,10 @@ class Controller:
         self.discard_framing()
         others = [a.env for key, a in ADAPTERS.items() if key != adapter.adapter_id]
         self._framing_control = ExecutionControl()
+        self.framing_notice = None
         session = framing.open_session(
             adapter, spec, others=others, control=self._framing_control,
+            notify=partial(setattr, self, "framing_notice"),
         )
         self.framing = framing.Framing(session, root, idea, kind=kind, complement=complement)
         return self.framing
@@ -229,7 +234,7 @@ class Controller:
         if self.has_active_run():
             return False
         self._runner_session = None
-        self._framing_outcome = None
+        self._framing_outcome = self.framing_notice = None
 
         def worker() -> None:
             try:

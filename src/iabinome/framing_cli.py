@@ -53,7 +53,10 @@ def run(
         (root / "corpus" / "manifeste.json").is_file(),
     )
     others = [a.env for key, a in adapters.items() if key != args.agent_cadrage]
-    session = framing.open_session(adapters[args.agent_cadrage], spec, others=others)
+    session = framing.open_session(
+        adapters[args.agent_cadrage], spec, others=others,
+        notify=lambda message: print(message, file=sys.stderr, flush=True),
+    )
     f = Framing(session, root, idea, kind=base.kind, complement=base.follow_up is not None)
     try:
         return _converse(f, base, adapters)

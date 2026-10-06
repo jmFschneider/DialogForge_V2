@@ -59,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
             package = core.run_claude(
                 args.run, timeout_seconds=args.timeout,
                 continue_existing=args.continue_existing, correction=args.correction or "",
+                notify=lambda message: print(message, file=sys.stderr, flush=True),
             )
             print(f"Paquet créé : {package.resolve()}")
         else:

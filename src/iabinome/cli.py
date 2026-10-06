@@ -333,6 +333,7 @@ def _drive(
         state = workflow.run(
             collab, adapters=ADAPTERS, timeout_seconds=timeout_seconds,
             command_label=command_label, intervention=intervention, control=ctrl_c.control,
+            notify=lambda message: print(message, file=sys.stderr, flush=True),
         )
     except workflow.Stopped:
         # Arrêt demandé **hors** d'un appel (préflight, verrou, écriture) : aucun

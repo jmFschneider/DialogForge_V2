@@ -350,7 +350,9 @@ Le code décrit le **résultat de la commande**, jamais l'approbation du livrabl
 Quand un appel échoue, `status` et `show` disent **si** il a pu être payé — jamais combien, ni
 jusqu'à quand. Un code de retour non nul ne distingue pas un quota épuisé d'une erreur de
 configuration : le message de l'outil est cité **tel quel**, et rien n'en est déduit. Rien n'est
-jamais relancé tout seul.
+jamais relancé tout seul, sauf un cas : le refus de période **reconnu**, qui annonce son heure.
+`run` l'attend alors (heure plus deux minutes, message sur la sortie d'erreur), puis continue **la
+même session** par une consigne courte, sans renvoyer la demande ; Ctrl+C interrompt l'attente.
 
 | Incident | Payé ? | Sens |
 |---|---|---|
@@ -362,6 +364,8 @@ jamais relancé tout seul.
 | `SOURCES_MODIFIED` | peut-être | Le corpus a changé pendant l'appel : la réponse n'est pas retenue. Rétablissez-le, puis relancez. |
 | `CALL_POSSIBLY_PAID` | inconnu | Le processus s'est arrêté pendant un appel : impossible de savoir. |
 | `CLI_FAILED` | inconnu | L'outil a rendu un code de retour non nul (quota, configuration, modèle…). |
+| `QUOTA` | inconnu | Refus de période reconnu ; l'attente de l'heure annoncée a été interrompue (pause, arrêt) avant la continuation de la session. |
+| `SESSION_LOST` | inconnu | La continuation après quota n'a pas repris la session interrompue : réponse non retenue. |
 | `INTEGRITY_MISMATCH` | inconnu | Un fichier de l'appel ne correspond plus à son empreinte : rien n'est repris d'une preuve contredite. |
 | `CONTRACT_ERROR` | oui | La réponse est arrivée mais ne respecte pas le contrat ; conservée telle quelle. |
 | `DECODE_FAILED` | oui | La réponse est arrivée mais ses octets sont illisibles ; conservés tels quels. |

@@ -22,11 +22,13 @@ def _run_claude(
     run: Path, *, timeout_seconds: float, continue_existing: bool = False,
     correction: str = "",
     control: transport.ExecutionControl | None = None,
+    notify: Callable[[str], None] | None = None,
 ) -> Path:
     assert os.environ["CLAUDE_CODE_OAUTH_TOKEN"], "le pont doit avoir reçu le jeton"
     return core.run_agent(
         run, [sys.executable, os.environ["RUNNER_TEST_AGENT"]], timeout_seconds=timeout_seconds,
         continue_existing=continue_existing, correction=correction, control=control,
+        notify=notify,
     )
 
 

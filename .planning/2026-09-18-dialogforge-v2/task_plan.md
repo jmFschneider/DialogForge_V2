@@ -14,9 +14,15 @@ rejeu ; **session introuvable → arrêt, message conservé pour analyse** ; san
 La V2 de Codex et son prompt sont retirés (historique : `d54f5e4`). Le prédécesseur a été analysé :
 il ne continuait aucune session Claude (rejeu de phase) ; son calcul d'heure et son attente
 interrompable sont repris, ses reconnaissances larges (429 seul, mots-clés) et son repli aveugle
-écartés. **Prochain pas : implémenter la V3** ; en parallèle, le PO fait les qualifications réelles
-du §7 (reprise Claude même dossier / autre dossier, reprise Codex sans `--ephemeral`).
-Reconnaissance Codex inactive tant qu'aucune trace réelle de refus n'existe.
+écartés. **V3 implémentée le 2026-10-05 sur la branche `feat/reprise-quota`** (non commitée) :
+`quota.py` (heure + attente interrompable), adaptateurs (`--session-id` imposé chez Claude,
+`--ephemeral` retiré et identifiant lu dans la bannière chez Codex, reconnaissance du seul message
+Claude observé), continuation A/B dans le même dossier neutre, cadrage, Runner (`Sessions`, attente
+hors durée). Deux écarts consignés dans la V3 : continuation Claude en sortie texte (pas JSON) ;
+session introuvable = `CLI_FAILED` sur le dossier de la continuation. **Prochain pas : relecture par
+le PO, commit, puis qualifications réelles du §7** (`--session-id` n'a jamais tourné en réel ; reprise
+Claude même dossier / autre dossier ; reprise Codex sans `--ephemeral`). Reconnaissance Codex
+inactive tant qu'aucune trace réelle de refus n'existe.
 
 **Accès au projet vivant — commité le 2026-10-05.** F, A et B lisent directement un projet
 choisi (`conception/ACCES_DEPOT_VIVANT.md`). Suite : 1 056 réussis, 2 ignorés. **Reste ouvert :
