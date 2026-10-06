@@ -685,7 +685,8 @@ class _Engine:
     ) -> tuple[State, CallResult | None]:
         """Un refus de période reconnu par l'adaptateur : attendre l'heure annoncée plus
         deux minutes, puis **continuer la même session** par une consigne courte, dans le
-        même dossier neutre — Claude range ses sessions par dossier. Jamais le prompt
+        même dossier neutre (par prudence : Claude reprend aussi d'ailleurs, essai du
+        2026-10-06). Jamais le prompt
         d'origine dans une session neuve (`conception/REPRISE_QUOTA_V3.md`).
 
         Rend le résultat à juger par le chemin ordinaire, ou `None` quand l'attente ou la

@@ -69,9 +69,10 @@ message) soit reprenable. Ces deux points se qualifient au §7.
 
 **5. Continuation.**
 
-- Le **même dossier de travail** est obligatoire : Claude range ses sessions par dossier. Pour A/B,
-  l'attente et la continuation ont donc lieu **dans** le bloc `isolation.neutral_workdir` de l'appel
-  refusé (`workflow.py:605`), sans nouvel état durable.
+- Le **même dossier de travail** est gardé : pour A/B, l'attente et la continuation ont lieu **dans**
+  le bloc `isolation.neutral_workdir` de l'appel refusé, sans nouvel état durable. *Essai du
+  2026-10-06* : Claude 2.1.x reprend aussi depuis un autre dossier ; la contrainte supposée ici
+  n'existe donc pas, mais garder le dossier ne coûte rien et reste le cas le plus sûr.
 - La consigne : « Le tour a été interrompu par la limite d'usage. Reprends où tu en étais et rends
   ta réponse **complète**, au format demandé. » Une suite partielle ferait échouer le contrat
   (`CONTRACT_ERROR`).
@@ -128,16 +129,23 @@ Surfaces : une ligne dans le suivi existant (message brut puis « reprise à HH:
 Reprise après fermeture, reconnaissance Codex sans trace, rejeu en session neuve, worker ou tâche
 planifiée, compteur de reprises, état durable nouveau.
 
-## 7. Qualifications à faire par le PO (appels réels)
+## 7. Qualifications par le PO (appels réels) — faites le 2026-10-06
 
-1. **Claude, dans le même dossier** : `claude -p --session-id <uuid> …`, interrompre en cours de tour,
-   puis `claude -p --resume <uuid> --output-format json`. Attendu : même `session_id`, contexte rappelé.
-2. **Claude, depuis un autre dossier** : même reprise. Attendu : échec, ce qui confirme la contrainte
-   du §3.5 ; relever son code de sortie et son message, forme réelle de « session introuvable ».
-3. **Codex sans `--ephemeral`** : interrompre, puis `codex exec resume <id> -`. Attendu : même
-   identifiant dans la bannière.
-4. **Au prochain refus réel** : rien à faire, les traces sont gardées. On y lit le format Codex et le
-   résultat de la reprise d'une session refusée.
+Options de A/B (`-p --restricted --strict-mcp-config --disable-slash-commands --tools Read,Grep,Glob`
+chez Claude, sonnet ; `--sandbox read-only --skip-git-repo-check --ignore-user-config --ignore-rules
+-c windows.sandbox=elevated -c web_search=disabled` chez Codex 0.159.3). Tours complets, sans
+interruption ni quota : la reprise d'un tour **interrompu** reste à observer au prochain refus réel.
+
+1. ✅ **Claude, même dossier** : `--session-id <uuid>` accepté (`OK`) ; `--resume <uuid>` en sortie
+   texte rappelle le mot retenu ; en JSON, `session_id` égal à l'identifiant imposé.
+2. ✅ **Claude, autre dossier** : la reprise **réussit** aussi (code 0, mot rappelé) — pas de
+   contrainte de dossier. **Session introuvable** (identifiant inventé) : `No conversation found with
+   session ID: <id>`, code 1 — traitée en `CLI_FAILED`, message conservé, comme décidé.
+3. ✅ **Codex sans `--ephemeral`** : bannière `session id: 01a1…` au premier tour ; `exec resume -c
+   sandbox_mode=read-only … <id> -` rend la **même** `session id` et rappelle le mot. Une ligne
+   `ERROR codex_skills_extension…` sur `stderr` précède la bannière sans gêner la lecture.
+4. **Au prochain refus réel** : rien à faire, les traces sont gardées. On y lira le format Codex du
+   refus et la reprise d'une session réellement interrompue.
 
 ## 8. Vérification et règles
 

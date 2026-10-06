@@ -19,10 +19,13 @@ interrompable sont repris, ses reconnaissances larges (429 seul, mots-clés) et 
 `--ephemeral` retiré et identifiant lu dans la bannière chez Codex, reconnaissance du seul message
 Claude observé), continuation A/B dans le même dossier neutre, cadrage, Runner (`Sessions`, attente
 hors durée). Deux écarts consignés dans la V3 : continuation Claude en sortie texte (pas JSON) ;
-session introuvable = `CLI_FAILED` sur le dossier de la continuation. **Prochain pas : relecture par
-le PO, commit, puis qualifications réelles du §7** (`--session-id` n'a jamais tourné en réel ; reprise
-Claude même dossier / autre dossier ; reprise Codex sans `--ephemeral`). Reconnaissance Codex
-inactive tant qu'aucune trace réelle de refus n'existe.
+session introuvable = `CLI_FAILED` sur le dossier de la continuation. Commit `5e60d90` (PO).
+**Qualifications réelles du §7 faites le 2026-10-06, toutes favorables** : `--session-id` accepté,
+reprise texte et JSON avec le même identifiant chez Claude (y compris depuis un autre dossier),
+`No conversation found…` code 1 pour une session inconnue ; reprise Codex sans `--ephemeral` avec la
+même `session id`. **Reste non observé : la reprise d'un tour réellement interrompu par un quota**,
+et le format du refus Codex (reconnaissance inactive). **Prochain pas : décider la fusion de
+`feat/reprise-quota` dans `main`** (relecture Codex éventuelle avant).
 
 **Accès au projet vivant — commité le 2026-10-05.** F, A et B lisent directement un projet
 choisi (`conception/ACCES_DEPOT_VIVANT.md`). Suite : 1 056 réussis, 2 ignorés. **Reste ouvert :

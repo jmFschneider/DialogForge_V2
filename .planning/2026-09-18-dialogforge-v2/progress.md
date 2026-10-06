@@ -2373,3 +2373,11 @@ Note `conception/TYPES_DE_MISSION.md` écrite puis validée telle quelle par le 
 - Tests : `tests/test_quota.py` (horloge contrôlée : continuation A et B, nouveau refus plus tardif, session inconnue/remplacée/introuvable, pause, heure illisible ou ambiguë, même heure, autre erreur code 1, réponse normale parlant de quota, cadrage) ; adaptateurs (forme des argv, reconnaissance, identifiants) ; Runner (continuation même session, session introuvable). Le double `tests/runner_bridge.py` transmet `notify`.
 - **Suite complète : 1 085 passés, 3 ignorés, 738 sous-tests** (5 min 18 s), après correction du double de pont (8 échecs `test_delivery` au premier passage : `notify` inconnu). Ruff et mypy verts.
 - Mesure : `src/` +348 lignes effectives ; façade + GUI **2 764 / 2 800** ; vues sous 400. Docs : `LIMITES.md`, `COMMANDES.md`, `PRISE_EN_MAIN.md`, `project/RULES.md` (amendements du 2026-10-05). Aucun appel fournisseur ; rien de commité.
+
+## Session 2026-10-06 — qualifications réelles de la reprise (V3 §7)
+
+- Commit `5e60d90` sur `feat/reprise-quota` (demande du PO). Essais lancés par le PO, options de A/B, tours complets sans quota.
+- Claude (sonnet) : `--session-id` accepté ; `--resume` en texte rappelle le contexte ; en JSON, `session_id` égal à l'identifiant imposé. Reprise depuis un **autre dossier** : réussie (code 0) — la contrainte de dossier supposée dans la V3 est fausse ; le code garde le même dossier par prudence, commentaire corrigé. Identifiant inventé : `No conversation found with session ID: <id>`, code 1 → `CLI_FAILED`, conforme à la décision du PO.
+- Codex 0.159.3 : bannière `session id:` au premier tour sans `--ephemeral` ; `exec resume -c sandbox_mode=read-only … <id> -` rend la même `session id` et le contexte. Une ligne `ERROR codex_skills_extension…` précède la bannière sur `stderr`, sans effet.
+- Deux collages coupés par le terminal (commande longue scindée) : sans appel parti, refus « Not inside a trusted directory » puis erreur de `-c`. Commandes d'essai à donner sur des lignes courtes.
+- Reste non observé : reprise d'un tour réellement interrompu par un quota ; format du refus Codex. V3 §7, `LIMITES.md` et plan mis à jour.
