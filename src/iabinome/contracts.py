@@ -78,14 +78,18 @@ class AgentResponse:
 
 
 def parse_agent_response(text: str) -> AgentResponse:
-    """La première ligne vaut exactement IABINOME:DOCUMENT ou
-    IABINOME:QUESTION. Toute autre valeur est une erreur de contrat."""
-    first_line, _, rest = text.partition("\n")
-    if first_line == _TAG_DOCUMENT:
-        return AgentResponse(kind="DOCUMENT", body=rest)
-    if first_line == _TAG_QUESTION:
-        return AgentResponse(kind="QUESTION", body=rest)
-    raise ContractError(f"balise absente ou inconnue en première ligne : {first_line!r}")
+    """La réponse s'ouvre sur IABINOME:DOCUMENT ou IABINOME:QUESTION, **seule sur sa
+    ligne**. Les lignes qui la précèdent — un agent qui annonce ce qu'il va faire —
+    sont ignorées, et restent lisibles dans `reponse_brute.txt` (PO, 2026-10-06). Sans
+    balise exacte, erreur de contrat : on ne devine jamais une réponse non balisée."""
+    lines = text.split("\n")
+    for index, line in enumerate(lines):
+        if line in (_TAG_DOCUMENT, _TAG_QUESTION):
+            kind: Literal["DOCUMENT", "QUESTION"] = (
+                "DOCUMENT" if line == _TAG_DOCUMENT else "QUESTION"
+            )
+            return AgentResponse(kind=kind, body="\n".join(lines[index + 1:]))
+    raise ContractError(f"balise absente ou inconnue en première ligne : {lines[0]!r}")
 
 
 @dataclass(frozen=True)

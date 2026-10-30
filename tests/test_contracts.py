@@ -95,6 +95,20 @@ class TestParseAgentResponse(unittest.TestCase):
         with self.assertRaises(ContractError):
             parse_agent_response("iabinome:document\ncorps")
 
+    def test_an_announcement_before_the_tag_line_is_ignored(self) -> None:
+        """Révision réelle du 2026-10-06 : une phrase d'annonce, une ligne vide, puis la
+        balise. Le document commence après la balise."""
+        response = parse_agent_response(
+            "Les quatre constats se vérifient. Je rédige la version révisée.\n\n"
+            "IABINOME:DOCUMENT\n# Titre\ncorps"
+        )
+        self.assertEqual(response.kind, "DOCUMENT")
+        self.assertEqual(response.body, "# Titre\ncorps")
+
+    def test_a_tag_inside_a_sentence_is_not_a_tag(self) -> None:
+        with self.assertRaises(ContractError):
+            parse_agent_response("Je réponds par IABINOME:DOCUMENT comme demandé.\n# Titre")
+
 
 _VALID_REVIEW = {
     "schema_version": 1,

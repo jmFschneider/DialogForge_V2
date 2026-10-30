@@ -326,14 +326,26 @@ class TestAnAnswerBadlyPresentedIsRecovered(IncidentCase):
         self.assertEqual(state.status.value, "AWAITING_APPROVAL")  # type: ignore[attr-defined]
         self.assertEqual(self.a.calls, 1)
 
-    def test_a_preamble_before_the_tag_stays_refused_and_is_never_read_as_agreement(self) -> None:
-        """Règle mesurée du 2026-09-04 : sans balise en première ligne, un préfixe est
-        un refus. La réponse brute reste, l'humain décide."""
-        collab = self.build(a=("Voici mon document :\nIABINOME:DOCUMENT\n# Titre",), b=())
+    def test_a_preamble_before_the_tag_is_ignored_and_kept_in_the_raw_response(self) -> None:
+        """Amendement du PO du 2026-10-06 (révision réelle de A refusée pour une phrase
+        d'annonce) : la balise seule sur sa ligne ouvre la réponse ; le préambule reste
+        dans la preuve brute, jamais dans le document."""
+        collab = self.build(
+            a=("Je rédige maintenant la version.\n\nIABINOME:DOCUMENT\n# Titre",),
+            b=(review_v2("ACCEPTER"),),
+        )
+        state = self.run_engine(collab)
+        self.assertEqual(state.status.value, "AWAITING_APPROVAL")  # type: ignore[attr-defined]
+        call_dir = sorted((collab / "appels").iterdir())[0]
+        self.assertIn("Je rédige", (call_dir / "reponse_brute.txt").read_text("utf-8"))
+        document = (collab / "echanges" / "0001-proposition-A.md").read_text("utf-8")
+        self.assertNotIn("Je rédige", document)
+
+    def test_a_response_without_an_exact_tag_line_stays_refused(self) -> None:
+        """Sans balise exacte, rien n'est deviné : la réponse brute reste, l'humain décide."""
+        collab = self.build(a=("Voici mon document : IABINOME:DOCUMENT\n# Titre",), b=())
         state = self.run_engine(collab)
         self.assertEqual(state.status.value, "ERROR")  # type: ignore[attr-defined]
-        call_dir = next((collab / "appels").iterdir())
-        self.assertIn("Voici mon document", (call_dir / "reponse_brute.txt").read_text("utf-8"))
         self.assertEqual(self.b.calls, 0)
 
 
