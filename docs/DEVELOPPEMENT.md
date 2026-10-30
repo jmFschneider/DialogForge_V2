@@ -4,7 +4,7 @@ Pour qui travaille **sur** l'outil, pas avec. Les utilisateurs n'ont pas besoin 
 
 ## D'où vient le code
 
-DialogForge V2 est développé dans ce dépôt (`DialogForge_2`), à partir d'IAbinome : un outil qui
+DialogForge V2 est développé dans ce dépôt (`C:\Projets\DialogForge`, anciennement `DialogForge_2`), à partir d'IAbinome : un outil qui
 coordonne deux agents en ligne de commande. Le prédécesseur, DialogForge, pesait 87 000 lignes et sa
 partie « exécution autonome » n'a jamais mené une implémentation au bout ; l'histoire et les cinq
 règles qui en découlent sont dans [`POURQUOI.md`](../POURQUOI.md).
@@ -22,7 +22,7 @@ est le rapport à la taille du projet servi (règle 1 de `POURQUOI.md`), pas ce 
 | Destination de push | `origin` = dépôt public `jmFschneider/DialogForge_V2`, depuis le 2026-10-01. Le remote vers IAbinome a été retiré après le clone et n'a jamais été rétabli |
 | Non importés | Environnement virtuel, fichiers non suivis, fichier de réglages local (ignoré par Git) |
 
-Les dépôts sources — IAbinome et DialogForge — restent inchangés ; ce dépôt ne réécrit pas les missions
+Les dépôts sources — IAbinome et DialogForge v1 — ont été archivés le 2026-10-30 ; ce dépôt ne réécrit pas les missions
 historiques.
 
 ## Périmètre de la première livraison (J3)

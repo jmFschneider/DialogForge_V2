@@ -1,5 +1,7 @@
 # NOTES.md — Reprise immédiate IAbinome
 
+> **Archive historique (2026-09-05).** Ce tableau de bord décrit IAbinome avant sa consolidation. Le produit actif est désormais `C:\Projets\DialogForge`, les missions réelles sont dans `C:\Users\schne\Nextcloud2\DialogForge_missions`, et le suivi actuel est dans `.planning/2026-09-18-dialogforge-v2/`. La consolidation M1 est suivie dans `C:\Projets\Recherche\.planning\2026-10-30-consolidation-dialogforge\`.
+
 > Tableau de bord court pour démarrer une session.
 > État courant uniquement. **Historique → `session_log.md`. Règles → `RULES.md`.**
 > Dernière mise à jour : 2026-09-05, fin de session

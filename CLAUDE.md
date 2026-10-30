@@ -1,4 +1,4 @@
-# CLAUDE.md — DialogForge_2 (socle IAbinome)
+# CLAUDE.md — DialogForge (socle IAbinome)
 
 > Chargé automatiquement à chaque session. Gardé court **volontairement** : ce projet naît de l'échec
 > d'un outil devenu trop gros. Si ce fichier dépasse une page, c'est un signal.
