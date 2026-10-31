@@ -2381,3 +2381,16 @@ Note `conception/TYPES_DE_MISSION.md` écrite puis validée telle quelle par le 
 - Codex 0.159.3 : bannière `session id:` au premier tour sans `--ephemeral` ; `exec resume -c sandbox_mode=read-only … <id> -` rend la même `session id` et le contexte. Une ligne `ERROR codex_skills_extension…` précède la bannière sur `stderr`, sans effet.
 - Deux collages coupés par le terminal (commande longue scindée) : sans appel parti, refus « Not inside a trusted directory » puis erreur de `-c`. Commandes d'essai à donner sur des lignes courtes.
 - Reste non observé : reprise d'un tour réellement interrompu par un quota ; format du refus Codex. V3 §7, `LIMITES.md` et plan mis à jour.
+
+## Session 2026-10-31 — copies Nextcloud aux pauses humaines
+
+- Décision du PO : mission active hors de Nextcloud ; copie complète à la question
+  ou validation humaine, puis copie complète après acceptation ou arrêt. Chaque
+  envoi crée un dossier neuf, sans delta, archive ni calcul de SHA.
+- Branche `feat/nextcloud-copies-at-pauses` issue de `main` : configuration
+  opérationnelle `~/.dialogforge/copies.toml` distincte des réglages métier,
+  déclenchement CLI/GUI après sortie du verrou, commande `copy` pour réessayer.
+  Le marqueur `COPIE_TERMINEE.txt` distingue une copie achevée d'une copie partielle.
+- Tests ciblés : 28 réussis, 221 sous-tests ; mypy avec exclusion du diagnostic
+  Tkinter préexistant `no-untyped-call` vert. Suite complète : **1 090 réussis,
+  8 ignorés, 743 sous-tests** (5 min 26 s).

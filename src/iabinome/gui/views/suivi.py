@@ -243,6 +243,9 @@ class SuiviView(ttk.Frame):
         error = self._controller.run_error(self._path)
         if error:
             lines.append(f"Le lancement n'a pas pu partir : {error}")
+        copy_notice = self._controller.copy_notice(self._path)
+        if copy_notice:
+            lines.append(copy_notice)
         return "\n".join(lines)
 
     def _result_text(self, snapshot: facade.CollaborationSnapshot) -> str:

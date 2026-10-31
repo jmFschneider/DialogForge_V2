@@ -1,6 +1,6 @@
 # Commandes
 
-Référence des treize commandes, des statuts et des codes de sortie. Pour un premier parcours,
+Référence des quatorze commandes, des statuts et des codes de sortie. Pour un premier parcours,
 commencez par [`PRISE_EN_MAIN.md`](PRISE_EN_MAIN.md). `dialogforge <commande> --help` donne la
 même information en ligne.
 
@@ -12,6 +12,7 @@ même information en ligne.
 | [`status`](#status) | Dire où en est la collaboration | non, lecture seule |
 | [`show`](#show) | Lire le résultat avant de décider | non, lecture seule |
 | [`decide`](#decide) | Consigner votre décision | seulement `--correct` |
+| [`copy`](#copy) | Réessayer une copie complète vers Nextcloud | non |
 | [`plan`](#plan) | Résumé pour un plan PWF, liaison facultative | non |
 | [`list`](#list) | Énumérer les collaborations d'un dossier | non, lecture seule |
 | [`mission`](#mission) | Rattacher ou reprendre une collaboration dans un dossier de mission | non |
@@ -21,6 +22,11 @@ même information en ligne.
 | [`dev-verify`](#dev-verify) | Vérifier le rattachement du paquet à sa revue | non, lecture seule |
 
 `<dossier>` désigne le dossier d'une collaboration, celui que `new` a créé.
+Si les copies Nextcloud sont configurées, `run` et `resume` copient la mission entière
+à chaque question ou validation humaine ; `decide --accept`, `--accept-with-reserves`
+et `--stop` la recopient entière après la décision. Chaque envoi crée un nouveau
+dossier ; le travail continue dans le dossier local. Une erreur de copie est affichée
+sans annuler le cycle ni la décision. Voir [Copies Nextcloud](PRISE_EN_MAIN.md#copies-nextcloud).
 
 ## new
 
@@ -154,6 +160,14 @@ change pas le statut du moteur : `AWAITING_APPROVAL` reste `AWAITING_APPROVAL`.
 | `--stop` | Arrêter, définitivement (statut `STOPPED`). Les preuves d'appel restent. |
 | `--reason <texte>` | Motif de l'arrêt ; ne vaut qu'avec `--stop`. |
 | `--timeout`, `--config` | Comme pour `run` ; ne servent qu'à `--correct`. |
+
+## copy
+
+`dialogforge copy <dossier>`
+
+Réessaie manuellement l'envoi de **toute la mission locale**, par exemple après
+une panne de Nextcloud. Crée un nouveau dossier nommé `__manuel__` dans la
+destination configurée. N'appelle aucun agent et ne change aucun fichier local.
 
 ## plan
 

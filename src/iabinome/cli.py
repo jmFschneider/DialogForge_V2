@@ -18,11 +18,13 @@ import argparse
 import json
 import signal
 import sys
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from . import (
+    copies,
     decisions,
     demande,
     development,
@@ -348,6 +350,7 @@ def _drive(
         return _fail(_describe(exc))
     finally:
         _restore(previous)
+    _report_copy(lambda: copies.after_run(collab, state))
     print(f"statut : {state.status.value} · phase : {state.phase.value}")
     if state.status is Status.READY:
         print(
@@ -477,7 +480,30 @@ def cmd_decide(args: argparse.Namespace) -> int:
         )
     except _BORDER_ERRORS as exc:
         return _fail(_describe(exc))
+    _report_copy(lambda: copies.after_decision(collab))
     print(decisions.describe(collab, state))
+    return 0
+
+
+def _report_copy(send: Callable[[], Path | None]) -> None:
+    """Une copie ratée se signale, sans transformer un cycle réussi en échec."""
+    try:
+        target = send()
+        if target is not None:
+            print(f"copie Nextcloud : {target}", file=sys.stderr)
+    except copies.CopyError as exc:
+        print(f"attention : {exc}", file=sys.stderr)
+
+
+def cmd_copy(args: argparse.Namespace) -> int:
+    """Réessayer manuellement une copie complète après une erreur d'envoi."""
+    try:
+        target = copies.send(Path(args.collab), "manuel")
+    except copies.CopyError as exc:
+        return _fail(str(exc))
+    if target is None:
+        return _fail(f"copies non configurées : créer {copies.CONFIG_PATH}")
+    print(f"copie Nextcloud : {target}")
     return 0
 
 
@@ -792,6 +818,10 @@ def build_parser() -> argparse.ArgumentParser:
     choice.add_argument("--stop", action="store_true", help="arrêter, définitivement")
     p_decide.add_argument("--reason", help="motif de l'arrêt ; ne vaut qu'avec --stop")
     p_decide.set_defaults(func=cmd_decide)
+
+    p_copy = sub.add_parser("copy", help="réessayer une copie complète vers Nextcloud")
+    p_copy.add_argument("collab", help="collaboration ou étape de la mission locale")
+    p_copy.set_defaults(func=cmd_copy)
 
     p_plan = sub.add_parser(
         "plan", help="résumé à reporter dans un plan PWF, ou liaison facultative à ce plan"

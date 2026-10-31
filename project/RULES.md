@@ -17,6 +17,14 @@
 
 ## Périmètre
 
+**Les missions actives restent locales ; Nextcloud reçoit une copie complète à chaque attente
+humaine et après la décision finale** (PO, 2026-10-31). Chaque envoi a son propre dossier ;
+une erreur de copie se signale sans annuler la décision locale. Le chemin de copie est une
+préférence opérationnelle séparée de `configuration.json`, jamais une donnée du cycle.
+*Motif : un conflit de synchronisation réel sur `etat.json` dans la mission consoude ; la
+reconstruction par archive, manifeste et SHA a été jugée trop lourde pour cet usage local.*
+
+
 **Toute demande qui commence par « et si on ajoutait un petit contrôle pour… » est opposée au tableau des cinq interdits de `CLAUDE.md` avant d'être implémentée.**
 *Motif : chaque contrôle de DialogForge était justifié isolément ; aucun n'a été mis en regard du total, qui a atteint 87 382 lignes.*
 

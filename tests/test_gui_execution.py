@@ -13,7 +13,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from iabinome import facade
+from iabinome import copies, facade
 from iabinome.gui import app
 from iabinome.gui.controller import Controller
 from iabinome.gui.views.suivi import SuiviView
@@ -49,6 +49,21 @@ class ExecutionCase(unittest.TestCase):
 
 
 class TestStartRun(ExecutionCase):
+    def test_human_validation_sends_a_complete_copy(self) -> None:
+        cloud = self.root_dir / "nextcloud"
+        config = self.root_dir / "copies.toml"
+        config.write_text(
+            f'local_root = "{self.collab.as_posix()}"\n'
+            f'nextcloud_root = "{cloud.as_posix()}"\n', encoding="utf-8",
+        )
+        with mock.patch.object(copies, "CONFIG_PATH", config):
+            self.controller.start_run(self.collab, timeout_seconds=30.0)
+            _wait_for(lambda: not self.controller.is_running(self.collab), "fin de la copie")
+        (target,) = cloud.iterdir()
+        self.assertTrue((target / "configuration.json").is_file())
+        self.assertTrue((target / "COPIE_TERMINEE.txt").is_file())
+        self.assertIn(str(target), self.controller.copy_notice(self.collab) or "")
+
     def test_a_run_reaches_awaiting_approval(self) -> None:
         self.controller.start_run(self.collab, timeout_seconds=30.0)
         self.assertTrue(self.controller.is_running(self.collab))

@@ -19,7 +19,7 @@ from functools import partial
 from pathlib import Path
 from tkinter import Tk, messagebox, ttk
 
-from .. import facade, framing, mission, workflow
+from .. import copies, facade, framing, mission, workflow
 from ..adapters.base import AgentAdapter, FramingSessionSpec
 from ..models import MissionKind
 from ..registry import ADAPTERS
@@ -37,6 +37,7 @@ class Controller:
         self._run_thread: threading.Thread | None = None
         self._run_control: ExecutionControl | None = None
         self._run_error: str | None = None
+        self._copy_notice: str | None = None
         self._runner_session: RunnerSession | None = None
         self.runner_token = ""  # en mémoire seulement : jamais écrit, oublié à la fermeture
         self.framing: framing.Framing | None = None
@@ -158,6 +159,21 @@ class Controller:
             return None
         return self._run_error
 
+    def copy_notice(self, path: Path) -> str | None:
+        return self._copy_notice if self._run_path == path else None
+
+    def copy_after_decision(self, path: Path) -> None:
+        self._run_path = path
+        self._copy_notice = self._send_copy(lambda: copies.after_decision(path))
+
+    @staticmethod
+    def _send_copy(send: Callable[[], Path | None]) -> str | None:
+        try:
+            target = send()
+            return f"Copie Nextcloud : {target}" if target is not None else None
+        except copies.CopyError as exc:
+            return f"Copie Nextcloud échouée : {exc}"
+
     def start_run(
         self, path: Path, *, timeout_seconds: float,
         intervention: workflow.Intervention | None = None,
@@ -176,13 +192,15 @@ class Controller:
         self._runner_session = None
         control = ExecutionControl()
         self._run_error = None
+        self._copy_notice = None
 
         def worker() -> None:
             try:
-                workflow.run(
+                state = workflow.run(
                     path, adapters=ADAPTERS, timeout_seconds=timeout_seconds,
                     intervention=intervention, control=control,
                 )
+                self._copy_notice = self._send_copy(lambda: copies.after_run(path, state))
             except workflow.Stopped:
                 pass  # rien n'est parti (§9.1) : rien à signaler comme échec
             except Exception as exc:

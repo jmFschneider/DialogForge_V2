@@ -112,11 +112,14 @@ def _dispatch(controller: Controller, path: Path, action: AllowedAction, text: s
         )
     elif action_id is ActionId.ACCEPT:
         workflow.decide(path, decisions.ACCEPTED)
+        controller.copy_after_decision(path)
     elif action_id is ActionId.ACCEPT_WITH_RESERVES:
         assert text is not None
         workflow.decide(path, decisions.ACCEPTED_WITH_RESERVES, reserves=text)
+        controller.copy_after_decision(path)
     elif action_id is ActionId.STOP:
         workflow.decide(path, decisions.STOPPED)
+        controller.copy_after_decision(path)
 
 
 def _write_temp(text: str) -> Path:

@@ -6,6 +6,14 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
+**Copies Nextcloud aux pauses humaines — autorisées par le PO le 2026-10-31.**
+Le dossier actif est local. À `WAITING_HUMAN` ou `AWAITING_APPROVAL`, DialogForge
+envoie une copie complète de la mission vers un nouveau dossier Nextcloud ; après
+la décision finale, il renvoie la mission entière. Aucune comparaison de fichiers,
+archive ni empreinte supplémentaire. L'échec d'envoi est signalé sans annuler le
+travail local ; `copy` permet de réessayer. Implémentation sur
+`feat/nextcloud-copies-at-pauses` ; suite complète verte, activation locale à terminer.
+
 **Reprise après quota — conception V3 acceptée par le PO le 2026-10-05, implémentation engagée.**
 `conception/REPRISE_QUOTA_V3.md` est le mandat : continuer **la même session fournisseur** par son
 identifiant après l'heure annoncée + 2 min, jamais rejouer le prompt dans une session neuve

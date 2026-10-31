@@ -2,6 +2,29 @@
 
 Un premier cycle, de la demande à la décision. Durée de lecture : dix minutes.
 
+## Copies Nextcloud
+
+Pour travailler localement et garder des versions consultables sur Nextcloud,
+créez `~/.dialogforge/copies.toml` avec deux chemins absolus :
+
+```toml
+local_root = "C:/Projets/DialogForge_missions_actives"
+nextcloud_root = "C:/Users/vous/Nextcloud2/DialogForge_missions/copies"
+```
+
+Créez les nouvelles missions dans `local_root` (dans la GUI, choisissez ce
+dossier comme racine). Quand une collaboration arrive à une **question** ou à
+une **validation**, DialogForge copie la mission entière vers un nouveau dossier
+de `nextcloud_root`. Après une acceptation, une acceptation avec réserves ou un
+arrêt définitif, il envoie de nouveau la mission entière avec la décision.
+Chaque nom contient le moment de l'envoi, la date et un identifiant court ; il
+n'y a aucune recherche des fichiers déjà envoyés. `COPIE_TERMINEE.txt` indique
+qu'une copie est achevée.
+
+Le dossier local reste le dossier de travail. Si la copie échoue, DialogForge
+l'affiche sans annuler le cycle ou la décision ; `dialogforge copy <dossier>`
+réessaie un envoi complet. La CLI et la GUI lisent le même `copies.toml`.
+
 ## Ce qu'il faut avoir
 
 - **Python 3.12.** Aucune autre dépendance.
