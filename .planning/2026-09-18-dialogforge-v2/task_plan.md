@@ -12,7 +12,12 @@ envoie une copie complète de la mission vers un nouveau dossier Nextcloud ; apr
 la décision finale, il renvoie la mission entière. Aucune comparaison de fichiers,
 archive ni empreinte supplémentaire. L'échec d'envoi est signalé sans annuler le
 travail local ; `copy` permet de réessayer. Implémentation sur
-`feat/nextcloud-copies-at-pauses` ; suite complète verte, activation locale à terminer.
+`feat/nextcloud-copies-at-pauses`, commit `70d0920`, fusionné en fast-forward
+dans `main` et publié ; 1 090 tests passés. Installation locale activée avec
+`C:\Projets\DialogForge_missions_actives` et la destination Nextcloud. Un envoi
+d'essai a créé une copie achevée. Prochain contrôle : observer une vraie pause
+humaine et sa décision finale sur une mission créée dans cette racine ; les
+livrables M4/M5 attendent toujours la lecture du PO, et M3 reste sur sa branche.
 
 **Reprise après quota — conception V3 acceptée par le PO le 2026-10-05, implémentation engagée.**
 `conception/REPRISE_QUOTA_V3.md` est le mandat : continuer **la même session fournisseur** par son

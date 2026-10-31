@@ -2394,3 +2394,8 @@ Note `conception/TYPES_DE_MISSION.md` écrite puis validée telle quelle par le 
 - Tests ciblés : 28 réussis, 221 sous-tests ; mypy avec exclusion du diagnostic
   Tkinter préexistant `no-untyped-call` vert. Suite complète : **1 090 réussis,
   8 ignorés, 743 sous-tests** (5 min 26 s).
+- Commit `70d0920` poussé sur la branche de fonctionnalité, puis fast-forward
+  du `main` local et publication sur GitHub. `copies.toml` installé ; racine de
+  la GUI réglée sur `C:\Projets\DialogForge_missions_actives` sans effacer les
+  récents. Envoi d'essai via la CLI installée : dossier Nextcloud créé avec
+  `COPIE_TERMINEE.txt`. Une vraie pause et une décision restent à observer.
