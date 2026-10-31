@@ -304,10 +304,15 @@ def cmd_development(args: argparse.Namespace) -> int:
 def cmd_resume(args: argparse.Namespace) -> int:
     """Valide les arguments, construit l'intervention, la transmet. Aucune
     lecture d'état, aucune écriture : tout cela appartient au verrou."""
-    if args.answer and (args.retry_call or args.reprocess or args.reason_file):
-        return _fail("--answer est incompatible avec --retry-call/--reprocess/--reason-file")
-    if args.retry_call and args.reprocess:
-        return _fail("--retry-call (nouvel appel payant) et --reprocess (local) s'excluent")
+    if args.answer and (
+        args.retry_call or args.reprocess or args.continue_quota or args.reason_file
+    ):
+        return _fail(
+            "--answer est incompatible avec "
+            "--retry-call/--reprocess/--continue-quota/--reason-file"
+        )
+    if sum(bool(option) for option in (args.retry_call, args.reprocess, args.continue_quota)) > 1:
+        return _fail("--retry-call, --reprocess et --continue-quota s'excluent")
     if bool(args.retry_call or args.reprocess) != bool(args.reason_file):
         return _fail("--retry-call ou --reprocess vont avec --reason-file, et inversement")
     intervention: workflow.Intervention | None = None
@@ -317,6 +322,8 @@ def cmd_resume(args: argparse.Namespace) -> int:
         intervention = workflow.RetryCall(args.retry_call, Path(args.reason_file))
     elif args.reprocess:
         intervention = workflow.Reprocess(args.reprocess, Path(args.reason_file))
+    elif args.continue_quota:
+        intervention = workflow.ContinueQuota(args.continue_quota)
     return _drive(
         Path(args.collab), timeout_seconds=args.timeout, command_label="resume",
         intervention=intervention,
@@ -751,6 +758,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--reprocess", metavar="UUID",
         help="identifiant de l'appel dont la réponse conservée est relue sans être repayée ;"
         " la reprise qui suit peut appeler l'agent suivant",
+    )
+    p_resume.add_argument(
+        "--continue-quota", metavar="UUID",
+        help="reprendre la même session d'un appel refusé par quota confirmé",
     )
     p_resume.add_argument(
         "--reason-file", help="fichier qui dit pourquoi ; exigé avec --retry-call et --reprocess"

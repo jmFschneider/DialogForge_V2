@@ -95,7 +95,7 @@ perdu, code `6`), le second interrompt l'appel en cours, qui a pu être payé (`
 
 ## resume
 
-`dialogforge resume <dossier> [--answer <fichier> | --retry-call <uuid> | --reprocess <uuid>] [--reason-file <fichier>]`
+`dialogforge resume <dossier> [--answer <fichier> | --retry-call <uuid> | --reprocess <uuid> | --continue-quota <uuid>] [--reason-file <fichier>]`
 
 Applique **une** intervention humaine sous le verrou, remet le dossier dans un état admissible, puis
 reprend le cycle. Sans option, il se comporte comme `run`.
@@ -105,10 +105,11 @@ reprend le cycle. Sans option, il se comporte comme `run`.
 | `--answer <fichier>` | Répond à une question de A ou à une revue incohérente (`WAITING_HUMAN`). Le fichier **complète** la demande, il ne la remplace pas. |
 | `--retry-call <uuid>` | Relance l'appel interrompu : **nouvel appel payant**. Exige `--reason-file`. |
 | `--reprocess <uuid>` | Relit **localement** la réponse déjà reçue et conservée, sans la repayer ; la reprise qui suit peut ensuite appeler l'agent suivant. Exige `--reason-file`. |
+| `--continue-quota <uuid>` | Sur un refus de période reconnu, attend l'heure annoncée si nécessaire et continue **la même session** de l'appel interrompu avec une consigne courte. Aucun motif externe n'est requis ; cette action ne rejoue pas le prompt initial. |
 | `--reason-file <fichier>` | Le motif, écrit par vous. Exigé avec `--retry-call` et `--reprocess`, refusé sans. |
 | `--timeout`, `--config` | Comme pour `run`. |
 
-`--answer` est incompatible avec les autres ; `--retry-call` et `--reprocess` s'excluent. Le
+`--answer` est incompatible avec les autres ; `--retry-call`, `--reprocess` et `--continue-quota` s'excluent. Le
 retraitement est tracé dans `appels/<appel>/retraitements.jsonl` ; les données brutes ne sont jamais
 touchées, et un échec laisse le statut `ERROR`.
 

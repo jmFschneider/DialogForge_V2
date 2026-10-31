@@ -161,10 +161,24 @@ class CodexAdapter:
         return text, session if isinstance(session, str) and session else None
 
     def quota_reset(self, stdout: bytes, stderr: bytes) -> str | None:
-        """**Inactif** : aucun refus réel de `codex exec` n'a été relevé dans le profil
-        V2 (`conception/REPRISE_QUOTA.md`). Un motif supposé n'active pas la continuation ;
-        l'identifiant de session est, lui, déjà conservé pour analyser le premier refus."""
-        return None
+        """Forme réellement observée le 2026-10-30 avec Codex CLI 0.165.0.
+
+        Le refus clôt `stderr` par une ou deux lignes ERROR identiques. La bannière
+        et le travail partiel qui précèdent ne sont pas interprétés comme un refus.
+        `stdout` doit être vide ; le moteur vérifie séparément le code non nul.
+        """
+        if stdout.strip():
+            return None
+        lines = stderr.decode("utf-8", errors="replace").strip().splitlines()
+        if not lines:
+            return None
+        tail = lines[-1].strip()
+        found = _USAGE_LIMIT.fullmatch(tail)
+        if found is None:
+            return None
+        if len(lines) > 1 and lines[-2].strip().startswith("ERROR:") and lines[-2].strip() != tail:
+            return None
+        return found["at"]
 
     def session_of(self, preset: str | None, stdout: bytes, stderr: bytes) -> str | None:
         """La bannière `stderr` porte `session id: <uuid>` (relevé réel, 0.159.3, appels
@@ -185,6 +199,13 @@ class CodexAdapter:
 
 
 _BANNER_SESSION = re.compile(r"^session id:\s*(\S+)\s*$", re.MULTILINE)
+_USAGE_LIMIT = re.compile(
+    r"ERROR: You[’']ve hit your usage limit\. Upgrade to Pro "
+    r"\(https://chatgpt\.com/explore/pro\), visit "
+    r"https://chatgpt\.com/settings/usage to purchase more credits or try again at "
+    r"[A-Z][a-z]{2} \d{1,2}(?:st|nd|rd|th), \d{4} "
+    r"(?P<at>\d{1,2}:\d{2} [AP]M)\."
+)
 
 
 def _resolve() -> str:

@@ -29,6 +29,7 @@ _LABELS = {
     ActionId.RESUME: "Reprendre le cycle",
     ActionId.ANSWER_AND_RESUME: "Répondre et reprendre",
     ActionId.RETRY_CALL: "Relancer l'appel",
+    ActionId.CONTINUE_QUOTA: "Continuer la session après quota",
     ActionId.REPROCESS_AND_RESUME: "Retraiter puis reprendre",
     ActionId.ACCEPT: "Accepter cette version",
     ActionId.ACCEPT_WITH_RESERVES: "Accepter avec réserves",
@@ -98,6 +99,12 @@ def _dispatch(controller: Controller, path: Path, action: AllowedAction, text: s
         controller.start_run(
             path, timeout_seconds=timeout_seconds,
             intervention=workflow.RetryCall(action.call_id, _write_temp(text)),
+        )
+    elif action_id is ActionId.CONTINUE_QUOTA:
+        assert action.call_id is not None
+        controller.start_run(
+            path, timeout_seconds=timeout_seconds,
+            intervention=workflow.ContinueQuota(action.call_id),
         )
     elif action_id is ActionId.REPROCESS_AND_RESUME:
         assert text is not None and action.call_id is not None

@@ -348,9 +348,20 @@ class TestCodexAdapter(unittest.TestCase):
         ):
             self.assertIn(setting, values)
 
-    def test_the_refusal_is_not_recognized_without_a_real_trace(self) -> None:
-        refusal = b"You've hit your usage limit. Try again at 4:10 PM."
-        self.assertIsNone(self.adapter.quota_reset(b"", refusal))
+    def test_the_observed_usage_refusal_is_recognized_only_at_the_end(self) -> None:
+        refusal = (
+            "ERROR: You’ve hit your usage limit. Upgrade to Pro "
+            "(https://chatgpt.com/explore/pro), visit https://chatgpt.com/settings/usage "
+            "to purchase more credits or try again at Oct 31st, 2026 1:31 AM."
+        ).encode()
+        banner = b"session id: 01a0-sess\n--------\n"
+        self.assertEqual(self.adapter.quota_reset(b"", banner + refusal + b"\n" + refusal),
+                         "1:31 AM")
+        self.assertIsNone(self.adapter.quota_reset(b"answer", banner + refusal))
+        self.assertIsNone(self.adapter.quota_reset(b"", banner + refusal + b"\nother error"))
+        self.assertIsNone(self.adapter.quota_reset(
+            b"", b"You've hit your usage limit. Try again at 4:10 PM."
+        ))
 
     def test_the_session_is_read_in_the_banner_or_the_json_events(self) -> None:
         """Bannière relevée sur une trace réelle (0.159.3), identifiant remplacé."""

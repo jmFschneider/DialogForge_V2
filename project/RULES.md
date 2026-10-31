@@ -162,6 +162,8 @@
 *Exception écrite du 2026-09-24 (PO), pour l'agent de cadrage F seul (`conception/CADRAGE_AGENT.md`) : F exige une session persistante pendant tout un cadrage, et un adaptateur qui ne la déclare pas (`supports_persistent_framing_session`) est refusé avant tout appel. Il ne s'agit pas d'un bonus devenu prérequis en silence : les deux outils offrent la reprise par identifiant, qui est le mécanisme retenu (amendement A3). A et B n'en dépendent pas et gardent `fresh_session`.*
 *Amendement du 2026-10-05 (PO) : `fresh_session` veut dire « chaque tour ouvre une session neuve ». Les sessions de A, B et du Runner sont désormais **conservées** par l'outil, pour la seule continuation du tour interrompu par un quota ; aucun nouveau tour ne reprend une session. Ce n'est pas un prérequis : sans identifiant connu, l'appel refusé s'arrête comme avant.*
 
+*Qualification M3 du 2026-10-31 : après fermeture de DialogForge, un refus de quota dont les flux intègres, l'heure et l'identifiant de session sont reconnus peut être continué explicitement depuis `status`, la CLI ou la GUI. L'action reprend l'identifiant de l'appel refusé et la consigne de réponse complète ; elle ne renvoie pas le prompt d'origine dans une session neuve. Sans preuve complète, le refus reste un incident ordinaire. Une copie locale de mission consoude a qualifié ce parcours sur un refus Codex réel.*
+
 **Modèles par défaut, surchargeables : Opus 5 pour A (produit), Fable 5 pour B (critique).**
 *Motif : la critique est l'endroit où la capacité paie. Sur le Lot 0, quatre revues de plan pour une seule exploitable ont coûté 41 % du budget mesuré.*
 

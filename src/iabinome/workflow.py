@@ -111,7 +111,14 @@ class RetryCall:
     reason_path: Path
 
 
-Intervention = Answer | Correct | Reprocess | RetryCall
+@dataclass(frozen=True)
+class ContinueQuota:
+    """Continuer explicitement la session de l'appel refusé, après relancement."""
+
+    call_id: str
+
+
+Intervention = Answer | Correct | Reprocess | RetryCall | ContinueQuota
 
 
 @dataclass(frozen=True)
@@ -198,12 +205,31 @@ def run(
             # a bougé invalide la collaboration entière (§3), et le refus doit
             # tomber pendant que le code de sortie 1 dit encore la vérité.
             engine.check_corpus()
-            state, retry = engine.intervene(state, intervention)
-            engine.gate(state)
-            if state.current_call is not None:
-                state = engine.resume_call(state)
+            if isinstance(intervention, ContinueQuota):
+                offer = incidents.quota_offer(collab, state)
+                if offer is None or offer.call_id != intervention.call_id:
+                    raise WorkflowError("aucun refus de quota confirmé pour cet appel")
+                assert state.current_call is not None
+                engine.check_digest(
+                    collab / state.current_call.call_dir / "prompt.txt",
+                    state.current_call.prompt_sha256, "l'empreinte de l'appel",
+                )
+                if not quota.wait_until(offer.resume_at, control):
+                    return state
+                old_call = state.current_call
+                state = replace(state, status=Status.READY, current_call=None)
+                engine.gate(state)
+                state = engine.new_call(
+                    state, _Retry(old_call.call_id, "quota : continuation explicite"),
+                    continuation=offer.session_id,
+                )
             else:
-                state = engine.new_call(state, retry)
+                state, retry = engine.intervene(state, intervention)
+                engine.gate(state)
+                if state.current_call is not None:
+                    state = engine.resume_call(state)
+                else:
+                    state = engine.new_call(state, retry)
         intervention = None
         if state.status is not Status.READY:
             return state
@@ -552,7 +578,9 @@ class _Engine:
 
     # -- Étapes 4 à 7 : un appel --
 
-    def new_call(self, state: State, retry: _Retry | None) -> State:
+    def new_call(
+        self, state: State, retry: _Retry | None, continuation: str | None = None
+    ) -> State:
         # Avant toute écriture de l'appel : un arrêt demandé ici ne lance rien.
         if self.control is not None and self.control.interrupt_requested.is_set():
             raise Stopped("arrêt demandé avant le lancement de l'appel : aucun appel n'est parti")
@@ -564,7 +592,8 @@ class _Engine:
         ) else None
         agent = self.config.agent_a if role is Role.A else self.config.agent_b
         spec = CallSpec(
-            prompt=self.build_prompt(state), model=agent.model,
+            prompt=quota.CONTINUATION if continuation else self.build_prompt(state),
+            model=agent.model,
             timeout_seconds=self.timeout_seconds, work_root=self.collab,
             reviewer_access=self.config.reviewer_access if role is Role.B else None,
             effort=agent.effort, web_access=self.config.web_access,
@@ -572,7 +601,7 @@ class _Engine:
             corpus_present=self.config.corpus_manifest_sha256 is not None,
             # Une session neuve par tour ; son identifiant n'est repris que par la
             # continuation de ce tour après un quota (REPRISE_QUOTA_V3.md).
-            session_id=str(uuid.uuid4()),
+            session_id=continuation or str(uuid.uuid4()), resume=continuation is not None,
         )
         adapter = self.adapters[agent.adapter_id]
         others = [a.env for key, a in self.adapters.items() if key != agent.adapter_id]
@@ -621,6 +650,14 @@ class _Engine:
             return self.incident(
                 state, rel_dir, "CLI_FAILED", Status.INTERRUPTED,
                 f"code de retour {result.return_code}",
+            )
+        if continuation is not None and adapter.session_of(
+            continuation, (self.collab / rel_dir / "stdout.txt").read_bytes(),
+            (self.collab / rel_dir / "stderr.txt").read_bytes(),
+        ) != continuation:
+            return self.incident(
+                state, rel_dir, "SESSION_LOST", Status.INTERRUPTED,
+                "l'outil n'a pas confirmé la session interrompue : réponse non retenue",
             )
         return self.store_response(state)
 

@@ -23,11 +23,13 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import storage
-from .models import State, Status
+from . import contracts, quota, storage, transport
+from .models import IntegrityError, State, Status
+from .registry import ADAPTERS
 
 _EXCERPT_CHARS = 300
 
@@ -105,6 +107,54 @@ KINDS = {
 _RECEIVED = ("CONTRACT_ERROR", "DECODE_FAILED")
 
 
+@dataclass(frozen=True)
+class QuotaOffer:
+    call_id: str
+    session_id: str
+    announced: str
+    resume_at: datetime
+
+
+def quota_offer(collab: Path, state: State) -> QuotaOffer | None:
+    """Proposer la continuation d'un refus confirmé, y compris un ancien CLI_FAILED.
+
+    Les flux sont confrontés à `resultat.json` avant leur interprétation. Un code
+    seul, une trace incomplète ou une session inconnue ne créent aucune offre.
+    """
+    call = state.current_call
+    if state.status is not Status.INTERRUPTED or call is None:
+        return None
+    found = incident(collab, state)
+    if found is None or found.get("kind") not in ("CLI_FAILED", "QUOTA"):
+        return None
+    if state.last_incident != f"{call.call_dir}/incident.json":
+        return None
+    folder = collab / call.call_dir
+    try:
+        result = transport.read_result(folder)
+        intention = json.loads(storage.read_text(folder / "intention.json")[0])
+        if result is None or result.return_code == 0 or not isinstance(intention, dict):
+            return None
+        if intention.get("call_id") != call.call_id or contracts.normalize(
+            storage.read_text(folder / "prompt.txt")[0]
+        ).sha256 != call.prompt_sha256:
+            return None
+        adapter_id = intention.get("adapter_id")
+        adapter = ADAPTERS.get(adapter_id) if isinstance(adapter_id, str) else None
+        if adapter is None:
+            return None
+        out, err = (folder / "stdout.txt").read_bytes(), (folder / "stderr.txt").read_bytes()
+        announced = adapter.quota_reset(out, err)
+        session = adapter.session_of(intention.get("session_id"), out, err)
+        at = found.get("at")
+        if announced is None or session is None or not isinstance(at, str):
+            return None
+        target = quota.resume_at(announced, datetime.fromisoformat(at.replace("Z", "+00:00")))
+    except (OSError, ValueError, TypeError, IntegrityError, quota.QuotaError):
+        return None
+    return QuotaOffer(call.call_id, session, announced, target)
+
+
 def incident(collab: Path, state: State) -> dict[str, Any] | None:
     if state.last_incident is None or not (collab / state.last_incident).is_file():
         return None
@@ -163,7 +213,14 @@ def explain(collab: Path, state: State) -> list[str]:
     lines += [f"  Sens : {kind.meaning}", f"  Payé ? : {kind.paid}"]
     if found["kind"] == "CLI_FAILED":
         lines += _tool_message(collab, state) or ["  (l'outil n'a rien écrit)"]
-        lines.append("  Aucun coût ni aucune heure de reprise n'est déduit de ce code.")
+        offer = quota_offer(collab, state)
+        if offer is None:
+            lines.append("  Aucun coût ni aucune heure de reprise n'est déduit de ce code.")
+        else:
+            lines.append(
+                "  Refus de période reconnu dans la trace ; continuation de la même session "
+                f"possible à partir du {offer.resume_at.astimezone():%Y-%m-%d %H:%M}."
+            )
         lines += _same_call_again(collab, state)
     elif found["kind"] == "QUOTA":
         lines += _tool_message(collab, state)

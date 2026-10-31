@@ -17,7 +17,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from iabinome import framing, quota, workflow
+from iabinome import framing, incidents, quota, registry, workflow
 from iabinome.adapters.base import FramingSessionSpec
 from iabinome.models import Phase, State, Status
 from iabinome.transport import ExecutionControl
@@ -245,6 +245,50 @@ class TestNoContinuation(QuotaCase):
             state = self.run_engine(collab, control)
         incident = self.assert_stopped(state, collab, 1, "continuation de la session prévue")
         self.assertEqual(incident["kind"], "QUOTA")
+
+    def test_relaunch_offers_and_continues_the_same_session(self) -> None:
+        collab = self.build((fakes.quota_refusal("8:50pm"), _DOC), (1, 0))
+        control = ExecutionControl()
+        with _clock(_local(20, 0)) as clock:
+            clock.on_sleep.append(control)
+            stopped = self.run_engine(collab, control)
+        assert stopped.current_call is not None
+        with mock.patch.dict(registry.ADAPTERS, {"fake-a": self.a, "fake-b": self.b}):
+            offer = incidents.quota_offer(collab, stopped)
+            self.assertIsNotNone(offer)
+            assert offer is not None
+            with _clock(_local(21, 0, day=31)):
+                finished = workflow.run(
+                    collab, adapters={"fake-a": self.a, "fake-b": self.b},
+                    timeout_seconds=30.0,
+                    intervention=workflow.ContinueQuota(stopped.current_call.call_id),
+                )
+        self.assertIs(finished.status, Status.AWAITING_APPROVAL)
+        first, second = self.a.specs
+        self.assertTrue(second.resume)
+        self.assertEqual(second.session_id, first.session_id)
+        self.assertEqual(second.prompt, quota.CONTINUATION)
+        self.assertEqual(self.a.calls, 2)
+
+    def test_a_modified_refused_prompt_cannot_be_continued(self) -> None:
+        collab = self.build((fakes.quota_refusal("8:50pm"),), (1,))
+        control = ExecutionControl()
+        with _clock(_local(20, 0)) as clock:
+            clock.on_sleep.append(control)
+            stopped = self.run_engine(collab, control)
+        assert stopped.current_call is not None
+        (collab / stopped.current_call.call_dir / "prompt.txt").write_text(
+            "prompt modifié", encoding="utf-8"
+        )
+        with mock.patch.dict(registry.ADAPTERS, {"fake-a": self.a, "fake-b": self.b}):
+            self.assertIsNone(incidents.quota_offer(collab, stopped))
+            with self.assertRaises(workflow.WorkflowError):
+                workflow.run(
+                    collab, adapters={"fake-a": self.a, "fake-b": self.b},
+                    timeout_seconds=30.0,
+                    intervention=workflow.ContinueQuota(stopped.current_call.call_id),
+                )
+        self.assertEqual(self.a.calls, 1)
 
     def test_an_illegible_hour_stops_without_waiting(self) -> None:
         collab = self.build((fakes.quota_refusal("bientôt"),), (1,))

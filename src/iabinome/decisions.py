@@ -185,6 +185,7 @@ class ActionId(Enum):
     RESUME = "RESUME"
     ANSWER_AND_RESUME = "ANSWER_AND_RESUME"
     RETRY_CALL = "RETRY_CALL"
+    CONTINUE_QUOTA = "CONTINUE_QUOTA"
     REPROCESS_AND_RESUME = "REPROCESS_AND_RESUME"
     ACCEPT = "ACCEPT"
     ACCEPT_WITH_RESERVES = "ACCEPT_WITH_RESERVES"
@@ -246,10 +247,17 @@ def allowed_actions(collab: Path, state: State) -> tuple[AllowedAction, ...]:
     if status in (Status.INTERRUPTED, Status.ERROR):
         if not incidents.relaunchable(collab, state):
             return (stop,)
+        offer = incidents.quota_offer(collab, state)
         retry = AllowedAction(
-            ActionId.RETRY_CALL, may_call=True, inputs=("motif",), call_id=call_id
+            ActionId.RETRY_CALL, may_call=True, primary=offer is None,
+            inputs=("motif",), call_id=call_id
         )
         if status is Status.INTERRUPTED:
+            if offer is not None:
+                return (
+                    AllowedAction(ActionId.CONTINUE_QUOTA, may_call=True, call_id=call_id),
+                    retry, stop,
+                )
             return retry, stop
         reprocess = AllowedAction(
             ActionId.REPROCESS_AND_RESUME, may_call=True, local_step=True, inputs=("motif",),
@@ -311,6 +319,15 @@ def _after_incident(collab: Path, state: State, allowed: set[ActionId]) -> str:
         "`resume <dossier> --retry-call <id> --reason-file <fichier>` (nouvel appel"
         " payant ; le fichier dit pourquoi)"
     )
+    if ActionId.CONTINUE_QUOTA in allowed:
+        offer = incidents.quota_offer(collab, state)
+        assert offer is not None
+        local = offer.resume_at.astimezone().strftime("%Y-%m-%d %H:%M")
+        return (
+            f"quota confirmé{who} : même session disponible ; reprise prévue à {local}. "
+            "`resume <dossier> --continue-quota <id>` attend cette heure si nécessaire, puis "
+            f"continue la session interrompue ; ou {retry} ; ou {stop}"
+        )
     if ActionId.REPROCESS_AND_RESUME in allowed:
         return (
             f"{name}{who} : la réponse brute est conservée dans `appels/`. Sans la repayer :"

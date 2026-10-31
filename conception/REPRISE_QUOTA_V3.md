@@ -160,6 +160,31 @@ Tests avec l'agent `fake` et une horloge contrôlée :
 - nouveau refus annonçant la même heure ;
 - **le prompt d'origine n'est jamais renvoyé dans une session neuve**.
 
+## 9. Qualification réelle et reprise au relancement — 2026-10-31
+
+Deux appels B de recherche consoude ont reçu, sous Codex CLI 0.165.0, un code 1 et
+la ligne terminale `ERROR: You’ve hit your usage limit. Upgrade to Pro ... or try
+again at Oct 31st, 2026 1:31 AM.` sur `stderr`. `stdout` était vide. La bannière
+de chaque appel portait un `session id:` distinct. L'ancienne version les avait
+classés `CLI_FAILED` ; les traces complètes sont conservées dans les missions M5.
+
+M3 reconnaît uniquement cette forme terminale observée, sur un appel non nul et
+avec réponse vide. Au relancement, `status` et la GUI proposent explicitement de
+continuer la **même session** après l'heure annoncée + 2 min. La CLI expose
+`resume <dossier> --continue-quota <id>`. La commande vérifie les empreintes de
+la demande, du prompt et des flux avant de lancer `exec resume <session id>` avec
+la consigne de réponse complète. La continuation est un nouvel appel tracé, lié à
+l'appel refusé ; elle ne repaie pas le prompt d'origine dans une session neuve.
+Le bouton de la GUI demande confirmation avant l'appel. Aucune tâche Windows
+n'est créée. Un simple code 1, une sortie non conforme ou un identifiant absent
+ne proposent pas cette action.
+
+Sur la copie locale de `M5-consoude-web-2026-10-30`, le 2026-10-31, l'appel 0003-B
+a repris l'identifiant de l'appel refusé 0002-B ; sa critique a été enregistrée,
+et le cycle a atteint `AWAITING_APPROVAL` après deux révisions. Cela qualifie la
+continuation d'une session réellement interrompue. L'approbation du livrable
+reste une décision du PO.
+
 Amendements de `project/RULES.md` :
 
 - « session fraîche » vaut pour chaque nouveau tour ; seule la continuation d'un tour interrompu

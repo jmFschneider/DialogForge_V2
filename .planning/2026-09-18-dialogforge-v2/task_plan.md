@@ -6,6 +6,16 @@ par un B indépendant, une correction avec une disposition explicite par objecti
 avec reprise après incident sans rejouer un appel ambigu.
 
 ## Next Step
+
+**2026-10-31 — M3, premier refus Codex réel.** Deux appels B de recherche consoude ont reçu
+un refus de période avec heure annoncée ; une copie locale a été reprise après relancement
+par `--continue-quota`, avec le même identifiant de session, et le cycle est arrivé à
+`AWAITING_APPROVAL`. La reconnaissance et l'action CLI/GUI sont implémentées sur
+`feat/m3-reprise-quota-reel`. Terminer la validation et intégrer ce correctif après revue ;
+la décision sur les livrables de recherche reste au PO. Voir `conception/REPRISE_QUOTA_V3.md` §9.
+
+Les paragraphes datés ci-dessous sont conservés comme historique des étapes précédentes ;
+leurs « prochains pas » ne remplacent pas celui du 2026-10-31.
 **Reprise après quota — conception V3 acceptée par le PO le 2026-10-05, implémentation engagée.**
 `conception/REPRISE_QUOTA_V3.md` est le mandat : continuer **la même session fournisseur** par son
 identifiant après l'heure annoncée + 2 min, jamais rejouer le prompt dans une session neuve
