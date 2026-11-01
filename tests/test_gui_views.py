@@ -104,6 +104,17 @@ class TestAccueilView(ViewCase):
         self.assertEqual([(row[0], row[1]) for row in rows], [(collab.name, "Prête")])
         self.assertEqual(recents.load(self.prefs), ())
 
+    def test_selected_root_precedes_old_recents_in_the_visible_rows(self) -> None:
+        directory = self.root_dir / "mes-collaborations"
+        collab = fakes.collaboration(directory)
+        for index in range(10):
+            recents.record_opened(self.root_dir / f"ancien-{index}", self.prefs)
+        self.controller.set_collaborations_root(directory)
+        view = self.controller._frame
+        assert isinstance(view, AccueilView)
+        first = view._table.item(view._table.get_children()[0], "values")
+        self.assertEqual(first[0], collab.name)
+
     def test_home_reads_a_finished_collaboration_from_the_selected_root(self) -> None:
         directory = self.root_dir / "mes-collaborations"
         directory.mkdir()

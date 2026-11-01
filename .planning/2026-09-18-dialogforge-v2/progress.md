@@ -2417,3 +2417,13 @@ Note `conception/TYPES_DE_MISSION.md` écrite puis validée telle quelle par le 
 - Libellé de la GUI et guide précisés : fichier liste de noms exacts, sans `*`,
   contrôle de `corpus/manifeste.json` avant `run`. Tests de documentation : 8
   réussis, 221 sous-tests ; Ruff vert. Décision d'acceptation laissée au PO.
+
+## Session 2026-11-01 — visibilité du complément dans l'accueil
+
+- Le PO ne voyait pas `info_site_complement` après relance de la GUI : la racine
+  locale était correcte, mais dix récents historiques passaient avant les
+  dossiers de la racine ; la table n'affiche que huit lignes avant défilement.
+- Le complément a été ajouté en tête des récents pour l'ouverture immédiate.
+  Le contrôleur présente désormais d'abord les collaborations de la racine
+  locale, puis les autres récents, sans doublon. Test ciblé : 26 réussis ; Ruff
+  et `git diff --check` verts. Les deux missions attendent l'acceptation du PO.

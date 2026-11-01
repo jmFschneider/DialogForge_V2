@@ -127,19 +127,20 @@ class Controller:
 
     def recent_entries(self) -> tuple[recents.Recent, ...]:
         entries: dict[Path, recents.Recent] = {}
-        for entry in recents.load(self.recents_path):  # une entrée par mission
-            (top,) = mission.fold([entry.path])
-            entries.setdefault(top, replace(entry, path=top))
         root = self.collaborations_root()
         if root is not None and root.is_dir():
             try:
                 for folder in sorted(root.iterdir(), key=lambda p: p.name.casefold()):
-                    if folder.is_dir() and folder.resolve() not in entries and (
+                    if folder.is_dir() and (
                         (folder / "etat.json").is_file() or (folder / mission.REGISTRY).is_file()
                     ):
                         entries[folder.resolve()] = recents.Recent(folder.resolve(), "")
             except OSError:
                 pass
+        for entry in recents.load(self.recents_path):  # une entrée par mission
+            (top,) = mission.fold([entry.path])
+            # La mise à jour garde la position du dossier local et sa date d'ouverture.
+            entries[top] = replace(entry, path=top)
         return tuple(entries.values())
 
     # -- Exécution : un fil au plus (§3.1, §10.4) --

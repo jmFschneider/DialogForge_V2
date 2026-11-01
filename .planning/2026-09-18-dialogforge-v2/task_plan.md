@@ -19,6 +19,10 @@ d'essai a créé une copie achevée. Deux vraies pauses de `info_site` et deux d
 `info_site_complement` ont maintenant produit des copies complètes. Prochain
 contrôle : décision finale du PO sur le complément, puis copie finale ; les
 livrables M4/M5 attendent toujours sa lecture, et M3 reste sur sa branche.
+Le 2026-11-01, le PO annonce qu'il acceptera `info_site` et son complément.
+L'accueil de la GUI doit montrer en tête les missions du dossier local : le
+complément, créé par CLI, se trouvait sous dix anciens récents hors des huit
+lignes visibles. Correctif sur `fix/local-missions-first`.
 
 **Reprise après quota — conception V3 acceptée par le PO le 2026-10-05, implémentation engagée.**
 `conception/REPRISE_QUOTA_V3.md` est le mandat : continuer **la même session fournisseur** par son
