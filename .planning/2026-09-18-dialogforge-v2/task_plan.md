@@ -15,9 +15,10 @@ travail local ; `copy` permet de réessayer. Implémentation sur
 `feat/nextcloud-copies-at-pauses`, commit `70d0920`, fusionné en fast-forward
 dans `main` et publié ; 1 090 tests passés. Installation locale activée avec
 `C:\Projets\DialogForge_missions_actives` et la destination Nextcloud. Un envoi
-d'essai a créé une copie achevée. Prochain contrôle : observer une vraie pause
-humaine et sa décision finale sur une mission créée dans cette racine ; les
-livrables M4/M5 attendent toujours la lecture du PO, et M3 reste sur sa branche.
+d'essai a créé une copie achevée. Deux vraies pauses de `info_site` et deux de
+`info_site_complement` ont maintenant produit des copies complètes. Prochain
+contrôle : décision finale du PO sur le complément, puis copie finale ; les
+livrables M4/M5 attendent toujours sa lecture, et M3 reste sur sa branche.
 
 **Reprise après quota — conception V3 acceptée par le PO le 2026-10-05, implémentation engagée.**
 `conception/REPRISE_QUOTA_V3.md` est le mandat : continuer **la même session fournisseur** par son

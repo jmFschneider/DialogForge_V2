@@ -2398,4 +2398,22 @@ Note `conception/TYPES_DE_MISSION.md` écrite puis validée telle quelle par le 
   du `main` local et publication sur GitHub. `copies.toml` installé ; racine de
   la GUI réglée sur `C:\Projets\DialogForge_missions_actives` sans effacer les
   récents. Envoi d'essai via la CLI installée : dossier Nextcloud créé avec
-  `COPIE_TERMINEE.txt`. Une vraie pause et une décision restent à observer.
+  `COPIE_TERMINEE.txt`. La qualification sur une vraie mission suit ci-dessous.
+
+## Session 2026-11-01 — corpus manquant dans `info_site`
+
+- `info_site` achevée au sens moteur (`AWAITING_APPROVAL`), mais
+  `corpus_manifest_sha256: null` et aucun dossier `info_site/corpus/`. Les dix
+  documents réseau se trouvaient dans un dossier frère ; les chemins et jokers
+  mentionnés dans la demande ne les joignaient pas. Le rapport initial le dit.
+- Choix du PO : complément ciblé. Nouvelle mission locale
+  `info_site_complement` créée avec dix documents réseau et le rapport initial
+  dans un corpus figé de onze fichiers, chacun nommé exactement dans la liste.
+  Manifeste et compte des copies vérifiés avant le premier appel.
+- Premier cycle : une objection majeure et une mineure restaient ouvertes.
+  Correction ciblée demandée ; dernière revue B `ACCEPTER`, aucune objection
+  ouverte, statut `AWAITING_APPROVAL`. Copie automatique Nextcloud après chacun
+  des deux arrêts, avec `COPIE_TERMINEE.txt`.
+- Libellé de la GUI et guide précisés : fichier liste de noms exacts, sans `*`,
+  contrôle de `corpus/manifeste.json` avant `run`. Tests de documentation : 8
+  réussis, 221 sous-tests ; Ruff vert. Décision d'acceptation laissée au PO.

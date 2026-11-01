@@ -94,7 +94,11 @@ les valeurs par défaut, et `new` se réduit alors à un dossier et une demande.
 > dossier.
 
 **Le corpus** se déclare par un fichier qui liste des chemins, un par ligne, relatifs à
-`--source-root`. La conception de l'exemple part du même dossier :
+`--source-root`. Écrivez les **noms exacts** des fichiers, par exemple
+`infrastructure_V2.md` ou `Serveurs/florapi/referencement_suivi.md` : les motifs
+`*` ne sont pas développés. Mentionner `corpus/fichiers/` dans la demande ne joint
+aucun document ; après `new`, vérifiez que `corpus/manifeste.json` énumère les
+fichiers attendus avant de lancer `run`. La conception de l'exemple part du même dossier :
 
 ```
 dialogforge new ./plan --demande ./exemples/demande-conception.md --kind conception --reviewer-access consult --agent-a claude --agent-b codex --source-root ./exemples --source-list ./exemples/corpus.txt --max-revisions 1

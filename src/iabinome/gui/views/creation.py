@@ -195,7 +195,7 @@ class CreationView(ttk.Frame):
             command=widgets.browse(self._project_root, "Dossier du projet", folder=True),
         ).pack(side="left")
         ttk.Label(
-            parent, text="Documents figés facultatifs — racine et liste des fichiers à copier",
+            parent, text="Documents figés — racine et fichier liste (noms exacts, sans *)",
         ).pack(anchor="w", pady=(12, 0))
         for label, var, browse in (
             ("Racine", self._source_root,
